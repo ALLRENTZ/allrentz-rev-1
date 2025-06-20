@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, ChevronLeft, CheckCircle, Building2, FileText, CreditCard, Package, Upload, Shield } from 'lucide-react';
@@ -17,19 +16,19 @@ const VendorOnboarding = () => {
     contactName: '',
     email: '',
     phone: '',
-    businessLicense: '',
+    businessLicenseNumber: '',
     taxId: '',
     // Documents
-    insurance: null,
-    businessLicense: null,
-    safetyDocs: null,
+    insurance: null as File | null,
+    businessLicense: null as File | null,
+    safetyDocs: null as File | null,
     // Equipment
-    equipmentCategories: [],
+    equipmentCategories: [] as string[],
     inventorySize: '',
     // Payout
     bankAccount: '',
     routingNumber: '',
-    taxDocuments: null
+    taxDocuments: null as File | null
   });
 
   const businessTypes = [
@@ -82,12 +81,12 @@ const VendorOnboarding = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const toggleArrayField = (field: string, value: string) => {
+  const toggleArrayField = (field: 'equipmentCategories', value: string) => {
     setFormData(prev => ({
       ...prev,
-      [field]: prev[field as keyof typeof prev].includes(value)
-        ? (prev[field as keyof typeof prev] as string[]).filter(item => item !== value)
-        : [...(prev[field as keyof typeof prev] as string[]), value]
+      [field]: prev[field].includes(value)
+        ? prev[field].filter(item => item !== value)
+        : [...prev[field], value]
     }));
   };
 
@@ -253,8 +252,8 @@ const VendorOnboarding = () => {
                     type="text" 
                     className="industrial-input w-full" 
                     placeholder="BL-123456789"
-                    value={formData.businessLicense}
-                    onChange={(e) => updateFormData('businessLicense', e.target.value)}
+                    value={formData.businessLicenseNumber}
+                    onChange={(e) => updateFormData('businessLicenseNumber', e.target.value)}
                   />
                 </div>
 

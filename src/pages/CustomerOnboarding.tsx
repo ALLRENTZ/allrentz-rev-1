@@ -20,9 +20,9 @@ const CustomerOnboarding = () => {
     jobTitle: '',
     // Location Info
     primaryLocation: '',
-    operatingRegions: [],
+    operatingRegions: [] as string[],
     // Preferences
-    equipmentTypes: [],
+    equipmentTypes: [] as string[],
     rentalFrequency: '',
     notifications: {
       email: true,
@@ -101,12 +101,12 @@ const CustomerOnboarding = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const toggleArrayField = (field: string, value: string) => {
+  const toggleArrayField = (field: 'operatingRegions' | 'equipmentTypes', value: string) => {
     setFormData(prev => ({
       ...prev,
-      [field]: prev[field as keyof typeof prev].includes(value)
-        ? (prev[field as keyof typeof prev] as string[]).filter(item => item !== value)
-        : [...(prev[field as keyof typeof prev] as string[]), value]
+      [field]: prev[field].includes(value)
+        ? prev[field].filter(item => item !== value)
+        : [...prev[field], value]
     }));
   };
 
