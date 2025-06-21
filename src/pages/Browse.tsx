@@ -1,7 +1,10 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, MapPin, Star, CheckCircle, Calendar, DollarSign, Map } from 'lucide-react';
+import { Search, Filter, MapPin, Star, CheckCircle, Calendar, DollarSign, Map, Shield, Zap, Award, Users } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 const Browse = () => {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'map'
@@ -9,10 +12,13 @@ const Browse = () => {
     category: 'all',
     location: '',
     dateRange: '',
-    maxRate: ''
+    maxRate: '',
+    compliance: [] as string[],
+    vendorRating: '',
+    smartMatch: false
   });
 
-  // Mock equipment data
+  // Enhanced equipment data with compliance and smart matching
   const equipment = [
     {
       id: 1,
@@ -27,10 +33,13 @@ const Browse = () => {
       rating: 4.9,
       reviews: 127,
       isApproved: true,
+      hasSmartMatch: true,
+      compliance: ['ASME Certified', 'OSHA Ready', 'EPA Compliant'],
       specs: ['150 HP', 'Natural Gas', 'ASME Certified'],
       image: 'https://images.unsplash.com/photo-1487887235947-a955ef187fcc?w=400&h=300&fit=crop',
       available: true,
-      nextAvailable: null
+      nextAvailable: null,
+      operatorIncluded: false
     },
     {
       id: 2,
@@ -45,64 +54,76 @@ const Browse = () => {
       rating: 4.7,
       reviews: 89,
       isApproved: true,
+      hasSmartMatch: false,
+      compliance: ['DOT Approved', 'Hazmat Approved'],
       specs: ['21,000 Gal', 'Steel Construction', 'DOT Approved'],
       image: 'https://images.unsplash.com/photo-1493962853295-0fd70327578a?w=400&h=300&fit=crop',
       available: true,
-      nextAvailable: null
+      nextAvailable: null,
+      operatorIncluded: false
     },
     {
       id: 3,
-      name: 'Industrial Generator - 500kW',
-      category: 'Power',
-      vendor: 'Power Solutions Inc',
+      name: 'Intrinsically Safe LED Light Tower',
+      category: 'Safety',
+      vendor: 'SafeLight Industrial',
       location: 'Galveston, TX',
       distance: '35 miles',
-      dailyRate: 450,
-      weeklyRate: 2700,
-      monthlyRate: 10800,
+      dailyRate: 285,
+      weeklyRate: 1710,
+      monthlyRate: 6840,
       rating: 4.8,
       reviews: 156,
       isApproved: true,
-      specs: ['500kW', 'Diesel', 'Tier 4 Compliant'],
+      hasSmartMatch: true,
+      compliance: ['ATEX Certified', 'OSHA Ready', 'Intrinsically Safe'],
+      specs: ['LED Array', 'Class 1 Div 1', 'ATEX Zone 1'],
       image: 'https://images.unsplash.com/photo-1469041797191-50ace28483c3?w=400&h=300&fit=crop',
       available: false,
-      nextAvailable: '2024-07-01'
+      nextAvailable: '2024-07-01',
+      operatorIncluded: false
     },
     {
       id: 4,
-      name: 'Confined Space Ventilation System',
-      category: 'Safety',
-      vendor: 'Safety First Rentals',
+      name: 'UHP Water Jetting System - 40,000 PSI',
+      category: 'Cleaning',
+      vendor: 'Precision Cleaning Co',
       location: 'Texas City, TX',
       distance: '18 miles',
-      dailyRate: 95,
-      weeklyRate: 570,
-      monthlyRate: 2280,
-      rating: 4.9,
-      reviews: 203,
-      isApproved: true,
-      specs: ['High CFM', 'Explosion Proof', 'OSHA Compliant'],
-      image: 'https://images.unsplash.com/photo-1487252665478-49b61b47f302?w=400&h=300&fit=crop',
-      available: true,
-      nextAvailable: null
-    },
-    {
-      id: 5,
-      name: 'Mobile Crane - 50 Ton',
-      category: 'Construction',
-      vendor: 'Heavy Lift Solutions',
-      location: 'Pasadena, TX',
-      distance: '8 miles',
       dailyRate: 1200,
       weeklyRate: 7200,
       monthlyRate: 28800,
+      rating: 4.9,
+      reviews: 203,
+      isApproved: true,
+      hasSmartMatch: true,
+      compliance: ['OSHA Ready', 'Includes Operator', 'Hazmat Approved'],
+      specs: ['40,000 PSI', 'Ultra High Pressure', 'Remote Operation'],
+      image: 'https://images.unsplash.com/photo-1487252665478-49b61b47f302?w=400&h=300&fit=crop',
+      available: true,
+      nextAvailable: null,
+      operatorIncluded: true
+    },
+    {
+      id: 5,
+      name: 'Flushing Skid - Complete System',
+      category: 'Process',
+      vendor: 'Process Solutions LLC',
+      location: 'Pasadena, TX',
+      distance: '8 miles',
+      dailyRate: 950,
+      weeklyRate: 5700,
+      monthlyRate: 22800,
       rating: 4.6,
       reviews: 94,
       isApproved: true,
-      specs: ['50 Ton Capacity', 'All Terrain', 'Certified Operator'],
+      hasSmartMatch: false,
+      compliance: ['ASME Certified', 'API Compliant', 'OSHA Ready'],
+      specs: ['Complete Skid', 'Variable Flow', 'Remote Monitoring'],
       image: 'https://images.unsplash.com/photo-1469041797191-50ace28483c3?w=400&h=300&fit=crop',
       available: true,
-      nextAvailable: null
+      nextAvailable: null,
+      operatorIncluded: true
     },
     {
       id: 6,
@@ -117,10 +138,13 @@ const Browse = () => {
       rating: 4.8,
       reviews: 67,
       isApproved: true,
+      hasSmartMatch: true,
+      compliance: ['API Certified', 'ASME Certified', 'OSHA Ready'],
       specs: ['500 PSI Rating', 'Stainless Steel', 'API Certified'],
       image: 'https://images.unsplash.com/photo-1487887235947-a955ef187fcc?w=400&h=300&fit=crop',
       available: true,
-      nextAvailable: null
+      nextAvailable: null,
+      operatorIncluded: false
     }
   ];
 
@@ -128,18 +152,67 @@ const Browse = () => {
     { value: 'all', label: 'All Equipment' },
     { value: 'Boilers', label: 'Steam Boilers' },
     { value: 'Storage', label: 'Storage Tanks' },
-    { value: 'Power', label: 'Generators' },
     { value: 'Safety', label: 'Safety Equipment' },
-    { value: 'Construction', label: 'Construction' },
+    { value: 'Cleaning', label: 'Cleaning Systems' },
+    { value: 'Process', label: 'Process Equipment' },
     { value: 'Vessels', label: 'Pressure Vessels' }
+  ];
+
+  const complianceOptions = [
+    'ATEX Certified',
+    'OSHA Ready',
+    'Hazmat Approved',
+    'Includes Operator',
+    'ASME Certified',
+    'API Compliant',
+    'EPA Compliant',
+    'Intrinsically Safe'
+  ];
+
+  const vendorRatingOptions = [
+    { value: '', label: 'Any Rating' },
+    { value: '4.5', label: '4.5+ Stars' },
+    { value: '4.0', label: '4.0+ Stars' },
+    { value: '3.5', label: '3.5+ Stars' }
   ];
 
   const filteredEquipment = equipment.filter(item => {
     if (filters.category !== 'all' && item.category !== filters.category) return false;
     if (filters.location && !item.location.toLowerCase().includes(filters.location.toLowerCase())) return false;
     if (filters.maxRate && item.dailyRate > parseInt(filters.maxRate)) return false;
+    if (filters.vendorRating && item.rating < parseFloat(filters.vendorRating)) return false;
+    if (filters.smartMatch && !item.hasSmartMatch) return false;
+    if (filters.compliance.length > 0) {
+      const hasRequiredCompliance = filters.compliance.every(comp => 
+        item.compliance.includes(comp)
+      );
+      if (!hasRequiredCompliance) return false;
+    }
     return true;
   });
+
+  const toggleCompliance = (compliance: string) => {
+    setFilters(prev => ({
+      ...prev,
+      compliance: prev.compliance.includes(compliance)
+        ? prev.compliance.filter(c => c !== compliance)
+        : [...prev.compliance, compliance]
+    }));
+  };
+
+  const getComplianceIcon = (compliance: string) => {
+    switch (compliance) {
+      case 'ATEX Certified':
+      case 'Intrinsically Safe':
+        return <Zap className="h-3 w-3" />;
+      case 'OSHA Ready':
+        return <Shield className="h-3 w-3" />;
+      case 'Includes Operator':
+        return <Users className="h-3 w-3" />;
+      default:
+        return <Award className="h-3 w-3" />;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-allrentz-gray-light">
@@ -152,6 +225,14 @@ const Browse = () => {
               <p className="text-gray-600 mt-1">Find verified industrial equipment from trusted vendors</p>
             </div>
             <div className="mt-4 lg:mt-0 flex items-center space-x-3">
+              <Button
+                onClick={() => setFilters(prev => ({ ...prev, smartMatch: !prev.smartMatch }))}
+                variant={filters.smartMatch ? "default" : "outline"}
+                className="font-medium"
+              >
+                <Zap className="h-4 w-4 mr-2" />
+                Smart Match Only
+              </Button>
               <button
                 onClick={() => setViewMode('grid')}
                 className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${
@@ -180,40 +261,40 @@ const Browse = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Filters Sidebar */}
+          {/* Enhanced Filters Sidebar */}
           <div className="lg:col-span-1">
             <div className="industrial-card p-6 sticky top-8">
               <h2 className="text-lg font-bold text-allrentz-gray mb-6 flex items-center">
                 <Filter className="h-5 w-5 mr-2" />
-                Filters
+                Advanced Filters
               </h2>
               
               <div className="space-y-6">
                 {/* Search */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Search Equipment</label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input 
-                      type="text" 
-                      className="industrial-input pl-10 w-full" 
-                      placeholder="Search equipment..."
+                    <Input 
+                      className="pl-10 w-full" 
+                      placeholder="Flushing skids, UHP systems..."
                     />
                   </div>
                 </div>
 
                 {/* Category */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                  <select 
-                    className="industrial-input w-full"
-                    value={filters.category}
-                    onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
-                  >
-                    {categories.map(cat => (
-                      <option key={cat.value} value={cat.value}>{cat.label}</option>
-                    ))}
-                  </select>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Equipment Category</label>
+                  <Select value={filters.category} onValueChange={(value) => setFilters(prev => ({ ...prev, category: value }))}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map(cat => (
+                        <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Location */}
@@ -221,30 +302,57 @@ const Browse = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input 
-                      type="text" 
-                      className="industrial-input pl-10 w-full" 
-                      placeholder="City, State"
+                    <Input 
+                      className="pl-10 w-full" 
+                      placeholder="Houston, TX"
                       value={filters.location}
                       onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
                     />
                   </div>
                 </div>
 
+                {/* Compliance Certifications */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Compliance & Certifications</label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {complianceOptions.map(compliance => (
+                      <label key={compliance} className="flex items-center space-x-2 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="rounded border-gray-300" 
+                          checked={filters.compliance.includes(compliance)}
+                          onChange={() => toggleCompliance(compliance)}
+                        />
+                        <span className="text-sm text-gray-700 flex items-center space-x-1">
+                          {getComplianceIcon(compliance)}
+                          <span>{compliance}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Vendor Rating */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Vendor Rating</label>
+                  <Select value={filters.vendorRating} onValueChange={(value) => setFilters(prev => ({ ...prev, vendorRating: value }))}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Any rating" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendorRatingOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Date Range */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Rental Period</label>
                   <div className="space-y-2">
-                    <input 
-                      type="date" 
-                      className="industrial-input w-full" 
-                      placeholder="Start Date"
-                    />
-                    <input 
-                      type="date" 
-                      className="industrial-input w-full" 
-                      placeholder="End Date"
-                    />
+                    <Input type="date" className="w-full" />
+                    <Input type="date" className="w-full" />
                   </div>
                 </div>
 
@@ -253,9 +361,9 @@ const Browse = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Max Daily Rate</label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input 
+                    <Input 
                       type="number" 
-                      className="industrial-input pl-10 w-full" 
+                      className="pl-10 w-full" 
                       placeholder="1000"
                       value={filters.maxRate}
                       onChange={(e) => setFilters(prev => ({ ...prev, maxRate: e.target.value }))}
@@ -263,24 +371,9 @@ const Browse = () => {
                   </div>
                 </div>
 
-                {/* Vendor Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Vendor Type</label>
-                  <div className="space-y-2">
-                    <label className="flex items-center space-x-2">
-                      <input type="checkbox" className="rounded border-gray-300" defaultChecked />
-                      <span className="text-sm text-gray-700">Approved Vendors Only</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input type="checkbox" className="rounded border-gray-300" />
-                      <span className="text-sm text-gray-700">Premium Certified</span>
-                    </label>
-                  </div>
-                </div>
-
-                <button className="w-full industrial-button">
+                <Button className="w-full">
                   Apply Filters
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -291,16 +384,29 @@ const Browse = () => {
               <>
                 {/* Results Header */}
                 <div className="flex items-center justify-between mb-6">
-                  <p className="text-gray-600">
-                    Showing {filteredEquipment.length} of {equipment.length} results
-                  </p>
-                  <select className="industrial-input">
-                    <option>Sort by: Relevance</option>
-                    <option>Sort by: Price (Low to High)</option>
-                    <option>Sort by: Price (High to Low)</option>
-                    <option>Sort by: Distance</option>
-                    <option>Sort by: Rating</option>
-                  </select>
+                  <div>
+                    <p className="text-gray-600">
+                      Showing {filteredEquipment.length} of {equipment.length} results
+                    </p>
+                    {filters.smartMatch && (
+                      <p className="text-sm text-allrentz-red font-medium mt-1">
+                        <Zap className="h-4 w-4 inline mr-1" />
+                        Smart Match results prioritized
+                      </p>
+                    )}
+                  </div>
+                  <Select defaultValue="relevance">
+                    <SelectTrigger className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="relevance">Sort by: Relevance</SelectItem>
+                      <SelectItem value="price-low">Sort by: Price (Low to High)</SelectItem>
+                      <SelectItem value="price-high">Sort by: Price (High to Low)</SelectItem>
+                      <SelectItem value="distance">Sort by: Distance</SelectItem>
+                      <SelectItem value="rating">Sort by: Rating</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Equipment Grid */}
@@ -314,14 +420,20 @@ const Browse = () => {
                           alt={item.name}
                           className="w-full h-48 object-cover"
                         />
-                        {item.isApproved && (
-                          <div className="absolute top-3 left-3">
+                        <div className="absolute top-3 left-3 flex flex-col space-y-2">
+                          {item.isApproved && (
                             <span className="industrial-badge-approved inline-flex items-center space-x-1">
                               <CheckCircle className="h-3 w-3" />
-                              <span>Approved Vendor</span>
+                              <span>ALLRENTZ Verified</span>
                             </span>
-                          </div>
-                        )}
+                          )}
+                          {item.hasSmartMatch && (
+                            <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full inline-flex items-center space-x-1">
+                              <Zap className="h-3 w-3" />
+                              <span>SmartMatch Available</span>
+                            </span>
+                          )}
+                        </div>
                         {!item.available && (
                           <div className="absolute top-3 right-3">
                             <span className="industrial-badge-alert">
@@ -353,6 +465,21 @@ const Browse = () => {
                           <span>{item.distance}</span>
                         </div>
 
+                        {/* Compliance Tags */}
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {item.compliance.slice(0, 3).map((comp, index) => (
+                            <span key={index} className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full inline-flex items-center space-x-1">
+                              {getComplianceIcon(comp)}
+                              <span>{comp}</span>
+                            </span>
+                          ))}
+                          {item.compliance.length > 3 && (
+                            <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">
+                              +{item.compliance.length - 3} more
+                            </span>
+                          )}
+                        </div>
+
                         {/* Specs */}
                         <div className="flex flex-wrap gap-2 mb-4">
                           {item.specs.map((spec, index) => (
@@ -381,6 +508,12 @@ const Browse = () => {
                             <div className="flex items-center space-x-2 mb-4">
                               <CheckCircle className="h-4 w-4 text-green-500" />
                               <span className="text-sm text-green-600 font-medium">Available Now</span>
+                              {item.operatorIncluded && (
+                                <>
+                                  <span className="text-gray-400">•</span>
+                                  <span className="text-sm text-blue-600">Operator Included</span>
+                                </>
+                              )}
                             </div>
                           ) : (
                             <div className="flex items-center space-x-2 mb-4">
@@ -394,9 +527,13 @@ const Browse = () => {
                           {/* CTA Button */}
                           <Link 
                             to="/customer-onboarding"
-                            className="w-full industrial-button text-center inline-block"
+                            className={`w-full text-center inline-block font-medium py-3 px-6 rounded-md transition-colors ${
+                              item.hasSmartMatch 
+                                ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                                : 'industrial-button'
+                            }`}
                           >
-                            Request Quote
+                            {item.hasSmartMatch ? 'Get Smart Quote' : 'Request Quote'}
                           </Link>
                         </div>
                       </div>
@@ -412,10 +549,10 @@ const Browse = () => {
                     <Map className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-600 mb-2">Interactive Equipment Map</h3>
                     <p className="text-gray-500">
-                      View equipment locations, availability, and get directions to vendor locations
+                      View equipment locations, compliance status, and get directions to vendor locations
                     </p>
                     <p className="text-sm text-gray-400 mt-2">
-                      Map integration with real-time equipment tracking
+                      Enhanced with real-time availability and compliance filtering
                     </p>
                   </div>
                 </div>
