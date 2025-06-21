@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, CheckCircle, Building2, FileText, CreditCard, Package, Upload, Shield } from 'lucide-react';
+import { ChevronRight, ChevronLeft, CheckCircle, Building2, FileText, CreditCard, Package, Upload, Shield, Users } from 'lucide-react';
 
 const VendorOnboarding = () => {
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0); // Start with selection step
+  const [onboardingType, setOnboardingType] = useState<'standard' | 'enterprise' | null>(null);
   const totalSteps = 5;
 
   const [formData, setFormData] = useState({
@@ -67,7 +68,7 @@ const VendorOnboarding = () => {
   };
 
   const prevStep = () => {
-    if (currentStep > 1) {
+    if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
   };
@@ -104,40 +105,120 @@ const VendorOnboarding = () => {
             <p className="text-gray-600 mt-1">Join our network of trusted equipment providers</p>
           </div>
           
-          {/* Progress Bar */}
-          <div className="mt-8">
-            <div className="flex items-center justify-between">
-              {[1, 2, 3, 4, 5].map((step) => (
-                <div key={step} className="flex items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    step <= currentStep 
-                      ? 'bg-allrentz-red text-white' 
-                      : 'bg-gray-200 text-gray-600'
-                  }`}>
-                    {step < currentStep ? <CheckCircle className="h-5 w-5" /> : step}
+          {/* Progress Bar - only show after selection */}
+          {currentStep > 0 && (
+            <div className="mt-8">
+              <div className="flex items-center justify-between">
+                {[1, 2, 3, 4, 5].map((step) => (
+                  <div key={step} className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      step <= currentStep 
+                        ? 'bg-allrentz-red text-white' 
+                        : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {step < currentStep ? <CheckCircle className="h-5 w-5" /> : step}
+                    </div>
+                    {step < 5 && (
+                      <div className={`w-12 h-1 ml-2 ${
+                        step < currentStep ? 'bg-allrentz-red' : 'bg-gray-200'
+                      }`} />
+                    )}
                   </div>
-                  {step < 5 && (
-                    <div className={`w-12 h-1 ml-2 ${
-                      step < currentStep ? 'bg-allrentz-red' : 'bg-gray-200'
-                    }`} />
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
+              <div className="flex justify-between mt-2 text-xs text-gray-600">
+                <span>Company</span>
+                <span>Verification</span>
+                <span>Documents</span>
+                <span>Equipment</span>
+                <span>Payout</span>
+              </div>
             </div>
-            <div className="flex justify-between mt-2 text-xs text-gray-600">
-              <span>Company</span>
-              <span>Verification</span>
-              <span>Documents</span>
-              <span>Equipment</span>
-              <span>Payout</span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
       {/* Form Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="industrial-card p-8">
+          {/* Step 0: Registration Type Selection */}
+          {currentStep === 0 && (
+            <div className="space-y-8">
+              <div className="text-center mb-8">
+                <Building2 className="h-16 w-16 text-allrentz-red mx-auto mb-4" />
+                <h2 className="text-2xl font-bold text-allrentz-gray">Choose Your Registration Type</h2>
+                <p className="text-gray-600 mt-2">Select the best option for your company size and needs</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div 
+                  className={`border-2 rounded-lg p-6 cursor-pointer transition-all ${
+                    onboardingType === 'standard' 
+                      ? 'border-allrentz-red bg-red-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => setOnboardingType('standard')}
+                >
+                  <div className="text-center">
+                    <Building2 className="h-12 w-12 text-blue-500 mx-auto mb-4" />
+                    <h3 className="text-xl font-bold text-allrentz-gray mb-2">Standard Registration</h3>
+                    <p className="text-gray-600 mb-4">Perfect for smaller companies with manual processes</p>
+                    <ul className="text-sm text-gray-600 space-y-2 text-left">
+                      <li>• Step-by-step guided setup</li>
+                      <li>• Individual equipment entry</li>
+                      <li>• Up to 50 equipment pieces</li>
+                      <li>• Basic compliance documentation</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div 
+                  className={`border-2 rounded-lg p-6 cursor-pointer transition-all relative ${
+                    onboardingType === 'enterprise' 
+                      ? 'border-allrentz-red bg-red-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => setOnboardingType('enterprise')}
+                >
+                  <div className="absolute -top-2 -right-2 bg-allrentz-red text-white px-3 py-1 rounded-full text-xs font-medium">
+                    Recommended for 100+ equipment
+                  </div>
+                  <div className="text-center">
+                    <Users className="h-12 w-12 text-allrentz-red mx-auto mb-4" />
+                    <h3 className="text-xl font-bold text-allrentz-gray mb-2">Enterprise Setup</h3>
+                    <p className="text-gray-600 mb-4">Streamlined for large rental companies</p>
+                    <ul className="text-sm text-gray-600 space-y-2 text-left">
+                      <li>• Bulk equipment import (Excel/CSV)</li>
+                      <li>• Data mapping wizard</li>
+                      <li>• Unlimited equipment entries</li>
+                      <li>• Dedicated onboarding support</li>
+                      <li>• Legacy system integration</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-center">
+                <button
+                  onClick={() => {
+                    if (onboardingType === 'enterprise') {
+                      window.location.href = '/enterprise-onboarding';
+                    } else if (onboardingType === 'standard') {
+                      setCurrentStep(1);
+                    }
+                  }}
+                  disabled={!onboardingType}
+                  className={`industrial-button inline-flex items-center space-x-2 ${
+                    !onboardingType ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                >
+                  <span>Continue</span>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Step 1: Company Information */}
           {currentStep === 1 && (
             <div className="space-y-6">
@@ -458,39 +539,41 @@ const VendorOnboarding = () => {
             </div>
           )}
 
-          {/* Navigation Buttons */}
-          <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
-            <button
-              onClick={prevStep}
-              className={`flex items-center space-x-2 px-6 py-3 rounded-md font-medium ${
-                currentStep === 1 
-                  ? 'text-gray-400 cursor-not-allowed' 
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-              disabled={currentStep === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span>Previous</span>
-            </button>
+          {/* Navigation Buttons - only show after selection */}
+          {currentStep > 0 && (
+            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
+              <button
+                onClick={prevStep}
+                className={`flex items-center space-x-2 px-6 py-3 rounded-md font-medium ${
+                  currentStep === 1 
+                    ? 'text-gray-400 cursor-not-allowed' 
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+                disabled={currentStep === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span>Previous</span>
+              </button>
 
-            {currentStep < totalSteps ? (
-              <button
-                onClick={nextStep}
-                className="industrial-button inline-flex items-center space-x-2"
-              >
-                <span>Next</span>
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            ) : (
-              <button
-                onClick={completeOnboarding}
-                className="industrial-button inline-flex items-center space-x-2"
-              >
-                <CheckCircle className="h-4 w-4" />
-                <span>Complete Registration</span>
-              </button>
-            )}
-          </div>
+              {currentStep < totalSteps ? (
+                <button
+                  onClick={nextStep}
+                  className="industrial-button inline-flex items-center space-x-2"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              ) : (
+                <button
+                  onClick={completeOnboarding}
+                  className="industrial-button inline-flex items-center space-x-2"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  <span>Complete Registration</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Help Section */}

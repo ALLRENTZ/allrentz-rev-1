@@ -13,6 +13,7 @@ import CustomerDashboard from "./pages/CustomerDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
 import CustomerOnboarding from "./pages/CustomerOnboarding";
 import VendorOnboarding from "./pages/VendorOnboarding";
+import EnterpriseOnboarding from "./pages/EnterpriseOnboarding";
 import SmartMatchDemo from "./pages/SmartMatchDemo";
 import NotFound from "./pages/NotFound";
 
@@ -35,6 +36,7 @@ const App = () => (
               <Route path="/vendor-dashboard" element={<VendorDashboard />} />
               <Route path="/customer-onboarding" element={<CustomerOnboarding />} />
               <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
+              <Route path="/enterprise-onboarding" element={<EnterpriseOnboarding />} />
               <Route path="/smartmatch-demo" element={<SmartMatchDemo />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
