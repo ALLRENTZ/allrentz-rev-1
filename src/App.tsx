@@ -17,7 +17,6 @@ import VendorOnboarding from "./pages/VendorOnboarding";
 import EnterpriseOnboarding from "./pages/EnterpriseOnboarding";
 import SmartMatchDemo from "./pages/SmartMatchDemo";
 import SecurityCenter from "./pages/SecurityCenter";
-import OperationsCenter from "./pages/OperationsCenter";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,7 +35,6 @@ const App = () => (
                 <Route path="/" element={<Landing />} />
                 <Route path="/how-it-works" element={<HowItWorks />} />
                 <Route path="/browse" element={<Browse />} />
-                <Route path="/operations-center" element={<OperationsCenter />} />
                 <Route path="/customer-dashboard" element={<CustomerDashboard />} />
                 <Route path="/vendor-dashboard" element={<VendorDashboard />} />
                 <Route path="/customer-onboarding" element={<CustomerOnboarding />} />

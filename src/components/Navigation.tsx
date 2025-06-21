@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, HardHat, MapPin, Clipboard, Wrench, Shield, Settings } from 'lucide-react';
+import { Menu, X, HardHat, Shield } from 'lucide-react';
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -36,15 +36,6 @@ const Navigation = () => {
               }`}
             >
               Browse Equipment
-            </Link>
-            <Link 
-              to="/operations-center" 
-              className={`text-sm font-medium transition-colors flex items-center space-x-1 ${
-                isActive('/operations-center') ? 'text-allrentz-red' : 'text-gray-700 hover:text-allrentz-red'
-              }`}
-            >
-              <Settings className="h-4 w-4" />
-              <span>Operations</span>
             </Link>
             <Link 
               to="/customer-dashboard" 
@@ -115,14 +106,6 @@ const Navigation = () => {
                 onClick={() => setIsOpen(false)}
               >
                 Browse Equipment
-              </Link>
-              <Link 
-                to="/operations-center" 
-                className="text-sm font-medium text-gray-700 hover:text-allrentz-red px-4 py-2 flex items-center space-x-2"
-                onClick={() => setIsOpen(false)}
-              >
-                <Settings className="h-4 w-4" />
-                <span>Operations Center</span>
               </Link>
               <Link 
                 to="/customer-dashboard" 
