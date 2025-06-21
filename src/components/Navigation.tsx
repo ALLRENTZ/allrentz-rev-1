@@ -1,7 +1,6 @@
-
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, HardHat, MapPin, Clipboard, Wrench } from 'lucide-react';
+import { Menu, X, HardHat, MapPin, Clipboard, Wrench, Shield } from 'lucide-react';
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -52,6 +51,15 @@ const Navigation = () => {
               }`}
             >
               Vendor Portal
+            </Link>
+            <Link 
+              to="/security-center" 
+              className={`text-sm font-medium transition-colors flex items-center space-x-1 ${
+                isActive('/security-center') ? 'text-allrentz-red' : 'text-gray-700 hover:text-allrentz-red'
+              }`}
+            >
+              <Shield className="h-4 w-4" />
+              <span>Security</span>
             </Link>
           </div>
 
@@ -111,6 +119,14 @@ const Navigation = () => {
                 onClick={() => setIsOpen(false)}
               >
                 Vendor Portal
+              </Link>
+              <Link 
+                to="/security-center" 
+                className="text-sm font-medium text-gray-700 hover:text-allrentz-red px-4 py-2 flex items-center space-x-2"
+                onClick={() => setIsOpen(false)}
+              >
+                <Shield className="h-4 w-4" />
+                <span>Security Center</span>
               </Link>
               <div className="px-4 py-2 space-y-2">
                 <Link 
