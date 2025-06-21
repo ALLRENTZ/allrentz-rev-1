@@ -14,7 +14,7 @@ const Browse = () => {
     dateRange: '',
     maxRate: '',
     compliance: [] as string[],
-    vendorRating: '',
+    vendorRating: 'any',
     smartMatch: false
   });
 
@@ -170,7 +170,7 @@ const Browse = () => {
   ];
 
   const vendorRatingOptions = [
-    { value: '', label: 'Any Rating' },
+    { value: 'any', label: 'Any Rating' },
     { value: '4.5', label: '4.5+ Stars' },
     { value: '4.0', label: '4.0+ Stars' },
     { value: '3.5', label: '3.5+ Stars' }
@@ -180,7 +180,7 @@ const Browse = () => {
     if (filters.category !== 'all' && item.category !== filters.category) return false;
     if (filters.location && !item.location.toLowerCase().includes(filters.location.toLowerCase())) return false;
     if (filters.maxRate && item.dailyRate > parseInt(filters.maxRate)) return false;
-    if (filters.vendorRating && item.rating < parseFloat(filters.vendorRating)) return false;
+    if (filters.vendorRating && filters.vendorRating !== 'any' && item.rating < parseFloat(filters.vendorRating)) return false;
     if (filters.smartMatch && !item.hasSmartMatch) return false;
     if (filters.compliance.length > 0) {
       const hasRequiredCompliance = filters.compliance.every(comp => 
