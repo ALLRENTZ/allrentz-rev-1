@@ -1,4 +1,3 @@
-
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle, Clock, Shield, Users, Wrench, Gauge, MapPin, HardHat, FileCheck, Truck, Settings, Zap, Bell, Award } from 'lucide-react';
 
@@ -255,7 +254,7 @@ const Landing = () => {
             
             <div className="text-center">
               <Link 
-                to="/how-it-works"
+                to="/smartmatch-demo"
                 className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-md transition-colors duration-200 inline-flex items-center space-x-2"
               >
                 <span>Try SmartMatch Demo</span>
