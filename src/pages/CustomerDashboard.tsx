@@ -1,7 +1,6 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, MapPin, Calendar, FileText, Bell, Settings, Clock, CheckCircle, AlertTriangle, Truck, DollarSign } from 'lucide-react';
+import { Plus, MapPin, Calendar, FileText, Bell, Settings, Clock, CheckCircle, AlertTriangle, Truck, DollarSign, Wrench, Package, Users } from 'lucide-react';
 
 const CustomerDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -52,6 +51,51 @@ const CustomerDashboard = () => {
     { id: 3, type: 'extension', message: 'Confined Space equipment rental expires in 7 days', time: '1 day ago' }
   ];
 
+  // Mock data for turnaround projects
+  const turnaroundProjects = [
+    {
+      id: 1,
+      name: 'Unit 4 Catalyst Change',
+      startDate: '2024-08-15',
+      endDate: '2024-09-05',
+      status: 'Planning',
+      budget: 2500000,
+      equipmentCount: 12,
+      vendorCount: 6,
+      progress: 35
+    },
+    {
+      id: 2,
+      name: 'Coker Maintenance 2024',
+      startDate: '2024-10-10',
+      endDate: '2024-11-02',
+      status: 'Equipment Sourcing',
+      budget: 1800000,
+      equipmentCount: 8,
+      vendorCount: 4,
+      progress: 60
+    }
+  ];
+
+  const equipmentPackages = [
+    {
+      id: 1,
+      name: 'Heavy Lifting Package',
+      description: 'Cranes, rigging equipment, and lifting accessories',
+      equipmentCount: 5,
+      estimatedCost: 125000,
+      items: ['Mobile Crane 100T', 'Mobile Crane 50T', 'Rigging Kit', 'Chain Hoists', 'Safety Equipment']
+    },
+    {
+      id: 2,
+      name: 'Safety & Ventilation',
+      description: 'Complete safety and air quality management',
+      equipmentCount: 8,
+      estimatedCost: 45000,
+      items: ['Confined Space Ventilation', 'Gas Monitors', 'Emergency Equipment', 'Fall Protection']
+    }
+  ];
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'Active':
@@ -71,6 +115,19 @@ const CustomerDashboard = () => {
         return <Truck className="h-4 w-4" />;
       default:
         return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  const getTurnaroundStatusBadge = (status: string) => {
+    switch (status) {
+      case 'Planning':
+        return 'industrial-badge';
+      case 'Equipment Sourcing':
+        return 'industrial-badge-pending';
+      case 'Ready':
+        return 'industrial-badge-approved';
+      default:
+        return 'industrial-badge';
     }
   };
 
@@ -126,6 +183,13 @@ const CustomerDashboard = () => {
               >
                 <FileText className="h-5 w-5" />
                 <span>Quote Requests</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('turnaround')}
+                className={activeTab === 'turnaround' ? 'nav-link-active w-full' : 'nav-link w-full'}
+              >
+                <Wrench className="h-5 w-5" />
+                <span>Turnaround Planning</span>
               </button>
               <button
                 onClick={() => setActiveTab('documents')}
@@ -335,6 +399,122 @@ const CustomerDashboard = () => {
                     </div>
                     <p className="text-sm text-gray-600 mb-2">Requested: 1 week ago</p>
                     <p className="text-sm text-gray-600">Location: Tank Terminal B</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'turnaround' && (
+              <div className="space-y-6">
+                {/* Turnaround Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-allrentz-gray">Turnaround Planning</h2>
+                    <p className="text-gray-600 mt-1">Plan and manage major maintenance turnarounds</p>
+                  </div>
+                  <button className="industrial-button inline-flex items-center space-x-2">
+                    <Plus className="h-4 w-4" />
+                    <span>New Turnaround</span>
+                  </button>
+                </div>
+
+                {/* Turnaround Projects */}
+                <div className="industrial-card p-6">
+                  <h3 className="text-lg font-semibold text-allrentz-gray mb-4">Active Projects</h3>
+                  <div className="space-y-4">
+                    {turnaroundProjects.map((project) => (
+                      <div key={project.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                          <div>
+                            <h4 className="font-semibold text-allrentz-gray">{project.name}</h4>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {new Date(project.startDate).toLocaleDateString()} - {new Date(project.endDate).toLocaleDateString()}
+                            </p>
+                            <span className={`inline-block mt-2 ${getTurnaroundStatusBadge(project.status)}`}>
+                              {project.status}
+                            </span>
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                              <div className="flex items-center justify-center space-x-1">
+                                <Package className="h-4 w-4 text-gray-400" />
+                                <span className="font-semibold text-allrentz-gray">{project.equipmentCount}</span>
+                              </div>
+                              <p className="text-xs text-gray-600">Equipment</p>
+                            </div>
+                            <div>
+                              <div className="flex items-center justify-center space-x-1">
+                                <Users className="h-4 w-4 text-gray-400" />
+                                <span className="font-semibold text-allrentz-gray">{project.vendorCount}</span>
+                              </div>
+                              <p className="text-xs text-gray-600">Vendors</p>
+                            </div>
+                            <div>
+                              <div className="flex items-center justify-center space-x-1">
+                                <DollarSign className="h-4 w-4 text-gray-400" />
+                                <span className="font-semibold text-allrentz-gray">${(project.budget / 1000)}K</span>
+                              </div>
+                              <p className="text-xs text-gray-600">Budget</p>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm text-gray-600">Progress</span>
+                              <span className="text-sm font-medium text-allrentz-gray">{project.progress}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-allrentz-red h-2 rounded-full transition-all duration-300" 
+                                style={{ width: `${project.progress}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Equipment Packages */}
+                <div className="industrial-card p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-allrentz-gray">Pre-Configured Equipment Packages</h3>
+                    <button className="text-allrentz-red hover:text-allrentz-red-dark font-medium">
+                      View All Packages
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {equipmentPackages.map((pkg) => (
+                      <div key={pkg.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h4 className="font-semibold text-allrentz-gray">{pkg.name}</h4>
+                            <p className="text-sm text-gray-600 mt-1">{pkg.description}</p>
+                          </div>
+                          <Package className="h-6 w-6 text-allrentz-red flex-shrink-0" />
+                        </div>
+                        
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm text-gray-600">{pkg.equipmentCount} items</span>
+                          <span className="font-semibold text-allrentz-gray">${(pkg.estimatedCost / 1000)}K est.</span>
+                        </div>
+                        
+                        <div className="space-y-1 mb-4">
+                          {pkg.items.slice(0, 3).map((item, index) => (
+                            <p key={index} className="text-xs text-gray-600">• {item}</p>
+                          ))}
+                          {pkg.items.length > 3 && (
+                            <p className="text-xs text-gray-500">+ {pkg.items.length - 3} more items</p>
+                          )}
+                        </div>
+                        
+                        <button className="w-full industrial-button-secondary text-sm py-2">
+                          Add to Project
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
