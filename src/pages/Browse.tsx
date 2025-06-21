@@ -1,13 +1,15 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, MapPin, Star, CheckCircle, Calendar, DollarSign, Map, Shield, Zap, Award, Users } from 'lucide-react';
+import { Search, Filter, MapPin, Star, CheckCircle, Calendar, DollarSign, Map, Shield, Zap, Award, Users, Navigation, Clock } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useGeolocation } from '@/hooks/useGeolocation';
+import { calculateDistance, getEmergencyStatus, getEquipmentCoordinates, getHotSwapStatus, milesToDriveTime } from '@/utils/geofencing';
+import { toast } from '@/components/ui/use-toast';
 
 const Browse = () => {
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'map'
+  const [viewMode, setViewMode] = useState('grid');
   const [filters, setFilters] = useState({
     category: 'all',
     location: '',
@@ -15,10 +17,14 @@ const Browse = () => {
     maxRate: '',
     compliance: [] as string[],
     vendorRating: 'any',
-    smartMatch: false
+    smartMatch: false,
+    proximityRadius: 60, // in minutes drive time
+    emergencyOnly: false
   });
 
-  // Enhanced equipment data with compliance and smart matching
+  const { latitude, longitude, error, loading, getCurrentLocation } = useGeolocation();
+
+  // Enhanced equipment data with coordinates and emergency status
   const equipment = [
     {
       id: 1,
@@ -148,6 +154,48 @@ const Browse = () => {
     }
   ];
 
+  // Calculate enhanced equipment data with geofencing info
+  const enhancedEquipment = equipment.map(item => {
+    const equipmentCoords = getEquipmentCoordinates(item.id);
+    let distanceInMiles = null;
+    let emergencyStatus = null;
+    let driveTimeMinutes = null;
+
+    if (latitude && longitude) {
+      distanceInMiles = calculateDistance(latitude, longitude, equipmentCoords.lat, equipmentCoords.lng);
+      driveTimeMinutes = milesToDriveTime(distanceInMiles);
+      emergencyStatus = getEmergencyStatus(distanceInMiles);
+    }
+
+    const hotSwapStatus = getHotSwapStatus(item.category, item.id);
+
+    return {
+      ...item,
+      distanceInMiles,
+      driveTimeMinutes,
+      emergencyStatus,
+      hotSwapStatus
+    };
+  });
+
+  // Show hot swap notifications
+  useEffect(() => {
+    if (latitude && longitude) {
+      const hotSwapItems = enhancedEquipment.filter(item => 
+        item.hotSwapStatus?.isHotSwap && 
+        item.driveTimeMinutes && 
+        item.driveTimeMinutes <= 30
+      );
+
+      if (hotSwapItems.length > 0) {
+        toast({
+          title: "🔄 Hot Swap Alert!",
+          description: `${hotSwapItems.length} equipment item(s) recently returned nearby`,
+        });
+      }
+    }
+  }, [latitude, longitude]);
+
   const categories = [
     { value: 'all', label: 'All Equipment' },
     { value: 'Boilers', label: 'Steam Boilers' },
@@ -176,12 +224,23 @@ const Browse = () => {
     { value: '3.5', label: '3.5+ Stars' }
   ];
 
-  const filteredEquipment = equipment.filter(item => {
+  const proximityOptions = [
+    { value: 15, label: '15 minutes' },
+    { value: 30, label: '30 minutes' },
+    { value: 45, label: '45 minutes' },
+    { value: 60, label: '1 hour' },
+    { value: 120, label: '2 hours' },
+    { value: 999, label: 'Any distance' }
+  ];
+
+  const filteredEquipment = enhancedEquipment.filter(item => {
     if (filters.category !== 'all' && item.category !== filters.category) return false;
     if (filters.location && !item.location.toLowerCase().includes(filters.location.toLowerCase())) return false;
     if (filters.maxRate && item.dailyRate > parseInt(filters.maxRate)) return false;
     if (filters.vendorRating && filters.vendorRating !== 'any' && item.rating < parseFloat(filters.vendorRating)) return false;
     if (filters.smartMatch && !item.hasSmartMatch) return false;
+    if (filters.emergencyOnly && (!item.emergencyStatus || item.emergencyStatus.status === 'nearby')) return false;
+    if (item.driveTimeMinutes && filters.proximityRadius !== 999 && item.driveTimeMinutes > filters.proximityRadius) return false;
     if (filters.compliance.length > 0) {
       const hasRequiredCompliance = filters.compliance.every(comp => 
         item.compliance.includes(comp)
@@ -225,6 +284,14 @@ const Browse = () => {
               <p className="text-gray-600 mt-1">Find verified industrial equipment from trusted vendors</p>
             </div>
             <div className="mt-4 lg:mt-0 flex items-center space-x-3">
+              <Button
+                onClick={() => setFilters(prev => ({ ...prev, emergencyOnly: !prev.emergencyOnly }))}
+                variant={filters.emergencyOnly ? "default" : "outline"}
+                className="font-medium"
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                Emergency Only
+              </Button>
               <Button
                 onClick={() => setFilters(prev => ({ ...prev, smartMatch: !prev.smartMatch }))}
                 variant={filters.smartMatch ? "default" : "outline"}
@@ -270,6 +337,48 @@ const Browse = () => {
               </h2>
               
               <div className="space-y-6">
+                {/* Location & Proximity */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Your Location</label>
+                  <div className="space-y-3">
+                    <Button 
+                      onClick={getCurrentLocation}
+                      disabled={loading}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      <Navigation className="h-4 w-4 mr-2" />
+                      {loading ? 'Getting Location...' : 'Use My Location'}
+                    </Button>
+                    {error && (
+                      <p className="text-sm text-red-600">{error}</p>
+                    )}
+                    {latitude && longitude && (
+                      <p className="text-sm text-green-600">✓ Location detected</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Proximity Radius */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Maximum Drive Time</label>
+                  <Select 
+                    value={filters.proximityRadius.toString()} 
+                    onValueChange={(value) => setFilters(prev => ({ ...prev, proximityRadius: parseInt(value) }))}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Any distance" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {proximityOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value.toString()}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Search */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Search Equipment</label>
@@ -297,9 +406,9 @@ const Browse = () => {
                   </Select>
                 </div>
 
-                {/* Location */}
+                {/* Traditional Location Input */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Location (Text)</label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input 
@@ -394,6 +503,12 @@ const Browse = () => {
                         Smart Match results prioritized
                       </p>
                     )}
+                    {filters.emergencyOnly && (
+                      <p className="text-sm text-red-600 font-medium mt-1">
+                        <Clock className="h-4 w-4 inline mr-1" />
+                        Showing emergency equipment only
+                      </p>
+                    )}
                   </div>
                   <Select defaultValue="relevance">
                     <SelectTrigger className="w-48">
@@ -401,9 +516,9 @@ const Browse = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="relevance">Sort by: Relevance</SelectItem>
+                      <SelectItem value="proximity">Sort by: Distance</SelectItem>
                       <SelectItem value="price-low">Sort by: Price (Low to High)</SelectItem>
                       <SelectItem value="price-high">Sort by: Price (High to Low)</SelectItem>
-                      <SelectItem value="distance">Sort by: Distance</SelectItem>
                       <SelectItem value="rating">Sort by: Rating</SelectItem>
                     </SelectContent>
                   </Select>
@@ -431,6 +546,17 @@ const Browse = () => {
                             <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full inline-flex items-center space-x-1">
                               <Zap className="h-3 w-3" />
                               <span>SmartMatch Available</span>
+                            </span>
+                          )}
+                          {item.emergencyStatus && (
+                            <span className={`text-xs font-medium px-2 py-1 rounded-full inline-flex items-center space-x-1 ${item.emergencyStatus.color}`}>
+                              <Clock className="h-3 w-3" />
+                              <span>{item.emergencyStatus.label}</span>
+                            </span>
+                          )}
+                          {item.hotSwapStatus && (
+                            <span className={`text-xs font-medium px-2 py-1 rounded-full inline-flex items-center space-x-1 ${item.hotSwapStatus.color}`}>
+                              <span>{item.hotSwapStatus.label}</span>
                             </span>
                           )}
                         </div>
@@ -461,8 +587,14 @@ const Browse = () => {
                         <div className="flex items-center space-x-1 text-sm text-gray-600 mb-3">
                           <MapPin className="h-4 w-4" />
                           <span>{item.location}</span>
-                          <span className="text-gray-400">•</span>
-                          <span>{item.distance}</span>
+                          {item.driveTimeMinutes && (
+                            <>
+                              <span className="text-gray-400">•</span>
+                              <span className="font-medium text-allrentz-red">
+                                {item.driveTimeMinutes} min drive
+                              </span>
+                            </>
+                          )}
                         </div>
 
                         {/* Compliance Tags */}
