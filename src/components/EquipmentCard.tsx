@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Star, MapPin, CheckCircle, Calendar, Shield } from 'lucide-react';
+import { Star, MapPin, CheckCircle, Calendar, Shield, AlertTriangle, Wrench } from 'lucide-react';
 import EquipmentVerificationSystem, { getEquipmentVerificationStatus } from './EquipmentVerificationSystem';
 import { EquipmentItem } from '../data/equipmentData';
 
@@ -35,6 +35,17 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
             <span className="industrial-badge-approved inline-flex items-center space-x-1">
               <CheckCircle className="h-3 w-3" />
               <span>ALLRENTZ Verified</span>
+            </span>
+          )}
+          {item.refineryAccess && (
+            <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full inline-flex items-center space-x-1">
+              <Shield className="h-3 w-3" />
+              <span>Refinery-Ready</span>
+            </span>
+          )}
+          {item.turnaroundCertified && (
+            <span className="bg-purple-500 text-white text-xs px-2 py-1 rounded-full">
+              Turnaround Certified
             </span>
           )}
           {verificationStatus.isFullyVerified && (
@@ -75,6 +86,19 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
           <span>{item.distance}</span>
         </div>
 
+        {/* Exclusive Repair Warning */}
+        {item.exclusiveRepairOnly && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+            <div className="flex items-center space-x-2 text-amber-800">
+              <Wrench className="h-4 w-4" />
+              <span className="text-sm font-medium">Exclusive Vendor Repair</span>
+            </div>
+            <p className="text-xs text-amber-700 mt-1">
+              This equipment can only be serviced by the vendor during rental period
+            </p>
+          </div>
+        )}
+
         {/* Equipment Verification */}
         <div className="mb-4">
           <EquipmentVerificationSystem 
@@ -90,11 +114,11 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
           />
         </div>
 
-        {/* Specs */}
+        {/* Compliance Tags */}
         <div className="flex flex-wrap gap-2 mb-4">
-          {item.specs.map((spec, index) => (
+          {item.complianceTags.map((tag, index) => (
             <span key={index} className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
-              {spec}
+              {tag}
             </span>
           ))}
         </div>
@@ -163,3 +187,4 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
 };
 
 export default EquipmentCard;
+

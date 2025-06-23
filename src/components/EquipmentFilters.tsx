@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Search, MapPin, DollarSign } from 'lucide-react';
+import { Search, MapPin, DollarSign, Shield } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,23 @@ const EquipmentFilters: React.FC<EquipmentFiltersProps> = ({ filters, setFilters
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Refinery-Ready Toggle */}
+        <div>
+          <label className="flex items-center space-x-3 text-sm font-medium text-gray-700 cursor-pointer">
+            <input
+              type="checkbox"
+              className="form-checkbox h-4 w-4 text-allrentz-red border-gray-300 rounded focus:ring-allrentz-red"
+              checked={filters.refineryReady}
+              onChange={(e) => setFilters(prev => ({ ...prev, refineryReady: e.target.checked }))}
+            />
+            <Shield className="h-4 w-4 text-allrentz-red" />
+            <span>Refinery-Ready Only</span>
+          </label>
+          <p className="text-xs text-gray-500 mt-1">
+            Equipment with verified refinery access and compliance
+          </p>
         </div>
 
         {/* Location */}
@@ -99,3 +116,4 @@ const EquipmentFilters: React.FC<EquipmentFiltersProps> = ({ filters, setFilters
 };
 
 export default EquipmentFilters;
+

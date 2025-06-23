@@ -1,3 +1,4 @@
+
 export const equipment = [
   {
     id: 1,
@@ -18,7 +19,11 @@ export const equipment = [
     nextAvailable: null,
     operatorIncluded: false,
     hasPhotos: true,
-    specVerified: true
+    specVerified: true,
+    refineryAccess: true,
+    turnaroundCertified: true,
+    exclusiveRepairOnly: false,
+    complianceTags: ['ASME Certified', 'Refinery-Ready', 'Turnaround Certified']
   },
   {
     id: 2,
@@ -39,7 +44,11 @@ export const equipment = [
     nextAvailable: null,
     operatorIncluded: false,
     hasPhotos: false,
-    specVerified: true
+    specVerified: true,
+    refineryAccess: true,
+    turnaroundCertified: false,
+    exclusiveRepairOnly: false,
+    complianceTags: ['DOT Approved', 'Refinery-Ready']
   },
   {
     id: 3,
@@ -60,7 +69,11 @@ export const equipment = [
     nextAvailable: '2024-07-01',
     operatorIncluded: false,
     hasPhotos: true,
-    specVerified: false
+    specVerified: false,
+    refineryAccess: true,
+    turnaroundCertified: true,
+    exclusiveRepairOnly: false,
+    complianceTags: ['ATEX Zone 1', 'Intrinsically Safe', 'Refinery-Ready', 'Turnaround Certified']
   },
   {
     id: 4,
@@ -81,7 +94,11 @@ export const equipment = [
     nextAvailable: null,
     operatorIncluded: true,
     hasPhotos: true,
-    specVerified: true
+    specVerified: true,
+    refineryAccess: true,
+    turnaroundCertified: true,
+    exclusiveRepairOnly: true,
+    complianceTags: ['UHP Certified', 'Refinery-Ready', 'Turnaround Certified', 'Operator Included']
   },
   {
     id: 5,
@@ -102,7 +119,11 @@ export const equipment = [
     nextAvailable: null,
     operatorIncluded: true,
     hasPhotos: false,
-    specVerified: false
+    specVerified: false,
+    refineryAccess: true,
+    turnaroundCertified: false,
+    exclusiveRepairOnly: false,
+    complianceTags: ['Remote Monitoring', 'Refinery-Ready']
   },
   {
     id: 6,
@@ -123,7 +144,11 @@ export const equipment = [
     nextAvailable: null,
     operatorIncluded: false,
     hasPhotos: true,
-    specVerified: true
+    specVerified: true,
+    refineryAccess: true,
+    turnaroundCertified: true,
+    exclusiveRepairOnly: false,
+    complianceTags: ['API Certified', 'ASME Compliant', 'Refinery-Ready', 'Turnaround Certified']
   },
   // Heavy Construction Equipment
   {
@@ -145,7 +170,11 @@ export const equipment = [
     nextAvailable: null,
     operatorIncluded: true,
     hasPhotos: true,
-    specVerified: true
+    specVerified: true,
+    refineryAccess: false,
+    turnaroundCertified: false,
+    exclusiveRepairOnly: false,
+    complianceTags: ['GPS Tracking', 'Operator Included']
   },
   {
     id: 8,
@@ -166,7 +195,11 @@ export const equipment = [
     nextAvailable: '2024-07-15',
     operatorIncluded: true,
     hasPhotos: false,
-    specVerified: true
+    specVerified: true,
+    refineryAccess: true,
+    turnaroundCertified: true,
+    exclusiveRepairOnly: false,
+    complianceTags: ['Refinery-Ready', 'Turnaround Certified', 'Operator Included']
   },
   // Compressors & Air Systems
   {
@@ -188,7 +221,11 @@ export const equipment = [
     nextAvailable: null,
     operatorIncluded: false,
     hasPhotos: true,
-    specVerified: false
+    specVerified: false,
+    refineryAccess: true,
+    turnaroundCertified: false,
+    exclusiveRepairOnly: false,
+    complianceTags: ['Diesel Engine', 'Refinery-Ready']
   },
   {
     id: 10,
@@ -209,7 +246,11 @@ export const equipment = [
     nextAvailable: null,
     operatorIncluded: false,
     hasPhotos: false,
-    specVerified: true
+    specVerified: true,
+    refineryAccess: true,
+    turnaroundCertified: true,
+    exclusiveRepairOnly: false,
+    complianceTags: ['99.9% Purity', 'PSA Technology', 'Refinery-Ready', 'Turnaround Certified']
   },
   // Material Handling
   {
@@ -231,7 +272,11 @@ export const equipment = [
     nextAvailable: null,
     operatorIncluded: true,
     hasPhotos: true,
-    specVerified: true
+    specVerified: true,
+    refineryAccess: true,
+    turnaroundCertified: true,
+    exclusiveRepairOnly: false,
+    complianceTags: ['Variable Speed', 'Refinery-Ready', 'Turnaround Certified', 'Operator Included']
   },
   {
     id: 12,
@@ -252,7 +297,11 @@ export const equipment = [
     nextAvailable: null,
     operatorIncluded: false,
     hasPhotos: false,
-    specVerified: false
+    specVerified: false,
+    refineryAccess: true,
+    turnaroundCertified: false,
+    exclusiveRepairOnly: false,
+    complianceTags: ['Propane Powered', 'Refinery-Ready']
   },
   // Power Generation
   {
@@ -274,7 +323,11 @@ export const equipment = [
     nextAvailable: null,
     operatorIncluded: false,
     hasPhotos: true,
-    specVerified: true
+    specVerified: true,
+    refineryAccess: true,
+    turnaroundCertified: true,
+    exclusiveRepairOnly: false,
+    complianceTags: ['Auto Transfer Switch', 'Refinery-Ready', 'Turnaround Certified']
   },
   {
     id: 14,
@@ -295,7 +348,11 @@ export const equipment = [
     nextAvailable: '2024-06-28',
     operatorIncluded: false,
     hasPhotos: true,
-    specVerified: false
+    specVerified: false,
+    refineryAccess: true,
+    turnaroundCertified: false,
+    exclusiveRepairOnly: false,
+    complianceTags: ['Battery Backup', 'Refinery-Ready']
   },
   // Testing & Instrumentation
   {
@@ -317,7 +374,11 @@ export const equipment = [
     nextAvailable: null,
     operatorIncluded: false,
     hasPhotos: false,
-    specVerified: true
+    specVerified: true,
+    refineryAccess: true,
+    turnaroundCertified: true,
+    exclusiveRepairOnly: false,
+    complianceTags: ['Data Logger', 'NDT Certified', 'Refinery-Ready', 'Turnaround Certified']
   },
   {
     id: 16,
@@ -338,7 +399,11 @@ export const equipment = [
     nextAvailable: null,
     operatorIncluded: false,
     hasPhotos: true,
-    specVerified: false
+    specVerified: false,
+    refineryAccess: true,
+    turnaroundCertified: true,
+    exclusiveRepairOnly: false,
+    complianceTags: ['NIST Traceable', 'Digital Display', 'Refinery-Ready', 'Turnaround Certified']
   },
   // HVAC & Environmental
   {
@@ -360,7 +425,11 @@ export const equipment = [
     nextAvailable: null,
     operatorIncluded: false,
     hasPhotos: true,
-    specVerified: true
+    specVerified: true,
+    refineryAccess: true,
+    turnaroundCertified: false,
+    exclusiveRepairOnly: false,
+    complianceTags: ['Remote Monitoring', 'Air Cooled', 'Refinery-Ready']
   },
   {
     id: 18,
@@ -381,7 +450,11 @@ export const equipment = [
     nextAvailable: null,
     operatorIncluded: false,
     hasPhotos: false,
-    specVerified: false
+    specVerified: false,
+    refineryAccess: false,
+    turnaroundCertified: false,
+    exclusiveRepairOnly: false,
+    complianceTags: ['Continuous Drain', 'Refrigerant Type']
   }
 ];
 
@@ -428,6 +501,10 @@ export interface EquipmentItem {
   operatorIncluded: boolean;
   hasPhotos: boolean;
   specVerified: boolean;
+  refineryAccess: boolean;
+  turnaroundCertified: boolean;
+  exclusiveRepairOnly: boolean;
+  complianceTags: string[];
 }
 
 export interface FilterState {
@@ -435,4 +512,6 @@ export interface FilterState {
   location: string;
   maxRate: string;
   vendorRating: string;
+  refineryReady: boolean;
 }
+
