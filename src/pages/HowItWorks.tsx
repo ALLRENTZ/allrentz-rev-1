@@ -1,6 +1,5 @@
-
 import { Link } from 'react-router-dom';
-import { ArrowRight, Search, FileText, CheckCircle, MapPin, DollarSign, Bell, Shield, Clock, Users } from 'lucide-react';
+import { ArrowRight, Search, FileText, CheckCircle, MapPin, DollarSign, Bell, Shield, Clock, Users, Calendar, Package, Wrench } from 'lucide-react';
 
 const HowItWorks = () => {
   return (
@@ -56,28 +55,28 @@ const HowItWorks = () => {
               </div>
             </div>
 
-            {/* Step 2 */}
+            {/* Step 2 - Enhanced */}
             <div className="industrial-card p-8 text-center relative">
               <div className="bg-allrentz-red text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-6 text-xl font-bold">
                 2
               </div>
               <FileText className="h-12 w-12 text-allrentz-red mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-allrentz-gray mb-3">Submit Quote Request</h3>
+              <h3 className="text-lg font-bold text-allrentz-gray mb-3">Submit Requests</h3>
               <p className="text-gray-600 text-sm mb-4">
-                Instant quote requests with AI-powered matching to find the best equipment for your needs.
+                Request individual equipment OR complete turnaround packages with AI-powered matching.
               </p>
               <div className="space-y-2 text-xs text-gray-500">
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="h-3 w-3 text-green-500" />
+                  <span>Individual equipment quotes</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-3 w-3 text-green-500" />
+                  <span>Turnaround package builder</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-3 w-3 text-green-500" />
                   <span>Smart vendor matching</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="h-3 w-3 text-green-500" />
-                  <span>Instant notifications</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="h-3 w-3 text-green-500" />
-                  <span>Competitive pricing</span>
                 </div>
               </div>
             </div>
@@ -141,6 +140,57 @@ const HowItWorks = () => {
               className="industrial-button inline-flex items-center space-x-2"
             >
               <span>Start as Customer</span>
+              <ArrowRight className="h-5 w-5" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Turnaround Planning Highlight */}
+      <section className="py-16 bg-gradient-to-r from-allrentz-red to-allrentz-red-dark">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <Wrench className="h-16 w-16 text-white mx-auto mb-6" />
+            <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">
+              Specialized Turnaround Planning
+            </h2>
+            <p className="text-xl text-gray-100 max-w-3xl mx-auto">
+              Plan and execute complex maintenance turnarounds with our comprehensive package builder and coordination tools.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-8 text-center">
+              <Package className="h-12 w-12 text-white mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-white mb-3">Equipment Bundling</h3>
+              <p className="text-gray-100 text-sm">
+                Pre-configured packages for common turnaround scenarios. Bundle compatible equipment with automated compatibility checking.
+              </p>
+            </div>
+
+            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-8 text-center">
+              <Calendar className="h-12 w-12 text-white mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-white mb-3">Timeline Coordination</h3>
+              <p className="text-gray-100 text-sm">
+                Gantt chart visualization, critical path management, and multi-vendor delivery coordination for complex projects.
+              </p>
+            </div>
+
+            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-8 text-center">
+              <Shield className="h-12 w-12 text-white mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-white mb-3">Compliance Ready</h3>
+              <p className="text-gray-100 text-sm">
+                Hot work permits, safety equipment bundling, and automated compliance documentation for industrial maintenance.
+              </p>
+            </div>
+          </div>
+
+          <div className="text-center mt-8">
+            <Link 
+              to="/customer-dashboard"
+              className="bg-white text-allrentz-red hover:bg-gray-100 font-semibold py-3 px-6 rounded-md transition-colors duration-200 inline-flex items-center space-x-2"
+            >
+              <span>Explore Turnaround Planning</span>
               <ArrowRight className="h-5 w-5" />
             </Link>
           </div>
@@ -277,7 +327,7 @@ const HowItWorks = () => {
         </div>
       </section>
 
-      {/* Key Features */}
+      {/* Key Features - Enhanced */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -286,7 +336,7 @@ const HowItWorks = () => {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="text-center">
               <Clock className="h-12 w-12 text-allrentz-red mx-auto mb-4" />
               <h3 className="text-xl font-bold text-allrentz-gray mb-3">Built for Speed</h3>
@@ -308,6 +358,14 @@ const HowItWorks = () => {
               <h3 className="text-xl font-bold text-allrentz-gray mb-3">Trusted Network</h3>
               <p className="text-gray-600">
                 Vetted equipment providers with proven track records in refineries, terminals, and heavy industry.
+              </p>
+            </div>
+
+            <div className="text-center">
+              <Wrench className="h-12 w-12 text-allrentz-red mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-allrentz-gray mb-3">Turnaround Expertise</h3>
+              <p className="text-gray-600">
+                Specialized tools for complex maintenance planning with timeline coordination and equipment bundling.
               </p>
             </div>
           </div>
