@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { calculateDistance, getEmergencyStatus, getEquipmentCoordinates, getHotSwapStatus, milesToDriveTime } from '@/utils/geofencing';
 import { toast } from '@/components/ui/use-toast';
+import EquipmentVerificationSystem from '@/components/EquipmentVerificationSystem';
+import SmartFilteringSystem from '@/components/SmartFilteringSystem';
 
 const Browse = () => {
   const [viewMode, setViewMode] = useState('grid');
@@ -45,7 +47,12 @@ const Browse = () => {
       image: 'https://images.unsplash.com/photo-1487887235947-a955ef187fcc?w=400&h=300&fit=crop',
       available: true,
       nextAvailable: null,
-      operatorIncluded: false
+      operatorIncluded: false,
+      // Anti-failure system data
+      hasPhotos: true,
+      specVerified: true,
+      preDispatchConfirmed: true,
+      vendorQualityScore: 94
     },
     {
       id: 2,
@@ -66,7 +73,12 @@ const Browse = () => {
       image: 'https://images.unsplash.com/photo-1493962853295-0fd70327578a?w=400&h=300&fit=crop',
       available: true,
       nextAvailable: null,
-      operatorIncluded: false
+      operatorIncluded: false,
+      // Anti-failure system data
+      hasPhotos: false,
+      specVerified: true,
+      preDispatchConfirmed: false,
+      vendorQualityScore: 87
     },
     {
       id: 3,
@@ -87,7 +99,12 @@ const Browse = () => {
       image: 'https://images.unsplash.com/photo-1469041797191-50ace28483c3?w=400&h=300&fit=crop',
       available: false,
       nextAvailable: '2024-07-01',
-      operatorIncluded: false
+      operatorIncluded: false,
+      // Anti-failure system data
+      hasPhotos: true,
+      specVerified: false,
+      preDispatchConfirmed: true,
+      vendorQualityScore: 96
     },
     {
       id: 4,
@@ -108,7 +125,12 @@ const Browse = () => {
       image: 'https://images.unsplash.com/photo-1487252665478-49b61b47f302?w=400&h=300&fit=crop',
       available: true,
       nextAvailable: null,
-      operatorIncluded: true
+      operatorIncluded: true,
+      // Anti-failure system data
+      hasPhotos: true,
+      specVerified: true,
+      preDispatchConfirmed: true,
+      vendorQualityScore: 98
     },
     {
       id: 5,
@@ -129,7 +151,12 @@ const Browse = () => {
       image: 'https://images.unsplash.com/photo-1469041797191-50ace28483c3?w=400&h=300&fit=crop',
       available: true,
       nextAvailable: null,
-      operatorIncluded: true
+      operatorIncluded: true,
+      // Anti-failure system data
+      hasPhotos: false,
+      specVerified: false,
+      preDispatchConfirmed: false,
+      vendorQualityScore: 82
     },
     {
       id: 6,
@@ -150,7 +177,12 @@ const Browse = () => {
       image: 'https://images.unsplash.com/photo-1487887235947-a955ef187fcc?w=400&h=300&fit=crop',
       available: true,
       nextAvailable: null,
-      operatorIncluded: false
+      operatorIncluded: false,
+      // Anti-failure system data
+      hasPhotos: true,
+      specVerified: true,
+      preDispatchConfirmed: false,
+      vendorQualityScore: 91
     }
   ];
 
@@ -337,6 +369,14 @@ const Browse = () => {
               </h2>
               
               <div className="space-y-6">
+                {/* Smart Filtering System */}
+                <SmartFilteringSystem 
+                  onFiltersChange={(smartFilters) => {
+                    console.log('Smart filters changed:', smartFilters);
+                    // You can integrate this with the main filters state
+                  }} 
+                />
+
                 {/* Location & Proximity */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Your Location</label>
@@ -597,6 +637,23 @@ const Browse = () => {
                           )}
                         </div>
 
+                        {/* Equipment Verification System */}
+                        <div className="mb-4">
+                          <EquipmentVerificationSystem 
+                            equipment={{
+                              id: item.id.toString(),
+                              name: item.name,
+                              hasPhotos: item.hasPhotos,
+                              specVerified: item.specVerified,
+                              preDispatchConfirmed: item.preDispatchConfirmed,
+                              vendorQualityScore: item.vendorQualityScore
+                            }}
+                            onPhotoUpload={() => console.log('Photo upload requested for', item.name)}
+                            onSpecVerify={() => console.log('Spec verification requested for', item.name)}
+                            onPreDispatchConfirm={() => console.log('Pre-dispatch confirmation requested for', item.name)}
+                          />
+                        </div>
+
                         {/* Compliance Tags */}
                         <div className="flex flex-wrap gap-2 mb-3">
                           {item.compliance.slice(0, 3).map((comp, index) => (
@@ -653,6 +710,19 @@ const Browse = () => {
                               <span className="text-sm text-orange-600">
                                 Next available: {new Date(item.nextAvailable!).toLocaleDateString()}
                               </span>
+                            </div>
+                          )}
+
+                          {/* Anti-failure guarantee message */}
+                          {item.hasPhotos && item.specVerified && item.preDispatchConfirmed && (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                              <div className="flex items-center space-x-2">
+                                <Shield className="h-4 w-4 text-green-600" />
+                                <span className="text-sm font-medium text-green-800">Failure Prevention Guaranteed</span>
+                              </div>
+                              <p className="text-xs text-green-700 mt-1">
+                                This equipment has passed all verification checks
+                              </p>
                             </div>
                           )}
 
