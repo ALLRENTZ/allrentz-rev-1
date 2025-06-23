@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { CheckCircle, AlertTriangle, Camera, Eye } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Camera, Eye, Upload } from 'lucide-react';
 
 interface EquipmentVerificationProps {
   equipment: {
@@ -11,12 +11,18 @@ interface EquipmentVerificationProps {
   };
   onPhotoUpload?: () => void;
   onSpecVerify?: () => void;
+  onRequestPhotos?: () => void;
+  onRequestSpecs?: () => void;
+  showCustomerActions?: boolean;
 }
 
 const EquipmentVerificationSystem: React.FC<EquipmentVerificationProps> = ({
   equipment,
   onPhotoUpload,
-  onSpecVerify
+  onSpecVerify,
+  onRequestPhotos,
+  onRequestSpecs,
+  showCustomerActions = false
 }) => {
   const getVerificationBadge = (verified: boolean, label: string, description: string) => {
     return (
@@ -35,6 +41,8 @@ const EquipmentVerificationSystem: React.FC<EquipmentVerificationProps> = ({
     );
   };
 
+  const isFullyVerified = equipment.hasPhotos && equipment.specVerified;
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
@@ -50,31 +58,75 @@ const EquipmentVerificationSystem: React.FC<EquipmentVerificationProps> = ({
         )}
       </div>
 
-      {(!equipment.hasPhotos || !equipment.specVerified) && (
+      {!isFullyVerified && (
         <div className="space-y-2">
-          {!equipment.hasPhotos && onPhotoUpload && (
-            <button
-              onClick={onPhotoUpload}
-              className="flex items-center space-x-2 text-sm text-allrentz-red hover:text-allrentz-red-dark"
-            >
-              <Camera className="h-4 w-4" />
-              <span>Upload Equipment Photos</span>
-            </button>
+          {/* Vendor Actions */}
+          {!showCustomerActions && (
+            <>
+              {!equipment.hasPhotos && onPhotoUpload && (
+                <button
+                  onClick={onPhotoUpload}
+                  className="flex items-center space-x-2 text-sm text-allrentz-red hover:text-allrentz-red-dark"
+                >
+                  <Camera className="h-4 w-4" />
+                  <span>Upload Equipment Photos</span>
+                </button>
+              )}
+              
+              {!equipment.specVerified && onSpecVerify && (
+                <button
+                  onClick={onSpecVerify}
+                  className="flex items-center space-x-2 text-sm text-allrentz-red hover:text-allrentz-red-dark"
+                >
+                  <Eye className="h-4 w-4" />
+                  <span>Verify Specifications</span>
+                </button>
+              )}
+            </>
           )}
-          
-          {!equipment.specVerified && onSpecVerify && (
-            <button
-              onClick={onSpecVerify}
-              className="flex items-center space-x-2 text-sm text-allrentz-red hover:text-allrentz-red-dark"
-            >
-              <Eye className="h-4 w-4" />
-              <span>Verify Specifications</span>
-            </button>
+
+          {/* Customer Actions */}
+          {showCustomerActions && (
+            <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+              <p className="text-sm text-amber-800 mb-2">
+                This equipment needs verification before booking:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {!equipment.hasPhotos && onRequestPhotos && (
+                  <button
+                    onClick={onRequestPhotos}
+                    className="flex items-center space-x-1 text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded hover:bg-amber-200"
+                  >
+                    <Camera className="h-3 w-3" />
+                    <span>Request Photos</span>
+                  </button>
+                )}
+                
+                {!equipment.specVerified && onRequestSpecs && (
+                  <button
+                    onClick={onRequestSpecs}
+                    className="flex items-center space-x-1 text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded hover:bg-amber-200"
+                  >
+                    <Eye className="h-3 w-3" />
+                    <span>Request Spec Verification</span>
+                  </button>
+                )}
+              </div>
+            </div>
           )}
         </div>
       )}
     </div>
   );
+};
+
+export const getEquipmentVerificationStatus = (equipment: { hasPhotos: boolean; specVerified: boolean }) => {
+  return {
+    isFullyVerified: equipment.hasPhotos && equipment.specVerified,
+    hasPhotos: equipment.hasPhotos,
+    specVerified: equipment.specVerified,
+    missingCount: (equipment.hasPhotos ? 0 : 1) + (equipment.specVerified ? 0 : 1)
+  };
 };
 
 export default EquipmentVerificationSystem;
