@@ -18,13 +18,13 @@ const EquipmentVerificationSystem: React.FC<EquipmentVerificationProps> = ({
   onPhotoUpload,
   onSpecVerify
 }) => {
-  const getVerificationBadge = (verified: boolean, label: string) => {
+  const getVerificationBadge = (verified: boolean, label: string, description: string) => {
     return (
       <div className={`flex items-center space-x-1 text-xs px-2 py-1 rounded-full ${
         verified 
           ? 'bg-green-100 text-green-800' 
           : 'bg-gray-100 text-gray-600'
-      }`}>
+      }`} title={description}>
         {verified ? (
           <CheckCircle className="h-3 w-3" />
         ) : (
@@ -38,8 +38,16 @@ const EquipmentVerificationSystem: React.FC<EquipmentVerificationProps> = ({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        {getVerificationBadge(equipment.hasPhotos, 'Photos Verified')}
-        {getVerificationBadge(equipment.specVerified, 'Specs Confirmed')}
+        {getVerificationBadge(
+          equipment.hasPhotos, 
+          'Visual Verification', 
+          'I can see what I\'m getting'
+        )}
+        {getVerificationBadge(
+          equipment.specVerified, 
+          'Spec Confirmation', 
+          'Technical details are accurate'
+        )}
       </div>
 
       {(!equipment.hasPhotos || !equipment.specVerified) && (
