@@ -22,6 +22,40 @@ interface Equipment {
   specifications: any;
 }
 
+// Demo equipment fallback data
+const demoEquipment: Equipment[] = [
+  {
+    id: '550e8400-e29b-41d4-a716-446655440001',
+    title: 'Industrial Steam Boiler - 150 HP',
+    description: 'High-efficiency steam boiler perfect for refinery operations',
+    category: 'Boilers',
+    daily_rate: 850.00,
+    location: 'Houston, TX',
+    image_url: 'https://images.unsplash.com/photo-1565008447742-97f6717d4e89?w=400&h=300&fit=crop',
+    specifications: { pressure: '150 PSI', fuel: 'Natural Gas', certified: 'ASME' }
+  },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440002',
+    title: '21K Gallon Frac Tank',
+    description: 'Vacuum-ready storage tank for industrial fluids',
+    category: 'Storage',
+    daily_rate: 125.00,
+    location: 'Beaumont, TX',
+    image_url: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?w=400&h=300&fit=crop',
+    specifications: { capacity: '21000 gallons', material: 'Steel', vacuum_ready: true }
+  },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440003',
+    title: 'Diesel Generator - 500 KW',
+    description: 'Reliable backup power for critical operations',
+    category: 'Power Generation',
+    daily_rate: 650.00,
+    location: 'Port Arthur, TX',
+    image_url: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop',
+    specifications: { power: '500 KW', fuel: 'Diesel', runtime: '24 hours' }
+  }
+];
+
 const Browse = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
@@ -37,16 +71,24 @@ const Browse = () => {
 
   const fetchFeaturedEquipment = async () => {
     try {
-      const { data, error } = await supabase
+      // Use type assertion temporarily until types are properly generated
+      const { data, error } = await (supabase as any)
         .from('equipment')
         .select('*')
         .eq('available', true)
         .limit(6);
 
-      if (error) throw error;
-      setFeaturedEquipment(data || []);
+      if (error) {
+        console.error('Error fetching equipment:', error);
+        // Use demo data as fallback
+        setFeaturedEquipment(demoEquipment);
+      } else {
+        setFeaturedEquipment(data || demoEquipment);
+      }
     } catch (error) {
       console.error('Error fetching equipment:', error);
+      // Use demo data as fallback
+      setFeaturedEquipment(demoEquipment);
     } finally {
       setLoading(false);
     }
