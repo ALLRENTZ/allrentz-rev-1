@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, MapPin, CheckCircle, Calendar, Shield, AlertTriangle, Wrench, Pencil } from 'lucide-react';
 import EquipmentVerificationSystem, { getEquipmentVerificationStatus } from './EquipmentVerificationSystem';
@@ -30,6 +29,14 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
     hasPhotos: item.hasPhotos,
     specVerified: item.specVerified
   });
+
+  // Load saved image from localStorage on component mount
+  React.useEffect(() => {
+    const savedImage = localStorage.getItem(`equipment_image_${item.id}`);
+    if (savedImage) {
+      setCurrentImage(savedImage);
+    }
+  }, [item.id]);
 
   // Fallback image based on equipment category
   const getFallbackImage = (category: string) => {
@@ -83,31 +90,50 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
       return;
     }
 
+    // Check file size (limit to 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please select an image smaller than 5MB.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsUploading(true);
 
     try {
-      // Create a unique filename
-      const timestamp = Date.now();
-      const filename = `equipment_${item.id}_${timestamp}_${file.name}`;
+      // Convert file to data URL
+      const reader = new FileReader();
       
-      // Create a URL for the uploaded file (simulating upload to /lovable-uploads/)
-      const newImageUrl = `/lovable-uploads/${filename}`;
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = (e) => {
+          if (e.target?.result) {
+            resolve(e.target.result as string);
+          } else {
+            reject(new Error('Failed to read file'));
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
       
-      // Simulate upload delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Update the current image
-      setCurrentImage(newImageUrl);
+      // Update the current image immediately
+      setCurrentImage(dataUrl);
       setImageError(false);
       
+      // Save to localStorage for persistence
+      localStorage.setItem(`equipment_image_${item.id}`, dataUrl);
+      
       // Call the parent component's update handler if provided
-      onImageUpdate?.(item.id, newImageUrl);
+      onImageUpdate?.(item.id, dataUrl);
       
       toast({
         title: "Image Updated",
         description: `Successfully updated image for ${item.name}`,
       });
     } catch (error) {
+      console.error('Image upload error:', error);
       toast({
         title: "Upload Failed",
         description: "Failed to update image. Please try again.",

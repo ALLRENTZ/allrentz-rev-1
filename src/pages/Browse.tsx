@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Map } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import EquipmentFilters from '@/components/EquipmentFilters';
@@ -19,6 +18,15 @@ const Browse = () => {
   });
 
   const { toast } = useToast();
+
+  // Load saved images from localStorage on component mount
+  useEffect(() => {
+    const updatedEquipment = originalEquipment.map(item => {
+      const savedImage = localStorage.getItem(`equipment_image_${item.id}`);
+      return savedImage ? { ...item, image: savedImage } : item;
+    });
+    setEquipment(updatedEquipment);
+  }, []);
 
   const filteredEquipment = equipment.filter(item => {
     if (filters.category !== 'all' && item.category !== filters.category) return false;
@@ -51,6 +59,7 @@ const Browse = () => {
           : item
       )
     );
+    console.log(`Image updated for equipment ${equipmentId}:`, newImageUrl);
   };
 
   return (
