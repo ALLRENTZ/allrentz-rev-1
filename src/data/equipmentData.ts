@@ -38,7 +38,7 @@ export const equipment = [
     reviews: 89,
     isApproved: true,
     specs: ['21,000 Gal', 'Steel Construction', 'DOT Approved'],
-    image: 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=400&h=300&fit=crop',
+    image: '/lovable-uploads/5e82833d-ee70-4dec-81e4-de9f6aced654.png',
     available: true,
     nextAvailable: null,
     operatorIncluded: false,
