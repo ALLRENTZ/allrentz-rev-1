@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { Search, MapPin, DollarSign, Shield } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FilterState, categories, vendorRatingOptions } from '../data/equipmentData';
+import { FilterState } from '@/data/types';
+import { categories, vendorRatingOptions } from '@/data/categories';
 
 interface EquipmentFiltersProps {
   filters: FilterState;
@@ -116,4 +116,3 @@ const EquipmentFilters: React.FC<EquipmentFiltersProps> = ({ filters, setFilters
 };
 
 export default EquipmentFilters;
-

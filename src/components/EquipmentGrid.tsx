@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Map } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import EquipmentCard from './EquipmentCard';
-import { EquipmentItem } from '../data/equipmentData';
+import { EquipmentItem } from '@/data/types';
 
 interface EquipmentGridProps {
   equipment: EquipmentItem[];

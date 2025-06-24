@@ -1,10 +1,10 @@
-
 import { useState } from 'react';
 import { Map } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import EquipmentFilters from '@/components/EquipmentFilters';
 import EquipmentGrid from '@/components/EquipmentGrid';
-import { equipment, FilterState } from '@/data/equipmentData';
+import { equipment } from '@/data/equipment';
+import { FilterState } from '@/data/types';
 
 const Browse = () => {
   const [viewMode, setViewMode] = useState('grid');

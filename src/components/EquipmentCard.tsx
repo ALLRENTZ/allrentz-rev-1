@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Star, MapPin, CheckCircle, Calendar, Shield, AlertTriangle, Wrench } from 'lucide-react';
 import EquipmentVerificationSystem, { getEquipmentVerificationStatus } from './EquipmentVerificationSystem';
-import { EquipmentItem } from '../data/equipmentData';
+import { EquipmentItem } from '@/data/types';
 
 interface EquipmentCardProps {
   item: EquipmentItem;
@@ -187,4 +186,3 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
 };
 
 export default EquipmentCard;
-
