@@ -1,7 +1,16 @@
+
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle, Clock, Shield, Users, Wrench, Gauge, MapPin, HardHat, FileCheck, Truck, Settings, Zap, Bell, Award } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 
 const Landing = () => {
+  const { user, loginAsDemo } = useAuth();
+
+  const handleDemoAccess = async (type: 'customer' | 'vendor') => {
+    await loginAsDemo(type);
+  };
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -21,21 +30,48 @@ const Landing = () => {
             <p className="text-lg lg:text-xl mb-8 text-gray-300 max-w-3xl mx-auto">
               Amazon-speed meets Palantir-trust for the refinery rental world. Built by someone who knows the pain.
             </p>
+            
+            {/* Demo CTA - Prominently Featured */}
+            {!user && (
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-8 max-w-2xl mx-auto">
+                <h3 className="text-xl font-bold mb-3">Try the Demo Experience</h3>
+                <p className="text-gray-200 mb-4">
+                  See the complete rental flow with realistic data in under 2 minutes
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Button
+                    onClick={() => handleDemoAccess('customer')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-md flex items-center justify-center space-x-2"
+                  >
+                    <Zap className="h-5 w-5" />
+                    <span>Customer Demo</span>
+                  </Button>
+                  <Button
+                    onClick={() => handleDemoAccess('vendor')}
+                    className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-md flex items-center justify-center space-x-2"
+                  >
+                    <Truck className="h-5 w-5" />
+                    <span>Vendor Demo</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link 
-                to="/customer-onboarding"
+                to={user ? "/customer-dashboard" : "/auth"}
                 className="industrial-button text-lg px-8 py-4 inline-flex items-center space-x-2 bg-allrentz-red hover:bg-allrentz-red/90"
               >
                 <Zap className="h-5 w-5" />
-                <span>Request a Quote</span>
+                <span>{user ? "Go to Dashboard" : "Get Started"}</span>
                 <ArrowRight className="h-5 w-5" />
               </Link>
               <Link 
-                to="/vendor-onboarding"
+                to="/browse"
                 className="border-2 border-white text-white hover:bg-white hover:text-allrentz-gray font-semibold py-4 px-8 rounded-md transition-colors duration-200 inline-flex items-center space-x-2"
               >
-                <Truck className="h-5 w-5" />
-                <span>List Your Equipment</span>
+                <Settings className="h-5 w-5" />
+                <span>Browse Equipment</span>
                 <ArrowRight className="h-5 w-5" />
               </Link>
             </div>
@@ -276,11 +312,11 @@ const Landing = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link 
-              to="/customer-onboarding"
+              to={user ? "/customer-dashboard" : "/auth"}
               className="bg-white text-allrentz-red hover:bg-gray-100 font-semibold py-4 px-8 rounded-md transition-colors duration-200 inline-flex items-center justify-center space-x-2"
             >
               <Zap className="h-5 w-5" />
-              <span>Get Started as Customer</span>
+              <span>{user ? "Go to Dashboard" : "Get Started"}</span>
               <ArrowRight className="h-5 w-5" />
             </Link>
             <Link 
