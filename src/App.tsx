@@ -10,6 +10,7 @@ import Footer from "./components/Footer";
 import Landing from "./pages/Landing";
 import HowItWorks from "./pages/HowItWorks";
 import Browse from "./pages/Browse";
+import BrowseResults from "./pages/BrowseResults";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
 import CustomerOnboarding from "./pages/CustomerOnboarding";
@@ -35,6 +36,7 @@ const App = () => (
                 <Route path="/" element={<Landing />} />
                 <Route path="/how-it-works" element={<HowItWorks />} />
                 <Route path="/browse" element={<Browse />} />
+                <Route path="/browse/results" element={<BrowseResults />} />
                 <Route path="/customer-dashboard" element={<CustomerDashboard />} />
                 <Route path="/vendor-dashboard" element={<VendorDashboard />} />
                 <Route path="/customer-onboarding" element={<CustomerOnboarding />} />
