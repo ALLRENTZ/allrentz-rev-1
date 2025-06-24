@@ -57,7 +57,7 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
     setLoading(true);
     
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('rental_requests')
         .insert({
           customer_id: user.id,
@@ -80,6 +80,7 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
         description: "Your quote is ready. Valid for 24 hours.",
       });
     } catch (error) {
+      console.error('Quote generation error:', error);
       toast({
         title: "Error",
         description: "Failed to generate quote. Please try again.",
