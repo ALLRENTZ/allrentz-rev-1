@@ -90,7 +90,6 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
       return;
     }
 
-    // Check file size (limit to 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "File Too Large",
@@ -103,7 +102,6 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
     setIsUploading(true);
 
     try {
-      // Convert file to data URL
       const reader = new FileReader();
       
       const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -118,14 +116,9 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
         reader.readAsDataURL(file);
       });
       
-      // Update the current image immediately
       setCurrentImage(dataUrl);
       setImageError(false);
-      
-      // Save to localStorage for persistence
       localStorage.setItem(`equipment_image_${item.id}`, dataUrl);
-      
-      // Call the parent component's update handler if provided
       onImageUpdate?.(item.id, dataUrl);
       
       toast({
@@ -167,13 +160,13 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
           onLoad={handleImageLoad}
         />
         
-        {/* Edit Button - Only visible on hover */}
+        {/* Edit Button - Bottom Right with Higher Z-Index */}
         {isHovering && !imageLoading && (
-          <div className="absolute top-3 right-3">
+          <div className="absolute bottom-3 right-3 z-50">
             <button
               onClick={handleImageEdit}
               disabled={isUploading}
-              className="bg-black bg-opacity-70 text-white p-2 rounded-full hover:bg-opacity-90 transition-all duration-200 flex items-center justify-center"
+              className="bg-black bg-opacity-80 hover:bg-opacity-90 text-white p-2.5 rounded-full transition-all duration-200 flex items-center justify-center shadow-lg backdrop-blur-sm"
               title="Edit Image"
             >
               {isUploading ? (
@@ -185,38 +178,20 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
           </div>
         )}
 
-        <div className="absolute top-3 left-3 flex flex-wrap gap-2">
+        {/* Critical Badges Only - Top Left */}
+        <div className="absolute top-3 left-3 flex flex-col gap-2 max-w-[60%]">
           {item.isApproved && (
-            <span className="industrial-badge-approved inline-flex items-center space-x-1">
+            <span className="industrial-badge-approved inline-flex items-center space-x-1 backdrop-blur-sm">
               <CheckCircle className="h-3 w-3" />
               <span>ALLRENTZ Verified</span>
             </span>
           )}
-          {item.refineryAccess && (
-            <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full inline-flex items-center space-x-1">
-              <Shield className="h-3 w-3" />
-              <span>Refinery-Ready</span>
-            </span>
-          )}
-          {item.turnaroundCertified && (
-            <span className="bg-purple-500 text-white text-xs px-2 py-1 rounded-full">
-              Turnaround Certified
-            </span>
-          )}
-          {verificationStatus.isFullyVerified && (
-            <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full inline-flex items-center space-x-1">
-              <Shield className="h-3 w-3" />
-              <span>Fully Verified</span>
+          {!item.available && (
+            <span className="industrial-badge-alert backdrop-blur-sm">
+              Not Available
             </span>
           )}
         </div>
-        {!item.available && (
-          <div className="absolute top-3 right-3">
-            <span className="industrial-badge-alert">
-              Not Available
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Content */}
@@ -239,6 +214,32 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
           <span>{item.location}</span>
           <span className="text-gray-400">•</span>
           <span>{item.distance}</span>
+        </div>
+
+        {/* Certifications & Status - Moved from Image */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {item.refineryAccess && (
+            <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full inline-flex items-center space-x-1">
+              <Shield className="h-3 w-3" />
+              <span>Refinery-Ready</span>
+            </span>
+          )}
+          {item.turnaroundCertified && (
+            <span className="bg-purple-500 text-white text-xs px-2 py-1 rounded-full">
+              Turnaround Certified
+            </span>
+          )}
+          {verificationStatus.isFullyVerified && (
+            <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full inline-flex items-center space-x-1">
+              <Shield className="h-3 w-3" />
+              <span>Fully Verified</span>
+            </span>
+          )}
+          {item.operatorIncluded && (
+            <span className="bg-indigo-500 text-white text-xs px-2 py-1 rounded-full">
+              Operator Included
+            </span>
+          )}
         </div>
 
         {/* Exclusive Repair Warning */}
@@ -297,12 +298,6 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
             <div className="flex items-center space-x-2 mb-4">
               <CheckCircle className="h-4 w-4 text-green-500" />
               <span className="text-sm text-green-600 font-medium">Available Now</span>
-              {item.operatorIncluded && (
-                <>
-                  <span className="text-gray-400">•</span>
-                  <span className="text-sm text-blue-600">Operator Included</span>
-                </>
-              )}
             </div>
           ) : (
             <div className="flex items-center space-x-2 mb-4">
