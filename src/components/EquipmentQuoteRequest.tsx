@@ -12,7 +12,7 @@ import { CalendarIcon, MapPin, Clock, DollarSign, CheckCircle } from 'lucide-rea
 import { format, addDays, differenceInDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseTyped } from '@/lib/supabase-typed';
 
 interface Equipment {
   id: string;
@@ -57,7 +57,7 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
     setLoading(true);
     
     try {
-      const { error } = await (supabase as any)
+      const { error } = await supabaseTyped
         .from('rental_requests')
         .insert({
           customer_id: user.id,

@@ -8,7 +8,7 @@ import CategoryCard from '@/components/CategoryCard';
 import EquipmentQuoteRequest from '@/components/EquipmentQuoteRequest';
 import { equipmentCategories } from '@/data/equipmentCategories';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseTyped } from '@/lib/supabase-typed';
 import { useToast } from '@/hooks/use-toast';
 
 interface Equipment {
@@ -37,7 +37,7 @@ const Browse = () => {
 
   const fetchFeaturedEquipment = async () => {
     try {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabaseTyped
         .from('equipment')
         .select('*')
         .eq('available', true)
