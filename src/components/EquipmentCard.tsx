@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, MapPin, CheckCircle, Calendar, Shield, AlertTriangle, Wrench } from 'lucide-react';
 import EquipmentVerificationSystem, { getEquipmentVerificationStatus } from './EquipmentVerificationSystem';
@@ -15,19 +15,60 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
   onRequestPhotos, 
   onRequestSpecs 
 }) => {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  
   const verificationStatus = getEquipmentVerificationStatus({
     hasPhotos: item.hasPhotos,
     specVerified: item.specVerified
   });
 
+  // Fallback image based on equipment category
+  const getFallbackImage = (category: string) => {
+    const fallbacks = {
+      'Boilers': 'https://images.unsplash.com/photo-1565008447742-97f6717d4e89?w=400&h=300&fit=crop&auto=format',
+      'Storage': 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?w=400&h=300&fit=crop&auto=format',
+      'Safety': 'https://images.unsplash.com/photo-1621416894227-d6a8b66e12d3?w=400&h=300&fit=crop&auto=format',
+      'Cleaning': 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400&h=300&fit=crop&auto=format',
+      'Process': 'https://images.unsplash.com/photo-1581092335941-9406ac110441?w=400&h=300&fit=crop&auto=format',
+      'Vessels': 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?w=400&h=300&fit=crop&auto=format',
+      'Heavy Construction': 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=400&h=300&fit=crop&auto=format',
+      'Compressors': 'https://images.unsplash.com/photo-1592840464026-34f74cede7e7?w=400&h=300&fit=crop&auto=format',
+      'Material Handling': 'https://images.unsplash.com/photo-1581093450021-4a7360e9a6b5?w=400&h=300&fit=crop&auto=format',
+      'Power Generation': 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop&auto=format',
+      'Testing & Instrumentation': 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400&h=300&fit=crop&auto=format',
+      'HVAC & Environmental': 'https://images.unsplash.com/photo-1614200983771-f5de42f2fe0c?w=400&h=300&fit=crop&auto=format'
+    };
+    
+    return fallbacks[category as keyof typeof fallbacks] || 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=300&fit=crop&auto=format';
+  };
+
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoading(false);
+  };
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
+  };
+
+  const imageToDisplay = imageError ? getFallbackImage(item.category) : item.image;
+
   return (
     <div className="industrial-card overflow-hidden hover:shadow-lg transition-shadow">
       {/* Image */}
       <div className="relative">
+        {imageLoading && (
+          <div className="w-full h-48 bg-gray-200 animate-pulse flex items-center justify-center">
+            <div className="text-gray-400 text-sm">Loading...</div>
+          </div>
+        )}
         <img 
-          src={item.image} 
+          src={imageToDisplay} 
           alt={item.name}
-          className="w-full h-48 object-cover"
+          className={`w-full h-48 object-cover ${imageLoading ? 'hidden' : 'block'}`}
+          onError={handleImageError}
+          onLoad={handleImageLoad}
         />
         <div className="absolute top-3 left-3 flex flex-wrap gap-2">
           {item.isApproved && (
