@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Map } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,6 +11,7 @@ interface EquipmentGridProps {
   viewMode: string;
   onRequestPhotos: (equipmentName: string) => void;
   onRequestSpecs: (equipmentName: string) => void;
+  onImageUpdate?: (equipmentId: number, newImageUrl: string) => void;
 }
 
 const EquipmentGrid: React.FC<EquipmentGridProps> = ({
@@ -17,7 +19,8 @@ const EquipmentGrid: React.FC<EquipmentGridProps> = ({
   totalEquipment,
   viewMode,
   onRequestPhotos,
-  onRequestSpecs
+  onRequestSpecs,
+  onImageUpdate
 }) => {
   if (viewMode === 'map') {
     return (
@@ -65,6 +68,7 @@ const EquipmentGrid: React.FC<EquipmentGridProps> = ({
             item={item}
             onRequestPhotos={onRequestPhotos}
             onRequestSpecs={onRequestSpecs}
+            onImageUpdate={onImageUpdate}
           />
         ))}
       </div>

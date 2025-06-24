@@ -1,13 +1,15 @@
+
 import { useState } from 'react';
 import { Map } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import EquipmentFilters from '@/components/EquipmentFilters';
 import EquipmentGrid from '@/components/EquipmentGrid';
-import { equipment } from '@/data/equipment';
-import { FilterState } from '@/data/types';
+import { equipment as originalEquipment } from '@/data/equipment';
+import { FilterState, EquipmentItem } from '@/data/types';
 
 const Browse = () => {
   const [viewMode, setViewMode] = useState('grid');
+  const [equipment, setEquipment] = useState<EquipmentItem[]>(originalEquipment);
   const [filters, setFilters] = useState<FilterState>({
     category: 'all',
     location: '',
@@ -39,6 +41,16 @@ const Browse = () => {
       title: "Spec Verification Requested",
       description: `We've asked the vendor to verify specifications for ${equipmentName}. You'll be notified when completed.`,
     });
+  };
+
+  const handleImageUpdate = (equipmentId: number, newImageUrl: string) => {
+    setEquipment(prevEquipment => 
+      prevEquipment.map(item => 
+        item.id === equipmentId 
+          ? { ...item, image: newImageUrl }
+          : item
+      )
+    );
   };
 
   return (
@@ -93,6 +105,7 @@ const Browse = () => {
               viewMode={viewMode}
               onRequestPhotos={handleRequestPhotos}
               onRequestSpecs={handleRequestSpecs}
+              onImageUpdate={handleImageUpdate}
             />
           </div>
         </div>

@@ -1,22 +1,30 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, MapPin, CheckCircle, Calendar, Shield, AlertTriangle, Wrench } from 'lucide-react';
+import { Star, MapPin, CheckCircle, Calendar, Shield, AlertTriangle, Wrench, Pencil } from 'lucide-react';
 import EquipmentVerificationSystem, { getEquipmentVerificationStatus } from './EquipmentVerificationSystem';
 import { EquipmentItem } from '@/data/types';
+import { useToast } from "@/hooks/use-toast";
 
 interface EquipmentCardProps {
   item: EquipmentItem;
   onRequestPhotos: (equipmentName: string) => void;
   onRequestSpecs: (equipmentName: string) => void;
+  onImageUpdate?: (equipmentId: number, newImageUrl: string) => void;
 }
 
 const EquipmentCard: React.FC<EquipmentCardProps> = ({ 
   item, 
   onRequestPhotos, 
-  onRequestSpecs 
+  onRequestSpecs,
+  onImageUpdate 
 }) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
+  const [isHovering, setIsHovering] = useState(false);
+  const [currentImage, setCurrentImage] = useState(item.image);
+  const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast();
   
   const verificationStatus = getEquipmentVerificationStatus({
     hasPhotos: item.hasPhotos,
@@ -52,12 +60,74 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
     setImageLoading(false);
   };
 
-  const imageToDisplay = imageError ? getFallbackImage(item.category) : item.image;
+  const handleImageEdit = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = handleImageUpload;
+    input.click();
+  };
+
+  const handleImageUpload = async (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File",
+        description: "Please select an image file.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // Create a unique filename
+      const timestamp = Date.now();
+      const filename = `equipment_${item.id}_${timestamp}_${file.name}`;
+      
+      // Create a URL for the uploaded file (simulating upload to /lovable-uploads/)
+      const newImageUrl = `/lovable-uploads/${filename}`;
+      
+      // Simulate upload delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Update the current image
+      setCurrentImage(newImageUrl);
+      setImageError(false);
+      
+      // Call the parent component's update handler if provided
+      onImageUpdate?.(item.id, newImageUrl);
+      
+      toast({
+        title: "Image Updated",
+        description: `Successfully updated image for ${item.name}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: "Failed to update image. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const imageToDisplay = imageError ? getFallbackImage(item.category) : currentImage;
 
   return (
     <div className="industrial-card overflow-hidden hover:shadow-lg transition-shadow">
       {/* Image */}
-      <div className="relative">
+      <div 
+        className="relative"
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
         {imageLoading && (
           <div className="w-full h-48 bg-gray-200 animate-pulse flex items-center justify-center">
             <div className="text-gray-400 text-sm">Loading...</div>
@@ -70,6 +140,25 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({
           onError={handleImageError}
           onLoad={handleImageLoad}
         />
+        
+        {/* Edit Button - Only visible on hover */}
+        {isHovering && !imageLoading && (
+          <div className="absolute top-3 right-3">
+            <button
+              onClick={handleImageEdit}
+              disabled={isUploading}
+              className="bg-black bg-opacity-70 text-white p-2 rounded-full hover:bg-opacity-90 transition-all duration-200 flex items-center justify-center"
+              title="Edit Image"
+            >
+              {isUploading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <Pencil className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        )}
+
         <div className="absolute top-3 left-3 flex flex-wrap gap-2">
           {item.isApproved && (
             <span className="industrial-badge-approved inline-flex items-center space-x-1">
