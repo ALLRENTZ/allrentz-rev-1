@@ -12,7 +12,8 @@ const Browse = () => {
     category: 'all',
     location: '',
     maxRate: '',
-    vendorRating: 'any'
+    vendorRating: 'any',
+    refineryReady: false
   });
 
   const { toast } = useToast();
@@ -22,6 +23,7 @@ const Browse = () => {
     if (filters.location && !item.location.toLowerCase().includes(filters.location.toLowerCase())) return false;
     if (filters.maxRate && item.dailyRate > parseInt(filters.maxRate)) return false;
     if (filters.vendorRating && filters.vendorRating !== 'any' && item.rating < parseFloat(filters.vendorRating)) return false;
+    if (filters.refineryReady && !item.refineryAccess) return false;
     return true;
   });
 
