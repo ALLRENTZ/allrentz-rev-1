@@ -12,7 +12,7 @@ import { CalendarIcon, MapPin, Clock, DollarSign, CheckCircle } from 'lucide-rea
 import { format, addDays, differenceInDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabaseTyped } from '@/lib/supabase-typed';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Equipment {
   id: string;
@@ -57,7 +57,7 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
     setLoading(true);
     
     try {
-      const { error } = await supabaseTyped
+      const { error } = await supabase
         .from('rental_requests')
         .insert({
           customer_id: user.id,
@@ -80,7 +80,6 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
         description: "Your quote is ready. Valid for 24 hours.",
       });
     } catch (error) {
-      console.error('Quote generation error:', error);
       toast({
         title: "Error",
         description: "Failed to generate quote. Please try again.",

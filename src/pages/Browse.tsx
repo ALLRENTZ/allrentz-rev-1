@@ -8,7 +8,7 @@ import CategoryCard from '@/components/CategoryCard';
 import EquipmentQuoteRequest from '@/components/EquipmentQuoteRequest';
 import { equipmentCategories } from '@/data/equipmentCategories';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabaseTyped } from '@/lib/supabase-typed';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface Equipment {
@@ -37,50 +37,14 @@ const Browse = () => {
 
   const fetchFeaturedEquipment = async () => {
     try {
-      const { data, error } = await supabaseTyped
+      const { data, error } = await supabase
         .from('equipment')
         .select('*')
         .eq('available', true)
         .limit(6);
 
-      if (error) {
-        console.error('Error fetching equipment:', error);
-        // Fallback to demo data if database query fails
-        setFeaturedEquipment([
-          {
-            id: '550e8400-e29b-41d4-a716-446655440001',
-            title: 'Industrial Steam Boiler - 150 HP',
-            description: 'High-efficiency steam boiler perfect for refinery operations',
-            category: 'Boilers',
-            daily_rate: 850,
-            location: 'Houston, TX',
-            image_url: 'https://images.unsplash.com/photo-1565008447742-97f6717d4e89?w=400&h=300&fit=crop',
-            specifications: { pressure: '150 PSI', fuel: 'Natural Gas', certified: 'ASME' }
-          },
-          {
-            id: '550e8400-e29b-41d4-a716-446655440002',
-            title: '21K Gallon Frac Tank',
-            description: 'Vacuum-ready storage tank for industrial fluids',
-            category: 'Storage',
-            daily_rate: 125,
-            location: 'Beaumont, TX',
-            image_url: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?w=400&h=300&fit=crop',
-            specifications: { capacity: '21000 gallons', material: 'Steel', vacuum_ready: true }
-          },
-          {
-            id: '550e8400-e29b-41d4-a716-446655440003',
-            title: 'Diesel Generator - 500 KW',
-            description: 'Reliable backup power for critical operations',
-            category: 'Power Generation',
-            daily_rate: 650,
-            location: 'Port Arthur, TX',
-            image_url: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop',
-            specifications: { power: '500 KW', fuel: 'Diesel', runtime: '24 hours' }
-          }
-        ]);
-      } else {
-        setFeaturedEquipment(data || []);
-      }
+      if (error) throw error;
+      setFeaturedEquipment(data || []);
     } catch (error) {
       console.error('Error fetching equipment:', error);
     } finally {
