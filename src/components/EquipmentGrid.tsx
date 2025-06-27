@@ -4,6 +4,7 @@ import { Map } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import EquipmentCard from './EquipmentCard';
 import { EquipmentItem } from '@/data/types';
+import { Equipment } from '@/types/equipment';
 
 interface EquipmentGridProps {
   equipment: EquipmentItem[];
@@ -22,6 +23,22 @@ const EquipmentGrid: React.FC<EquipmentGridProps> = ({
   onRequestSpecs,
   onImageUpdate
 }) => {
+  // Convert EquipmentItem to Equipment format
+  const convertToEquipment = (item: EquipmentItem): Equipment => ({
+    id: item.id.toString(),
+    title: item.name,
+    description: item.specs.join(', '),
+    category: item.category,
+    daily_rate: item.dailyRate,
+    location: item.location,
+    image_url: item.image,
+    specifications: {},
+    vendor_name: item.vendor,
+    compliance_score: item.rating * 20,
+    response_time_hours: 4,
+    compliance_tags: item.complianceTags
+  });
+
   if (viewMode === 'map') {
     return (
       <div className="industrial-card p-6">
@@ -65,10 +82,10 @@ const EquipmentGrid: React.FC<EquipmentGridProps> = ({
         {equipment.map(item => (
           <EquipmentCard
             key={item.id}
-            item={item}
-            onRequestPhotos={onRequestPhotos}
-            onRequestSpecs={onRequestSpecs}
-            onImageUpdate={onImageUpdate}
+            equipment={convertToEquipment(item)}
+            onQuoteRequest={(equipmentId) => {
+              console.log(`Quote requested for equipment ${equipmentId}`);
+            }}
           />
         ))}
       </div>

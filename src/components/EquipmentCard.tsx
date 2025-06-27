@@ -7,21 +7,7 @@ import { MapPin, Clock, Wrench, CheckCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import EquipmentQuoteRequest from './EquipmentQuoteRequest';
-
-interface Equipment {
-  id: string;
-  title: string;
-  category: string;
-  daily_rate: number;
-  location: string;
-  image_url?: string;
-  available?: boolean;
-  description?: string;
-  response_time_hours?: number;
-  requires_operator?: boolean;
-  hazmat_certified?: boolean;
-  compliance_tags?: string[];
-}
+import { Equipment } from '@/types/equipment';
 
 interface EquipmentCardProps {
   equipment: Equipment;
@@ -69,12 +55,10 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({ equipment, onQuoteRequest
                 {equipment.category}
               </Badge>
             </div>
-            {equipment.available && (
-              <Badge className="bg-green-100 text-green-800">
-                <CheckCircle className="h-3 w-3 mr-1" />
-                Available
-              </Badge>
-            )}
+            <Badge className="bg-green-100 text-green-800">
+              <CheckCircle className="h-3 w-3 mr-1" />
+              Available
+            </Badge>
           </div>
         </CardHeader>
 
@@ -105,13 +89,6 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({ equipment, onQuoteRequest
               <div className="flex items-center text-sm text-gray-600">
                 <Clock className="h-4 w-4 mr-2" />
                 <span>{equipment.response_time_hours}hr response time</span>
-              </div>
-            )}
-            
-            {equipment.requires_operator && (
-              <div className="flex items-center text-sm text-gray-600">
-                <Wrench className="h-4 w-4 mr-2" />
-                <span>Operator included</span>
               </div>
             )}
           </div>
