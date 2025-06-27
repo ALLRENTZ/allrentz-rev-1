@@ -1,10 +1,22 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import FeaturedEquipmentHeader from '@/components/FeaturedEquipmentHeader';
 import FeaturedEquipmentCard from '@/components/FeaturedEquipmentCard';
-import { featuredEquipment } from '@/data/featuredEquipment';
+import { featuredEquipment, FeaturedEquipmentItem } from '@/data/featuredEquipment';
 
 const FeaturedEquipment: React.FC = () => {
+  const [equipmentItems, setEquipmentItems] = useState(featuredEquipment);
+
+  const handleImageUpdate = (equipmentId: string, newImageUrl: string) => {
+    setEquipmentItems(prevItems => 
+      prevItems.map(item => 
+        item.id === equipmentId 
+          ? { ...item, image: newImageUrl }
+          : item
+      )
+    );
+  };
+
   return (
     <div>
       {/* Black Header Section */}
@@ -18,8 +30,12 @@ const FeaturedEquipment: React.FC = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {featuredEquipment.map((item) => (
-            <FeaturedEquipmentCard key={item.id} item={item} />
+          {equipmentItems.map((item) => (
+            <FeaturedEquipmentCard 
+              key={item.id} 
+              item={item} 
+              onImageUpdate={handleImageUpdate}
+            />
           ))}
         </div>
       </div>

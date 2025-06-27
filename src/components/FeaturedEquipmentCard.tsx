@@ -1,25 +1,157 @@
 
-import React from 'react';
-import { Star, MapPin } from 'lucide-react';
+import React, { useState } from 'react';
+import { Star, MapPin, Pencil } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { FeaturedEquipmentItem } from '@/data/featuredEquipment';
+import { useToast } from "@/hooks/use-toast";
 
 interface FeaturedEquipmentCardProps {
   item: FeaturedEquipmentItem;
+  onImageUpdate?: (equipmentId: string, newImageUrl: string) => void;
 }
 
-const FeaturedEquipmentCard: React.FC<FeaturedEquipmentCardProps> = ({ item }) => {
+const FeaturedEquipmentCard: React.FC<FeaturedEquipmentCardProps> = ({ item, onImageUpdate }) => {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [isHovering, setIsHovering] = useState(false);
+  const [currentImage, setCurrentImage] = useState(item.image);
+  const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast();
+
+  // Load saved image from localStorage on component mount
+  React.useEffect(() => {
+    const savedImage = localStorage.getItem(`featured_equipment_image_${item.id}`);
+    if (savedImage) {
+      setCurrentImage(savedImage);
+    }
+  }, [item.id]);
+
+  // Fallback image for equipment
+  const getFallbackImage = () => {
+    return 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=300&fit=crop&auto=format';
+  };
+
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoading(false);
+  };
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
+  };
+
+  const handleImageEdit = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = handleImageUpload;
+    input.click();
+  };
+
+  const handleImageUpload = async (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File",
+        description: "Please select an image file.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please select an image smaller than 5MB.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const reader = new FileReader();
+      
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = (e) => {
+          if (e.target?.result) {
+            resolve(e.target.result as string);
+          } else {
+            reject(new Error('Failed to read file'));
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
+      
+      setCurrentImage(dataUrl);
+      setImageError(false);
+      localStorage.setItem(`featured_equipment_image_${item.id}`, dataUrl);
+      onImageUpdate?.(item.id, dataUrl);
+      
+      toast({
+        title: "Image Updated",
+        description: `Successfully updated image for ${item.name}`,
+      });
+    } catch (error) {
+      console.error('Image upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to update image. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const imageToDisplay = imageError ? getFallbackImage() : currentImage;
+
   return (
     <div className="industrial-card overflow-hidden hover:shadow-lg transition-shadow">
       {/* Image */}
-      <div className="relative">
+      <div 
+        className="relative"
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
+        {imageLoading && (
+          <div className="w-full h-48 bg-gray-200 animate-pulse flex items-center justify-center">
+            <div className="text-gray-400 text-sm">Loading...</div>
+          </div>
+        )}
         <img 
-          src={item.image} 
+          src={imageToDisplay} 
           alt={item.name}
-          className="w-full h-48 object-cover"
+          className={`w-full h-48 object-cover ${imageLoading ? 'hidden' : 'block'}`}
+          onError={handleImageError}
+          onLoad={handleImageLoad}
         />
         
+        {/* Edit Button - Bottom Right */}
+        {isHovering && !imageLoading && (
+          <div className="absolute bottom-3 right-3 z-50">
+            <button
+              onClick={handleImageEdit}
+              disabled={isUploading}
+              className="bg-black bg-opacity-80 hover:bg-opacity-90 text-white p-2.5 rounded-full transition-all duration-200 flex items-center justify-center shadow-lg backdrop-blur-sm"
+              title="Edit Image"
+            >
+              {isUploading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <Pencil className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        )}
+
         {/* Available Badge */}
         {item.available && (
           <div className="absolute top-3 left-3">
