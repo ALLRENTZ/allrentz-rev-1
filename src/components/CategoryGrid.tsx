@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import CategoryCard from '@/components/CategoryCard';
 import { EquipmentCategory } from '@/data/equipmentCategories';
+import { StorageManager } from '@/utils/imageUtils';
 
 interface CategoryGridProps {
   categories: EquipmentCategory[];
@@ -14,7 +15,7 @@ const CategoryGrid: React.FC<CategoryGridProps> = ({ categories }) => {
   React.useEffect(() => {
     const savedImages: Record<string, string> = {};
     categories.forEach(category => {
-      const savedImage = localStorage.getItem(`category_image_${category.category}`);
+      const savedImage = StorageManager.getItem(`category_image_${category.category}`);
       if (savedImage) {
         savedImages[category.category] = savedImage;
       }
@@ -27,7 +28,7 @@ const CategoryGrid: React.FC<CategoryGridProps> = ({ categories }) => {
       ...prev,
       [categoryId]: newImageUrl
     }));
-    console.log(`Category image updated for ${categoryId}:`, newImageUrl);
+    console.log(`Category image updated for ${categoryId}:`, newImageUrl.substring(0, 50) + '...');
   };
 
   return (

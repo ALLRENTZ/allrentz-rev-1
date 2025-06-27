@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Pencil } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { ImageCompressor, StorageManager } from '@/utils/imageUtils';
 
 interface CategoryCardProps {
   title: string;
@@ -34,7 +35,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
 
   // Load saved image from localStorage on component mount
   React.useEffect(() => {
-    const savedImage = localStorage.getItem(`category_image_${category}`);
+    const savedImage = StorageManager.getItem(`category_image_${category}`);
     if (savedImage) {
       setCurrentImage(savedImage);
     }
@@ -83,10 +84,10 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 10 * 1024 * 1024) {
       toast({
         title: "File Too Large",
-        description: "Please select an image smaller than 5MB.",
+        description: "Please select an image smaller than 10MB.",
         variant: "destructive"
       });
       return;
@@ -95,34 +96,36 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
     setIsUploading(true);
 
     try {
-      const reader = new FileReader();
+      // Compress the image
+      const compressed = await ImageCompressor.compressImage(file);
       
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        reader.onload = (e) => {
-          if (e.target?.result) {
-            resolve(e.target.result as string);
-          } else {
-            reject(new Error('Failed to read file'));
-          }
-        };
-        reader.onerror = () => reject(new Error('Failed to read file'));
-        reader.readAsDataURL(file);
-      });
+      // Try to store the compressed image
+      const success = StorageManager.setItem(`category_image_${category}`, compressed.dataUrl);
       
-      setCurrentImage(dataUrl);
+      if (!success) {
+        const storageInfo = StorageManager.getStorageInfo();
+        toast({
+          title: "Storage Full",
+          description: `Storage is ${storageInfo.percentage}% full. Some old images were removed to make space. Please try again.`,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setCurrentImage(compressed.dataUrl);
       setImageError(false);
-      localStorage.setItem(`category_image_${category}`, dataUrl);
-      onImageUpdate?.(category, dataUrl);
+      onImageUpdate?.(category, compressed.dataUrl);
       
+      const sizeKB = Math.round(compressed.size / 1024);
       toast({
         title: "Image Updated",
-        description: `Successfully updated image for ${title}`,
+        description: `Successfully updated image for ${title} (${sizeKB}KB)`,
       });
     } catch (error) {
       console.error('Image upload error:', error);
       toast({
         title: "Upload Failed",
-        description: "Failed to update image. Please try again.",
+        description: "Failed to process image. Please try a different image.",
         variant: "destructive"
       });
     } finally {

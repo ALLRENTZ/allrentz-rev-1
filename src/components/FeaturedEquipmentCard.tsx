@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { FeaturedEquipmentItem } from '@/data/featuredEquipment';
 import { useToast } from "@/hooks/use-toast";
+import { ImageCompressor, StorageManager } from '@/utils/imageUtils';
 
 interface FeaturedEquipmentCardProps {
   item: FeaturedEquipmentItem;
@@ -21,13 +22,12 @@ const FeaturedEquipmentCard: React.FC<FeaturedEquipmentCardProps> = ({ item, onI
 
   // Load saved image from localStorage on component mount
   React.useEffect(() => {
-    const savedImage = localStorage.getItem(`featured_equipment_image_${item.id}`);
+    const savedImage = StorageManager.getItem(`featured_equipment_image_${item.id}`);
     if (savedImage) {
       setCurrentImage(savedImage);
     }
   }, [item.id]);
 
-  // Fallback image for equipment
   const getFallbackImage = () => {
     return 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=300&fit=crop&auto=format';
   };
@@ -64,10 +64,10 @@ const FeaturedEquipmentCard: React.FC<FeaturedEquipmentCardProps> = ({ item, onI
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 10 * 1024 * 1024) {
       toast({
         title: "File Too Large",
-        description: "Please select an image smaller than 5MB.",
+        description: "Please select an image smaller than 10MB.",
         variant: "destructive"
       });
       return;
@@ -76,34 +76,36 @@ const FeaturedEquipmentCard: React.FC<FeaturedEquipmentCardProps> = ({ item, onI
     setIsUploading(true);
 
     try {
-      const reader = new FileReader();
+      // Compress the image
+      const compressed = await ImageCompressor.compressImage(file);
       
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        reader.onload = (e) => {
-          if (e.target?.result) {
-            resolve(e.target.result as string);
-          } else {
-            reject(new Error('Failed to read file'));
-          }
-        };
-        reader.onerror = () => reject(new Error('Failed to read file'));
-        reader.readAsDataURL(file);
-      });
+      // Try to store the compressed image
+      const success = StorageManager.setItem(`featured_equipment_image_${item.id}`, compressed.dataUrl);
       
-      setCurrentImage(dataUrl);
+      if (!success) {
+        const storageInfo = StorageManager.getStorageInfo();
+        toast({
+          title: "Storage Full",
+          description: `Storage is ${storageInfo.percentage}% full. Some old images were removed to make space. Please try again.`,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setCurrentImage(compressed.dataUrl);
       setImageError(false);
-      localStorage.setItem(`featured_equipment_image_${item.id}`, dataUrl);
-      onImageUpdate?.(item.id, dataUrl);
+      onImageUpdate?.(item.id, compressed.dataUrl);
       
+      const sizeKB = Math.round(compressed.size / 1024);
       toast({
         title: "Image Updated",
-        description: `Successfully updated image for ${item.name}`,
+        description: `Successfully updated image for ${item.name} (${sizeKB}KB)`,
       });
     } catch (error) {
       console.error('Image upload error:', error);
       toast({
         title: "Upload Failed",
-        description: "Failed to update image. Please try again.",
+        description: "Failed to process image. Please try a different image.",
         variant: "destructive"
       });
     } finally {
