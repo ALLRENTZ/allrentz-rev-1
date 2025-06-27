@@ -32,13 +32,13 @@ export const equipmentCategories: EquipmentCategory[] = [
   },
   {
     id: 'storage-containment',
-    title: 'Storage & Containment',
+    title: 'Storage & Frac Tanks',
     description: 'High-capacity storage and containment solutions for industrial operations',
     image: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?w=400&h=300&fit=crop&auto=format',
     equipmentCount: 45,
     subItems: ['Frac Tanks & Temp Storage', 'Chemical Handling', 'Spill/Secondary Containment'],
     label: 'Core Solutions',
-    category: 'Storage & Containment'
+    category: 'Storage & Frac Tanks'
   },
   {
     id: 'refinery-process-tools',

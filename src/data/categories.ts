@@ -1,8 +1,9 @@
+
 export const categories = [
   { value: 'all', label: 'All Equipment' },
   { value: 'Heavy Construction Equipment', label: 'Heavy Construction Equipment' },
   { value: 'Power, Climate & Fluids', label: 'Power, Climate & Fluids' },
-  { value: 'Storage & Containment', label: 'Storage & Containment' },
+  { value: 'Storage & Frac Tanks', label: 'Storage & Frac Tanks' },
   { value: 'Refinery & Process Tools', label: 'Refinery & Process Tools' },
   { value: 'Inspection, Safety & Compliance', label: 'Inspection, Safety & Compliance' },
   { value: 'Fabrication & Field Services', label: 'Fabrication & Field Services' },
