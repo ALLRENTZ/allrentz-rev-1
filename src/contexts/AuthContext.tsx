@@ -105,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           password: demoCredentials[type].password,
           options: {
             data: {
-              full_name: type === 'customer' ? 'Demo Customer' : 'Demo Vendor',
+              full_name: type === 'customer' ? 'Pat - Refinery' : 'Pat-Rentals',
               role: type,
             },
             emailRedirectTo: `${window.location.origin}/`
@@ -121,8 +121,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       toast({
-        title: `Signed in as ${type} demo`,
-        description: "You're now using the demo account.",
+        title: `Signed in as ${type === 'customer' ? 'Pat - Refinery' : 'Pat-Rentals'}`,
+        description: `You're now exploring ALLRENTZ as ${type === 'customer' ? 'a refinery customer' : 'an equipment vendor'}.`,
       });
     } catch (error) {
       console.error('Demo login error:', error);
