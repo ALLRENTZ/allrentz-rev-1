@@ -11,91 +11,80 @@ export interface EquipmentCategory {
 
 export const equipmentCategories: EquipmentCategory[] = [
   {
-    id: 'heavy-construction-equipment',
-    title: 'Heavy Construction Equipment',
-    description: 'Essential earthmoving and construction equipment for industrial operations',
+    id: 'core-equipment-earthmoving',
+    title: 'Core Equipment & Earthmoving',
+    description: 'Heavy-duty machinery for site prep, lifting, and material handling',
     image: 'https://images.unsplash.com/photo-1581093450021-4a7360e9a6b5?w=400&h=300&fit=crop&auto=format',
-    equipmentCount: 52,
-    subItems: ['Dozers', 'Excavators', 'Road Equipment (Pavers and Reclaimers)'],
+    equipmentCount: 85,
+    subItems: ['Excavators', 'Dozers', 'Skid Steers', 'Telehandlers / Forklifts', 'Loaders'],
     label: 'Core Solutions',
-    category: 'Heavy Construction Equipment'
+    category: 'Core Equipment & Earthmoving'
   },
   {
     id: 'power-climate-fluids',
     title: 'Power, Climate & Fluids',
-    description: 'Power generation, climate control, and fluid handling systems',
+    description: 'Temporary utilities to power, heat, cool, and move fluid across jobsites',
     image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop&auto=format',
-    equipmentCount: 67,
-    subItems: ['Generators & Power', 'HVAC / Climate', 'Pumps & Pressure', 'Dewatering'],
+    equipmentCount: 92,
+    subItems: ['Generators', 'HVAC / Climate Control Units', 'Pumps (High Flow, High Head, Submersible)', 'Fuel / Water Tanks'],
     label: 'Core Solutions',
     category: 'Power, Climate & Fluids'
   },
   {
-    id: 'storage-containment',
-    title: 'Storage & Frac Tanks',
-    description: 'High-capacity storage and containment solutions for industrial operations',
+    id: 'tanks-containment',
+    title: 'Tanks & Containment',
+    description: 'Storage and environmental protection for industrial and hazardous fluids',
     image: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?w=400&h=300&fit=crop&auto=format',
-    equipmentCount: 45,
-    subItems: ['Frac Tanks & Temp Storage', 'Chemical Handling', 'Spill/Secondary Containment'],
+    equipmentCount: 67,
+    subItems: ['Frac Tanks', 'Double-Wall Tanks', 'Poly / Mix Tanks', 'Spill Berms & Secondary Containment', 'Dewatering / Roll-Off Boxes'],
     label: 'Core Solutions',
-    category: 'Storage & Frac Tanks'
+    category: 'Tanks & Containment'
   },
   {
-    id: 'refinery-process-tools',
-    title: 'Refinery & Process Tools',
-    description: 'Specialized equipment for refinery and process operations',
+    id: 'turnaround-shutdown-essentials',
+    title: 'Turnaround & Shutdown Essentials',
+    description: 'Bundled systems for plant turnarounds, maintenance events, and shutdowns',
     image: 'https://images.unsplash.com/photo-1565008447742-97f6717d4e89?w=400&h=300&fit=crop&auto=format',
-    equipmentCount: 38,
-    subItems: ['Specialized Refinery Tools', 'Process Equip & Systems', 'Corrosion / Cathodic'],
+    equipmentCount: 54,
+    subItems: ['Boilers & Steam Systems', 'Mobile Water Heaters', 'Air Compressors', 'Vac Boxes', 'Filter Pots & Air Movers'],
     label: 'Advanced',
-    category: 'Refinery & Process Tools'
+    category: 'Turnaround & Shutdown Essentials'
   },
   {
     id: 'inspection-safety-compliance',
     title: 'Inspection, Safety & Compliance',
-    description: 'Critical safety equipment for hazardous environments',
+    description: 'Critical safety, entry, and detection systems for regulated sites',
     image: 'https://images.unsplash.com/photo-1621416894227-d6a8b66e12d3?w=400&h=300&fit=crop&auto=format',
-    equipmentCount: 73,
-    subItems: ['NDT / Pipeline Inspection', 'Gas Detection', 'Confined-Space Kits', 'Fire & Emergency'],
+    equipmentCount: 78,
+    subItems: ['Gas Detection / H2S Monitors', 'Confined Space Entry Kits', 'NDT / Pipeline Inspection', 'Rescue Tripods & Fall Protection'],
     label: 'Advanced',
     category: 'Inspection, Safety & Compliance'
   },
   {
-    id: 'fabrication-field-services',
-    title: 'Fabrication & Field Services',
-    description: 'Mobile fabrication and field service equipment',
+    id: 'welding-fabrication-tooling',
+    title: 'Welding, Fabrication & Tooling',
+    description: 'Mobile and modular equipment for onsite fabrication and piping support',
     image: 'https://images.unsplash.com/photo-1592840464026-34f74cede7e7?w=400&h=300&fit=crop&auto=format',
-    equipmentCount: 29,
-    subItems: ['Welding & Piping', 'Cutting / Threading', 'Mobile Fab Stations'],
+    equipmentCount: 43,
+    subItems: ['Welding Machines & Rigs', 'Pipe Cutting & Threading', 'Mobile Fab Stations', 'Material Handling Cribs'],
     label: 'Tooling',
-    category: 'Fabrication & Field Services'
+    category: 'Welding, Fabrication & Tooling'
   },
   {
-    id: 'cleaning-remediation',
-    title: 'Cleaning & Remediation',
-    description: 'Industrial cleaning and environmental remediation solutions',
+    id: 'cleaning-surface-prep',
+    title: 'Cleaning & Surface Prep',
+    description: 'Solutions for tank cleaning, liner removal, blasting, and environmental remediation',
     image: 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400&h=300&fit=crop&auto=format',
-    equipmentCount: 41,
-    subItems: ['Tank Cleaning & HP Water', 'Enviro Remediation', 'Waste Mgmt / Treatment'],
+    equipmentCount: 36,
+    subItems: ['UHP Water Blasting Systems', 'Hydro/Vac Trucks (via partner)', 'Shot Blasters / Grinders', 'Environmental Remediation Units'],
     label: 'Advanced',
-    category: 'Cleaning & Remediation'
-  },
-  {
-    id: 'offshore-marine',
-    title: 'Offshore & Marine',
-    description: 'Specialized equipment for offshore and marine operations',
-    image: 'https://images.unsplash.com/photo-1487887235947-a955ef187fcc?w=400&h=300&fit=crop&auto=format',
-    equipmentCount: 24,
-    subItems: ['Subsea / ROV Tooling', 'Marine Rigging', 'Positioning / Nav'],
-    label: 'Advanced',
-    category: 'Offshore & Marine'
+    category: 'Cleaning & Surface Prep'
   }
 ];
 
 // Helper function to get categories with conditional offshore display
 export const getVisibleCategories = (showOffshore: boolean = false): EquipmentCategory[] => {
-  if (showOffshore) {
-    return equipmentCategories;
-  }
-  return equipmentCategories.filter(category => category.id !== 'offshore-marine');
+  // Since we removed the offshore category, this function now simply returns all categories
+  // Keeping the function for backward compatibility
+  return equipmentCategories;
 };
