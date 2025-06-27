@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -131,7 +132,7 @@ const SmartMatchInterface: React.FC = () => {
               <Label htmlFor="urgency">Urgency</Label>
               <Select 
                 value={request.urgency} 
-                onValueChange={(value: string) => setRequest(prev => ({ ...prev, urgency: value as UrgencyType }))}
+                onValueChange={(value) => setRequest(prev => ({ ...prev, urgency: value as UrgencyType }))}
               >
                 <SelectTrigger>
                   <SelectValue />
