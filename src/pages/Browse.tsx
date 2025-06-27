@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, MapPin, Clock, DollarSign, Star, Zap } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -20,6 +19,10 @@ interface Equipment {
   location: string;
   image_url: string;
   specifications: any;
+  vendor_name: string;
+  compliance_score: number;
+  response_time_hours: number;
+  compliance_tags: string[];
 }
 
 // Demo equipment fallback data
@@ -71,23 +74,50 @@ const Browse = () => {
 
   const fetchFeaturedEquipment = async () => {
     try {
-      // Use type assertion temporarily until types are properly generated
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('equipment')
-        .select('*')
+        .select(`
+          *,
+          vendor_profiles!equipment_vendor_id_fkey (
+            user_id,
+            response_time_avg,
+            compliance_score,
+            performance_rating,
+            verified,
+            profiles!vendor_profiles_user_id_fkey (
+              full_name,
+              company_name
+            )
+          )
+        `)
         .eq('available', true)
+        .eq('vendor_profiles.verified', true)
         .limit(6);
 
       if (error) {
         console.error('Error fetching equipment:', error);
-        // Use demo data as fallback
         setFeaturedEquipment(demoEquipment);
       } else {
-        setFeaturedEquipment(data || demoEquipment);
+        // Transform the data to match the Equipment interface
+        const transformedData = (data || []).map(item => ({
+          id: item.id,
+          title: item.title,
+          description: item.description || '',
+          category: item.category,
+          daily_rate: item.daily_rate,
+          location: item.location,
+          image_url: item.image_url || 'https://images.unsplash.com/photo-1565008447742-97f6717d4e89?w=400&h=300&fit=crop',
+          specifications: item.specifications || {},
+          vendor_name: item.vendor_profiles?.profiles?.company_name || 'Unknown Vendor',
+          compliance_score: item.vendor_profiles?.compliance_score || 85,
+          response_time_hours: item.response_time_hours || 4,
+          compliance_tags: item.compliance_tags || []
+        }));
+
+        setFeaturedEquipment(transformedData.length > 0 ? transformedData : demoEquipment);
       }
     } catch (error) {
       console.error('Error fetching equipment:', error);
-      // Use demo data as fallback
       setFeaturedEquipment(demoEquipment);
     } finally {
       setLoading(false);
@@ -136,6 +166,14 @@ const Browse = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-12 py-4 text-lg bg-white"
               />
+              <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                <Link to="/smartmatch-demo">
+                  <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                    <Zap className="h-4 w-4 mr-2" />
+                    SmartMatch
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -166,6 +204,11 @@ const Browse = () => {
                       <div className="absolute top-3 right-3 bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
                         Available
                       </div>
+                      {equipment.compliance_tags && equipment.compliance_tags.length > 0 && (
+                        <div className="absolute top-3 left-3 bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
+                          Certified
+                        </div>
+                      )}
                     </div>
                     
                     <div className="p-4">
@@ -185,6 +228,18 @@ const Browse = () => {
                           <span className="text-sm font-medium">4.8</span>
                         </div>
                       </div>
+
+                      {/* Enhanced vendor info */}
+                      {equipment.vendor_name && (
+                        <div className="mb-3 text-xs text-gray-500">
+                          by {equipment.vendor_name}
+                          {equipment.compliance_score && (
+                            <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 rounded">
+                              {equipment.compliance_score}% Compliance
+                            </span>
+                          )}
+                        </div>
+                      )}
                       
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-1">

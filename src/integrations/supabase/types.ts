@@ -9,16 +9,64 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      customer_profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          isnet_required: boolean | null
+          payment_terms: string | null
+          preferred_vendors: string[] | null
+          purchase_order_required: boolean | null
+          safety_requirements: Json | null
+          site_addresses: Json | null
+          twic_required: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          isnet_required?: boolean | null
+          payment_terms?: string | null
+          preferred_vendors?: string[] | null
+          purchase_order_required?: boolean | null
+          safety_requirements?: Json | null
+          site_addresses?: Json | null
+          twic_required?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          isnet_required?: boolean | null
+          payment_terms?: string | null
+          preferred_vendors?: string[] | null
+          purchase_order_required?: boolean | null
+          safety_requirements?: Json | null
+          site_addresses?: Json | null
+          twic_required?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       equipment: {
         Row: {
           available: boolean | null
           category: string
+          compliance_tags: string[] | null
           created_at: string | null
           daily_rate: number
+          delivery_radius_miles: number | null
           description: string | null
+          hazmat_certified: boolean | null
           id: string
           image_url: string | null
           location: string
+          minimum_rental_days: number | null
+          requires_operator: boolean | null
+          response_time_hours: number | null
           specifications: Json | null
           title: string
           vendor_id: string | null
@@ -26,12 +74,18 @@ export type Database = {
         Insert: {
           available?: boolean | null
           category: string
+          compliance_tags?: string[] | null
           created_at?: string | null
           daily_rate: number
+          delivery_radius_miles?: number | null
           description?: string | null
+          hazmat_certified?: boolean | null
           id?: string
           image_url?: string | null
           location: string
+          minimum_rental_days?: number | null
+          requires_operator?: boolean | null
+          response_time_hours?: number | null
           specifications?: Json | null
           title: string
           vendor_id?: string | null
@@ -39,12 +93,18 @@ export type Database = {
         Update: {
           available?: boolean | null
           category?: string
+          compliance_tags?: string[] | null
           created_at?: string | null
           daily_rate?: number
+          delivery_radius_miles?: number | null
           description?: string | null
+          hazmat_certified?: boolean | null
           id?: string
           image_url?: string | null
           location?: string
+          minimum_rental_days?: number | null
+          requires_operator?: boolean | null
+          response_time_hours?: number | null
           specifications?: Json | null
           title?: string
           vendor_id?: string | null
@@ -100,32 +160,47 @@ export type Database = {
       profiles: {
         Row: {
           company_name: string | null
+          company_type: string | null
           created_at: string | null
           email: string | null
           full_name: string | null
           id: string
+          onboarding_completed: boolean | null
           phone: string | null
+          profile_completion_score: number | null
           role: string | null
+          role_type: Database["public"]["Enums"]["app_role"] | null
+          status: string | null
           updated_at: string | null
         }
         Insert: {
           company_name?: string | null
+          company_type?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id: string
+          onboarding_completed?: boolean | null
           phone?: string | null
+          profile_completion_score?: number | null
           role?: string | null
+          role_type?: Database["public"]["Enums"]["app_role"] | null
+          status?: string | null
           updated_at?: string | null
         }
         Update: {
           company_name?: string | null
+          company_type?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
+          onboarding_completed?: boolean | null
           phone?: string | null
+          profile_completion_score?: number | null
           role?: string | null
+          role_type?: Database["public"]["Enums"]["app_role"] | null
+          status?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -190,15 +265,129 @@ export type Database = {
           },
         ]
       }
+      smart_match_requests: {
+        Row: {
+          additional_requirements: Json | null
+          created_at: string | null
+          customer_id: string
+          equipment_type: string
+          id: string
+          location: string
+          matched_vendors: Json | null
+          status: string | null
+          updated_at: string | null
+          urgency: string
+        }
+        Insert: {
+          additional_requirements?: Json | null
+          created_at?: string | null
+          customer_id: string
+          equipment_type: string
+          id?: string
+          location: string
+          matched_vendors?: Json | null
+          status?: string | null
+          updated_at?: string | null
+          urgency: string
+        }
+        Update: {
+          additional_requirements?: Json | null
+          created_at?: string | null
+          customer_id?: string
+          equipment_type?: string
+          id?: string
+          location?: string
+          matched_vendors?: Json | null
+          status?: string | null
+          updated_at?: string | null
+          urgency?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vendor_profiles: {
+        Row: {
+          business_license: string | null
+          compliance_score: number | null
+          coverage_areas: string[] | null
+          created_at: string | null
+          id: string
+          insurance_policy: string | null
+          performance_rating: number | null
+          response_time_avg: number | null
+          specialties: string[] | null
+          updated_at: string | null
+          user_id: string
+          verified: boolean | null
+        }
+        Insert: {
+          business_license?: string | null
+          compliance_score?: number | null
+          coverage_areas?: string[] | null
+          created_at?: string | null
+          id?: string
+          insurance_policy?: string | null
+          performance_rating?: number | null
+          response_time_avg?: number | null
+          specialties?: string[] | null
+          updated_at?: string | null
+          user_id: string
+          verified?: boolean | null
+        }
+        Update: {
+          business_license?: string | null
+          compliance_score?: number | null
+          coverage_areas?: string[] | null
+          created_at?: string | null
+          id?: string
+          insurance_policy?: string | null
+          performance_rating?: number | null
+          response_time_avg?: number | null
+          specialties?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "customer" | "vendor" | "admin" | "manager"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -313,6 +502,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["customer", "vendor", "admin", "manager"],
+    },
   },
 } as const
