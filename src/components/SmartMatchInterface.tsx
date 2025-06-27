@@ -131,7 +131,7 @@ const SmartMatchInterface: React.FC = () => {
               <Label htmlFor="urgency">Urgency</Label>
               <Select 
                 value={request.urgency} 
-                onValueChange={(value: UrgencyType) => setRequest(prev => ({ ...prev, urgency: value }))}
+                onValueChange={(value: string) => setRequest(prev => ({ ...prev, urgency: value as UrgencyType }))}
               >
                 <SelectTrigger>
                   <SelectValue />
