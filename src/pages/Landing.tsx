@@ -1,4 +1,3 @@
-
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle, Clock, Shield, Users, Wrench, Gauge, MapPin, HardHat, FileCheck, Truck, Settings, Zap, Bell, Award } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,7 +27,7 @@ const Landing = () => {
               Built for the field. Fast. Compliant. Trusted.
             </p>
             <p className="text-lg lg:text-xl mb-8 text-gray-300 max-w-3xl mx-auto">
-              Amazon-speed meets Palantir-trust for the refinery rental world. Built by someone who knows the pain.
+              Designed for refineries, terminals, and real-world jobs — by someone who's lived it.
             </p>
             
             {/* Demo CTA - Prominently Featured */}
