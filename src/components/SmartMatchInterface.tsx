@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,8 +10,6 @@ import { Loader2, Zap, MapPin, Clock, DollarSign, Star, CheckCircle2, Truck } fr
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { smartMatchEngine, SmartMatchRequest, MatchedVendor } from '@/services/smartMatchEngine';
-
-type UrgencyType = 'immediate' | 'today' | 'this_week' | 'flexible';
 
 const SmartMatchInterface: React.FC = () => {
   const [isMatching, setIsMatching] = useState(false);
@@ -132,7 +129,7 @@ const SmartMatchInterface: React.FC = () => {
               <Label htmlFor="urgency">Urgency</Label>
               <Select 
                 value={request.urgency} 
-                onValueChange={(value) => setRequest(prev => ({ ...prev, urgency: value as UrgencyType }))}
+                onValueChange={(value) => setRequest(prev => ({ ...prev, urgency: value as SmartMatchRequest['urgency'] }))}
               >
                 <SelectTrigger>
                   <SelectValue />
