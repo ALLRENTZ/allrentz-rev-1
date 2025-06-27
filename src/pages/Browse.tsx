@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -83,7 +82,7 @@ const Browse = () => {
           console.log('Database query failed, using mock data:', error);
           setEquipment(mockEquipment);
         } else if (data && data.length > 0) {
-          // Map database data to Equipment interface
+          // Map database data to Equipment interface with proper type conversion
           const mappedEquipment: Equipment[] = data.map(item => ({
             id: item.id,
             title: item.title || 'Equipment',
@@ -92,7 +91,9 @@ const Browse = () => {
             daily_rate: item.daily_rate || 0,
             location: item.location || 'Unknown',
             image_url: item.image_url || 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=400&h=300&fit=crop',
-            specifications: item.specifications || {},
+            specifications: typeof item.specifications === 'object' && item.specifications !== null 
+              ? item.specifications as Record<string, any>
+              : {},
             vendor_name: 'Equipment Vendor',
             compliance_score: 85,
             response_time_hours: 4,
