@@ -149,43 +149,48 @@ class SmartMatchEngine {
 
   async processMatch(request: SmartMatchRequest, customer_id: string): Promise<SmartMatchResult> {
     const startTime = Date.now();
+    const isDemoUser = customer_id === 'demo-customer';
     
     try {
-      // Store the match request (simplified)
-      const { data: matchRequest, error: requestError } = await supabase
-        .from('smart_match_requests')
-        .insert({
-          customer_id,
-          equipment_type: request.equipment_type,
-          location: request.location,
-          urgency: request.urgency,
-          additional_requirements: request.additional_requirements || {},
-          status: 'processing'
-        })
-        .select()
-        .single();
+      // Skip database operations for demo users
+      if (!isDemoUser) {
+        // Store the match request for authenticated users
+        const { data: matchRequest, error: requestError } = await supabase
+          .from('smart_match_requests')
+          .insert({
+            customer_id,
+            equipment_type: request.equipment_type,
+            location: request.location,
+            urgency: request.urgency,
+            additional_requirements: request.additional_requirements || {},
+            status: 'processing'
+          })
+          .select()
+          .single();
 
-      if (requestError) {
-        console.log('Database insert failed, using demo mode:', requestError);
+        if (requestError) {
+          console.log('Database insert failed, using demo mode:', requestError);
+        }
+
+        // Update request status (if database is available)
+        if (matchRequest) {
+          const matches = this.getMockMatches(request);
+          await supabase
+            .from('smart_match_requests')
+            .update({
+              status: 'completed',
+              matched_vendors: matches as any
+            })
+            .eq('id', matchRequest.id);
+        }
       }
 
-      // Get mock matches
+      // Get mock matches (same for demo and authenticated users for now)
       const matches = this.getMockMatches(request);
       const processingTime = Date.now() - startTime;
 
-      // Update request status (if database is available)
-      if (matchRequest) {
-        await supabase
-          .from('smart_match_requests')
-          .update({
-            status: 'completed',
-            matched_vendors: matches as any
-          })
-          .eq('id', matchRequest.id);
-      }
-
       return {
-        request_id: matchRequest?.id || 'demo-request',
+        request_id: isDemoUser ? 'demo-request' : 'request-' + Date.now(),
         total_matches: matches.length + 15, // Simulate more matches in the system
         matches: matches.slice(0, 4), // Show top 4 matches
         processing_time_ms: processingTime,

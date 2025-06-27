@@ -6,6 +6,9 @@ import { smartMatchEngine, SmartMatchRequest, MatchedVendor } from '@/services/s
 import SmartMatchForm from '@/components/SmartMatchForm';
 import SmartMatchResults from '@/components/SmartMatchResults';
 import HowItWorksSection from '@/components/HowItWorksSection';
+import { Card, CardContent } from '@/components/ui/card';
+import { Info, UserPlus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const SmartMatchInterface: React.FC = () => {
   const [isMatching, setIsMatching] = useState(false);
@@ -23,15 +26,6 @@ const SmartMatchInterface: React.FC = () => {
   });
 
   const handleMatch = async () => {
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to use SmartMatch.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (!request.equipment_type || !request.location) {
       toast({
         title: "Missing information",
@@ -45,7 +39,9 @@ const SmartMatchInterface: React.FC = () => {
     setMatchResults([]);
 
     try {
-      const result = await smartMatchEngine.processMatch(request, user.id);
+      // Use demo customer ID if no user is authenticated
+      const customerId = user?.id || 'demo-customer';
+      const result = await smartMatchEngine.processMatch(request, customerId);
       
       setMatchResults(result.matches);
       setTotalMatches(result.total_matches);
@@ -72,6 +68,15 @@ const SmartMatchInterface: React.FC = () => {
   };
 
   const handleRequestQuote = (vendor: MatchedVendor) => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to request quotes from vendors.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
       title: "Quote Request Sent",
       description: `Quote request sent to ${vendor.company_name}`,
@@ -80,6 +85,26 @@ const SmartMatchInterface: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {!user && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-3">
+              <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm text-blue-800">
+                  <strong>Demo Mode:</strong> You're experiencing SmartMatch with simulated data. 
+                  Sign in to access real vendor networks and request actual quotes.
+                </p>
+                <Button size="sm" variant="outline" className="mt-2 border-blue-300 text-blue-700 hover:bg-blue-100">
+                  <UserPlus className="h-4 w-4 mr-1" />
+                  Sign Up for Full Access
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <SmartMatchForm
         request={request}
         setRequest={setRequest}
