@@ -7,7 +7,7 @@ export interface CompressedImageResult {
 export class ImageCompressor {
   private static MAX_WIDTH = 400;
   private static MAX_HEIGHT = 300;
-  private static QUALITY = 0.8;
+  private static QUALITY = 0.7; // Slightly more compression to save space
   
   static async compressImage(file: File): Promise<CompressedImageResult> {
     return new Promise((resolve, reject) => {
@@ -67,29 +67,40 @@ export class ImageCompressor {
 
 export class StorageManager {
   private static STORAGE_KEY_PREFIX = 'compressed_';
-  private static MAX_STORAGE_SIZE = 5 * 1024 * 1024; // 5MB limit for safety
+  private static MAX_STORAGE_SIZE = 15 * 1024 * 1024; // Increased to 15MB
+  private static CLEANUP_THRESHOLD = 0.8; // Only cleanup when 80% full
+  private static CLEANUP_PERCENTAGE = 0.1; // Only remove 10% of items instead of 25%
   
   static setItem(key: string, value: string): boolean {
     const fullKey = this.STORAGE_KEY_PREFIX + key;
     
     try {
       // Check if adding this item would exceed our limit
-      const estimatedSize = this.getStorageSize() + value.length;
+      const currentSize = this.getStorageSize();
+      const estimatedSize = currentSize + value.length;
       
       if (estimatedSize > this.MAX_STORAGE_SIZE) {
-        // Try to free up space by removing oldest items
-        this.cleanupOldItems();
-        
-        // Check again after cleanup
-        const newEstimatedSize = this.getStorageSize() + value.length;
-        if (newEstimatedSize > this.MAX_STORAGE_SIZE) {
-          console.warn('Storage cleanup insufficient, item too large');
+        // Only cleanup if we're above the threshold
+        if (currentSize > this.MAX_STORAGE_SIZE * this.CLEANUP_THRESHOLD) {
+          console.warn(`Storage is getting full (${Math.round((currentSize / this.MAX_STORAGE_SIZE) * 100)}%). Cleaning up oldest images...`);
+          this.cleanupOldItems();
+          
+          // Check again after cleanup
+          const newCurrentSize = this.getStorageSize();
+          const newEstimatedSize = newCurrentSize + value.length;
+          if (newEstimatedSize > this.MAX_STORAGE_SIZE) {
+            console.warn('Storage cleanup insufficient, item too large');
+            return false;
+          }
+        } else {
+          console.warn('Item too large for storage');
           return false;
         }
       }
       
       localStorage.setItem(fullKey, value);
       localStorage.setItem(fullKey + '_timestamp', Date.now().toString());
+      console.log(`Stored image: ${key} (${Math.round(value.length / 1024)}KB)`);
       return true;
     } catch (error) {
       console.error('Storage error:', error);
@@ -127,35 +138,64 @@ export class StorageManager {
   }
   
   private static cleanupOldItems(): void {
-    const items: Array<{ key: string; timestamp: number }> = [];
+    const items: Array<{ key: string; timestamp: number; size: number }> = [];
     
-    // Collect all our items with timestamps
+    // Collect all our items with timestamps and sizes
     for (let key in localStorage) {
       if (key.startsWith(this.STORAGE_KEY_PREFIX) && !key.includes('_timestamp')) {
         const timestampKey = key + '_timestamp';
         const timestamp = parseInt(localStorage.getItem(timestampKey) || '0');
-        items.push({ key: key.replace(this.STORAGE_KEY_PREFIX, ''), timestamp });
+        const size = localStorage.getItem(key)?.length || 0;
+        items.push({ 
+          key: key.replace(this.STORAGE_KEY_PREFIX, ''), 
+          timestamp,
+          size 
+        });
       }
     }
     
-    // Sort by timestamp (oldest first) and remove oldest 25%
+    // Sort by timestamp (oldest first) and remove only the cleanup percentage
     items.sort((a, b) => a.timestamp - b.timestamp);
-    const itemsToRemove = Math.ceil(items.length * 0.25);
+    const itemsToRemove = Math.max(1, Math.ceil(items.length * this.CLEANUP_PERCENTAGE));
+    
+    console.log(`Cleaning up ${itemsToRemove} of ${items.length} stored images to free space...`);
     
     for (let i = 0; i < itemsToRemove; i++) {
       this.removeItem(items[i].key);
-      console.log(`Cleaned up old image: ${items[i].key}`);
+      const sizeKB = Math.round(items[i].size / 1024);
+      console.log(`Cleaned up old image: ${items[i].key} (${sizeKB}KB)`);
     }
   }
   
-  static getStorageInfo(): { used: number; limit: number; percentage: number } {
+  static getStorageInfo(): { used: number; limit: number; percentage: number; itemCount: number } {
     const used = this.getStorageSize();
     const percentage = (used / this.MAX_STORAGE_SIZE) * 100;
+    
+    // Count items
+    let itemCount = 0;
+    for (let key in localStorage) {
+      if (key.startsWith(this.STORAGE_KEY_PREFIX) && !key.includes('_timestamp')) {
+        itemCount++;
+      }
+    }
     
     return {
       used,
       limit: this.MAX_STORAGE_SIZE,
-      percentage: Math.round(percentage)
+      percentage: Math.round(percentage),
+      itemCount
     };
+  }
+  
+  static clearAllStoredImages(): void {
+    const keys = [];
+    for (let key in localStorage) {
+      if (key.startsWith(this.STORAGE_KEY_PREFIX)) {
+        keys.push(key);
+      }
+    }
+    
+    keys.forEach(key => localStorage.removeItem(key));
+    console.log(`Cleared ${keys.length} storage items`);
   }
 }
