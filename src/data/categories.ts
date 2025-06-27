@@ -1,18 +1,14 @@
 
 export const categories = [
   { value: 'all', label: 'All Equipment' },
-  { value: 'Boilers', label: 'Steam Boilers' },
-  { value: 'Storage', label: 'Storage Tanks' },
-  { value: 'Safety', label: 'Safety Equipment' },
-  { value: 'Cleaning', label: 'Cleaning Systems' },
-  { value: 'Process', label: 'Process Equipment' },
-  { value: 'Vessels', label: 'Pressure Vessels' },
-  { value: 'Heavy Construction', label: 'Heavy Construction Equipment' },
-  { value: 'Compressors', label: 'Compressors & Air Systems' },
-  { value: 'Material Handling', label: 'Material Handling' },
-  { value: 'Power Generation', label: 'Power Generation' },
-  { value: 'Testing & Instrumentation', label: 'Testing & Instrumentation' },
-  { value: 'HVAC & Environmental', label: 'HVAC & Environmental' }
+  { value: 'Core Heavy Equipment', label: 'Core Heavy Equipment' },
+  { value: 'Power, Climate & Fluids', label: 'Power, Climate & Fluids' },
+  { value: 'Storage & Containment', label: 'Storage & Containment' },
+  { value: 'Refinery & Process Tools', label: 'Refinery & Process Tools' },
+  { value: 'Inspection, Safety & Compliance', label: 'Inspection, Safety & Compliance' },
+  { value: 'Fabrication & Field Services', label: 'Fabrication & Field Services' },
+  { value: 'Cleaning & Remediation', label: 'Cleaning & Remediation' },
+  { value: 'Offshore & Marine', label: 'Offshore & Marine' }
 ];
 
 export const vendorRatingOptions = [

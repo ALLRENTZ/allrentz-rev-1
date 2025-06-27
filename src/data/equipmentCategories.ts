@@ -12,83 +12,91 @@ export interface EquipmentCategory {
 
 export const equipmentCategories: EquipmentCategory[] = [
   {
-    id: 'storage-tanks',
-    title: 'Storage & Frac Tanks',
-    description: 'High-capacity storage solutions for industrial operations',
-    image: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?w=400&h=300&fit=crop&auto=format',
-    equipmentCount: 45,
-    subItems: ['21K Gallon Frac Tanks', 'Vacuum-Ready Storage', '500 BBL Tanks', 'Mobile Storage Units'],
-    label: 'Core Solutions',
-    category: 'Storage'
-  },
-  {
-    id: 'power-generation',
-    title: 'Power Generation',
-    description: 'Reliable power solutions for industrial sites',
-    image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop&auto=format',
-    equipmentCount: 32,
-    subItems: ['Diesel Generators', 'Natural Gas Units', 'Portable Power', 'Load Banks'],
-    label: 'Core Solutions',
-    category: 'Power Generation'
-  },
-  {
-    id: 'boilers-steam',
-    title: 'Boilers & Steam Systems',
-    description: 'Industrial boilers and steam generation equipment',
-    image: 'https://images.unsplash.com/photo-1565008447742-97f6717d4e89?w=400&h=300&fit=crop&auto=format',
-    equipmentCount: 28,
-    subItems: ['Steam Boilers', 'Hot Water Systems', 'Thermal Fluid Heaters', 'Heat Exchangers'],
-    label: 'Core Solutions',
-    category: 'Boilers'
-  },
-  {
-    id: 'safety-equipment',
-    title: 'Safety & Monitoring',
-    description: 'Critical safety equipment for hazardous environments',
-    image: 'https://images.unsplash.com/photo-1621416894227-d6a8b66e12d3?w=400&h=300&fit=crop&auto=format',
-    equipmentCount: 67,
-    subItems: ['Gas Detectors', 'Emergency Showers', 'Fire Suppression', 'Personal Protection'],
-    label: 'Advanced',
-    category: 'Safety'
-  },
-  {
-    id: 'cleaning-systems',
-    title: 'Cleaning & Decontamination',
-    description: 'Industrial cleaning and decontamination solutions',
-    image: 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400&h=300&fit=crop&auto=format',
-    equipmentCount: 41,
-    subItems: ['High-Pressure Washers', 'Chemical Cleaning', 'Steam Cleaning', 'Vacuum Systems'],
-    label: 'Advanced',
-    category: 'Cleaning'
-  },
-  {
-    id: 'compressors',
-    title: 'Compressors & Air Systems',
-    description: 'Compressed air and gas solutions for industrial use',
-    image: 'https://images.unsplash.com/photo-1592840464026-34f74cede7e7?w=400&h=300&fit=crop&auto=format',
-    equipmentCount: 35,
-    subItems: ['Rotary Screw Compressors', 'Portable Units', 'Oil-Free Systems', 'High-Pressure Units'],
-    label: 'Core Solutions',
-    category: 'Compressors'
-  },
-  {
-    id: 'material-handling',
-    title: 'Material Handling',
-    description: 'Equipment for moving and positioning materials',
+    id: 'core-heavy-equipment',
+    title: 'Core Heavy Equipment',
+    description: 'Essential earthmoving and lifting equipment for industrial operations',
     image: 'https://images.unsplash.com/photo-1581093450021-4a7360e9a6b5?w=400&h=300&fit=crop&auto=format',
     equipmentCount: 52,
-    subItems: ['Forklifts', 'Conveyor Systems', 'Hoists & Cranes', 'Pneumatic Handlers'],
-    label: 'Tooling',
-    category: 'Material Handling'
+    subItems: ['Excavators & Earthmoving', 'Aerial / Boom Lifts', 'Forklifts & Telehandlers'],
+    label: 'Core Solutions',
+    category: 'Core Heavy Equipment'
   },
   {
-    id: 'testing-instrumentation',
-    title: 'Testing & Instrumentation',
-    description: 'Precision testing and measurement equipment',
-    image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400&h=300&fit=crop&auto=format',
-    equipmentCount: 29,
-    subItems: ['NDT Equipment', 'Pressure Testing', 'Flow Meters', 'Calibration Tools'],
+    id: 'power-climate-fluids',
+    title: 'Power, Climate & Fluids',
+    description: 'Power generation, climate control, and fluid handling systems',
+    image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop&auto=format',
+    equipmentCount: 67,
+    subItems: ['Generators & Power', 'HVAC / Climate', 'Pumps & Pressure', 'Dewatering'],
+    label: 'Core Solutions',
+    category: 'Power, Climate & Fluids'
+  },
+  {
+    id: 'storage-containment',
+    title: 'Storage & Containment',
+    description: 'High-capacity storage and containment solutions for industrial operations',
+    image: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?w=400&h=300&fit=crop&auto=format',
+    equipmentCount: 45,
+    subItems: ['Frac Tanks & Temp Storage', 'Chemical Handling', 'Spill/Secondary Containment'],
+    label: 'Core Solutions',
+    category: 'Storage & Containment'
+  },
+  {
+    id: 'refinery-process-tools',
+    title: 'Refinery & Process Tools',
+    description: 'Specialized equipment for refinery and process operations',
+    image: 'https://images.unsplash.com/photo-1565008447742-97f6717d4e89?w=400&h=300&fit=crop&auto=format',
+    equipmentCount: 38,
+    subItems: ['Specialized Refinery Tools', 'Process Equip & Systems', 'Corrosion / Cathodic'],
     label: 'Advanced',
-    category: 'Testing & Instrumentation'
+    category: 'Refinery & Process Tools'
+  },
+  {
+    id: 'inspection-safety-compliance',
+    title: 'Inspection, Safety & Compliance',
+    description: 'Critical safety equipment for hazardous environments',
+    image: 'https://images.unsplash.com/photo-1621416894227-d6a8b66e12d3?w=400&h=300&fit=crop&auto=format',
+    equipmentCount: 73,
+    subItems: ['NDT / Pipeline Inspection', 'Gas Detection', 'Confined-Space Kits', 'Fire & Emergency'],
+    label: 'Advanced',
+    category: 'Inspection, Safety & Compliance'
+  },
+  {
+    id: 'fabrication-field-services',
+    title: 'Fabrication & Field Services',
+    description: 'Mobile fabrication and field service equipment',
+    image: 'https://images.unsplash.com/photo-1592840464026-34f74cede7e7?w=400&h=300&fit=crop&auto=format',
+    equipmentCount: 29,
+    subItems: ['Welding & Piping', 'Cutting / Threading', 'Mobile Fab Stations'],
+    label: 'Tooling',
+    category: 'Fabrication & Field Services'
+  },
+  {
+    id: 'cleaning-remediation',
+    title: 'Cleaning & Remediation',
+    description: 'Industrial cleaning and environmental remediation solutions',
+    image: 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400&h=300&fit=crop&auto=format',
+    equipmentCount: 41,
+    subItems: ['Tank Cleaning & HP Water', 'Enviro Remediation', 'Waste Mgmt / Treatment'],
+    label: 'Advanced',
+    category: 'Cleaning & Remediation'
+  },
+  {
+    id: 'offshore-marine',
+    title: 'Offshore & Marine',
+    description: 'Specialized equipment for offshore and marine operations',
+    image: 'https://images.unsplash.com/photo-1487887235947-a955ef187fcc?w=400&h=300&fit=crop&auto=format',
+    equipmentCount: 24,
+    subItems: ['Subsea / ROV Tooling', 'Marine Rigging', 'Positioning / Nav'],
+    label: 'Advanced',
+    category: 'Offshore & Marine'
   }
 ];
+
+// Helper function to get categories with conditional offshore display
+export const getVisibleCategories = (showOffshore: boolean = false): EquipmentCategory[] => {
+  if (showOffshore) {
+    return equipmentCategories;
+  }
+  return equipmentCategories.filter(category => category.id !== 'offshore-marine');
+};
