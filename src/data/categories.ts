@@ -1,7 +1,6 @@
-
 export const categories = [
   { value: 'all', label: 'All Equipment' },
-  { value: 'Core Heavy Equipment', label: 'Core Heavy Equipment' },
+  { value: 'Heavy Construction Equipment', label: 'Heavy Construction Equipment' },
   { value: 'Power, Climate & Fluids', label: 'Power, Climate & Fluids' },
   { value: 'Storage & Containment', label: 'Storage & Containment' },
   { value: 'Refinery & Process Tools', label: 'Refinery & Process Tools' },

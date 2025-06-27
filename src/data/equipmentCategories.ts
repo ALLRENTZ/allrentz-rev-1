@@ -1,4 +1,3 @@
-
 export interface EquipmentCategory {
   id: string;
   title: string;
@@ -12,14 +11,14 @@ export interface EquipmentCategory {
 
 export const equipmentCategories: EquipmentCategory[] = [
   {
-    id: 'core-heavy-equipment',
-    title: 'Core Heavy Equipment',
-    description: 'Essential earthmoving and lifting equipment for industrial operations',
+    id: 'heavy-construction-equipment',
+    title: 'Heavy Construction Equipment',
+    description: 'Essential earthmoving and construction equipment for industrial operations',
     image: 'https://images.unsplash.com/photo-1581093450021-4a7360e9a6b5?w=400&h=300&fit=crop&auto=format',
     equipmentCount: 52,
-    subItems: ['Excavators & Earthmoving', 'Aerial / Boom Lifts', 'Forklifts & Telehandlers'],
+    subItems: ['Dozers', 'Excavators', 'Road Equipment (Pavers and Reclaimers)'],
     label: 'Core Solutions',
-    category: 'Core Heavy Equipment'
+    category: 'Heavy Construction Equipment'
   },
   {
     id: 'power-climate-fluids',
