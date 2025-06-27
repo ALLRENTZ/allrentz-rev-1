@@ -1,338 +1,158 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Star, MapPin, CheckCircle, Calendar, Shield, AlertTriangle, Wrench, Pencil } from 'lucide-react';
-import EquipmentVerificationSystem, { getEquipmentVerificationStatus } from './EquipmentVerificationSystem';
-import { EquipmentItem } from '@/data/types';
-import { useToast } from "@/hooks/use-toast";
 
-interface EquipmentCardProps {
-  item: EquipmentItem;
-  onRequestPhotos: (equipmentName: string) => void;
-  onRequestSpecs: (equipmentName: string) => void;
-  onImageUpdate?: (equipmentId: number, newImageUrl: string) => void;
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { MapPin, Clock, Wrench, CheckCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import EquipmentQuoteRequest from './EquipmentQuoteRequest';
+
+interface Equipment {
+  id: string;
+  title: string;
+  category: string;
+  daily_rate: number;
+  location: string;
+  image_url?: string;
+  available?: boolean;
+  description?: string;
+  response_time_hours?: number;
+  requires_operator?: boolean;
+  hazmat_certified?: boolean;
+  compliance_tags?: string[];
 }
 
-const EquipmentCard: React.FC<EquipmentCardProps> = ({ 
-  item, 
-  onRequestPhotos, 
-  onRequestSpecs,
-  onImageUpdate 
-}) => {
-  const [imageError, setImageError] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
-  const [isHovering, setIsHovering] = useState(false);
-  const [currentImage, setCurrentImage] = useState(item.image);
-  const [isUploading, setIsUploading] = useState(false);
-  const { toast } = useToast();
-  
-  const verificationStatus = getEquipmentVerificationStatus({
-    hasPhotos: item.hasPhotos,
-    specVerified: item.specVerified
-  });
+interface EquipmentCardProps {
+  equipment: Equipment;
+  onQuoteRequest?: (equipmentId: string) => void;
+}
 
-  // Load saved image from localStorage on component mount
-  React.useEffect(() => {
-    const savedImage = localStorage.getItem(`equipment_image_${item.id}`);
-    if (savedImage) {
-      setCurrentImage(savedImage);
-    }
-  }, [item.id]);
+const EquipmentCard: React.FC<EquipmentCardProps> = ({ equipment, onQuoteRequest }) => {
+  const { user, profile } = useAuth();
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
 
-  // Fallback image based on equipment category
-  const getFallbackImage = (category: string) => {
-    const fallbacks = {
-      'Boilers': 'https://images.unsplash.com/photo-1565008447742-97f6717d4e89?w=400&h=300&fit=crop&auto=format',
-      'Storage': 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?w=400&h=300&fit=crop&auto=format',
-      'Safety': 'https://images.unsplash.com/photo-1621416894227-d6a8b66e12d3?w=400&h=300&fit=crop&auto=format',
-      'Cleaning': 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400&h=300&fit=crop&auto=format',
-      'Process': 'https://images.unsplash.com/photo-1581092335941-9406ac110441?w=400&h=300&fit=crop&auto=format',
-      'Vessels': 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?w=400&h=300&fit=crop&auto=format',
-      'Heavy Construction': 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=400&h=300&fit=crop&auto=format',
-      'Compressors': 'https://images.unsplash.com/photo-1592840464026-34f74cede7e7?w=400&h=300&fit=crop&auto=format',
-      'Material Handling': 'https://images.unsplash.com/photo-1581093450021-4a7360e9a6b5?w=400&h=300&fit=crop&auto=format',
-      'Power Generation': 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop&auto=format',
-      'Testing & Instrumentation': 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400&h=300&fit=crop&auto=format',
-      'HVAC & Environmental': 'https://images.unsplash.com/photo-1614200983771-f5de42f2fe0c?w=400&h=300&fit=crop&auto=format'
-    };
-    
-    return fallbacks[category as keyof typeof fallbacks] || 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=300&fit=crop&auto=format';
-  };
-
-  const handleImageError = () => {
-    setImageError(true);
-    setImageLoading(false);
-  };
-
-  const handleImageLoad = () => {
-    setImageLoading(false);
-  };
-
-  const handleImageEdit = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = handleImageUpload;
-    input.click();
-  };
-
-  const handleImageUpload = async (event: Event) => {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: "Invalid File",
-        description: "Please select an image file.",
-        variant: "destructive"
-      });
+  const handleRequestQuote = () => {
+    if (!user) {
+      // Redirect to auth if not logged in
+      window.location.href = '/auth';
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "File Too Large",
-        description: "Please select an image smaller than 5MB.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsUploading(true);
-
-    try {
-      const reader = new FileReader();
-      
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        reader.onload = (e) => {
-          if (e.target?.result) {
-            resolve(e.target.result as string);
-          } else {
-            reject(new Error('Failed to read file'));
-          }
-        };
-        reader.onerror = () => reject(new Error('Failed to read file'));
-        reader.readAsDataURL(file);
-      });
-      
-      setCurrentImage(dataUrl);
-      setImageError(false);
-      localStorage.setItem(`equipment_image_${item.id}`, dataUrl);
-      onImageUpdate?.(item.id, dataUrl);
-      
-      toast({
-        title: "Image Updated",
-        description: `Successfully updated image for ${item.name}`,
-      });
-    } catch (error) {
-      console.error('Image upload error:', error);
-      toast({
-        title: "Upload Failed",
-        description: "Failed to update image. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsUploading(false);
+    // Check if user has completed onboarding
+    if (profile?.onboarding_completed) {
+      // Show quote modal directly for completed users
+      setShowQuoteModal(true);
+    } else {
+      // Redirect to onboarding for incomplete users
+      window.location.href = '/customer-onboarding';
     }
   };
 
-  const imageToDisplay = imageError ? getFallbackImage(item.category) : currentImage;
+  const handleQuoteSubmitted = () => {
+    setShowQuoteModal(false);
+    if (onQuoteRequest) {
+      onQuoteRequest(equipment.id);
+    }
+  };
 
   return (
-    <div className="industrial-card overflow-hidden hover:shadow-lg transition-shadow">
-      {/* Image */}
-      <div 
-        className="relative"
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
-      >
-        {imageLoading && (
-          <div className="w-full h-48 bg-gray-200 animate-pulse flex items-center justify-center">
-            <div className="text-gray-400 text-sm">Loading...</div>
-          </div>
-        )}
-        <img 
-          src={imageToDisplay} 
-          alt={item.name}
-          className={`w-full h-48 object-cover ${imageLoading ? 'hidden' : 'block'}`}
-          onError={handleImageError}
-          onLoad={handleImageLoad}
-        />
-        
-        {/* Edit Button - Bottom Right with Higher Z-Index */}
-        {isHovering && !imageLoading && (
-          <div className="absolute bottom-3 right-3 z-50">
-            <button
-              onClick={handleImageEdit}
-              disabled={isUploading}
-              className="bg-black bg-opacity-80 hover:bg-opacity-90 text-white p-2.5 rounded-full transition-all duration-200 flex items-center justify-center shadow-lg backdrop-blur-sm"
-              title="Edit Image"
-            >
-              {isUploading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              ) : (
-                <Pencil className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-        )}
-
-        {/* Critical Badges Only - Top Left */}
-        <div className="absolute top-3 left-3 flex flex-col gap-2 max-w-[60%]">
-          {item.isApproved && (
-            <span className="industrial-badge-approved inline-flex items-center space-x-1 backdrop-blur-sm">
-              <CheckCircle className="h-3 w-3" />
-              <span>ALLRENTZ Verified</span>
-            </span>
-          )}
-          {!item.available && (
-            <span className="industrial-badge-alert backdrop-blur-sm">
-              Not Available
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-6">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
-            <h3 className="text-lg font-bold text-allrentz-gray mb-1">{item.name}</h3>
-            <p className="text-sm text-gray-600">{item.vendor}</p>
-          </div>
-          <div className="flex items-center space-x-1 text-sm">
-            <Star className="h-4 w-4 text-yellow-500 fill-current" />
-            <span className="font-medium">{item.rating}</span>
-            <span className="text-gray-500">({item.reviews})</span>
-          </div>
-        </div>
-
-        {/* Location */}
-        <div className="flex items-center space-x-1 text-sm text-gray-600 mb-3">
-          <MapPin className="h-4 w-4" />
-          <span>{item.location}</span>
-          <span className="text-gray-400">•</span>
-          <span>{item.distance}</span>
-        </div>
-
-        {/* Certifications & Status - Moved from Image */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {item.refineryAccess && (
-            <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full inline-flex items-center space-x-1">
-              <Shield className="h-3 w-3" />
-              <span>Refinery-Ready</span>
-            </span>
-          )}
-          {item.turnaroundCertified && (
-            <span className="bg-purple-500 text-white text-xs px-2 py-1 rounded-full">
-              Turnaround Certified
-            </span>
-          )}
-          {verificationStatus.isFullyVerified && (
-            <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full inline-flex items-center space-x-1">
-              <Shield className="h-3 w-3" />
-              <span>Fully Verified</span>
-            </span>
-          )}
-          {item.operatorIncluded && (
-            <span className="bg-indigo-500 text-white text-xs px-2 py-1 rounded-full">
-              Operator Included
-            </span>
-          )}
-        </div>
-
-        {/* Exclusive Repair Warning */}
-        {item.exclusiveRepairOnly && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-            <div className="flex items-center space-x-2 text-amber-800">
-              <Wrench className="h-4 w-4" />
-              <span className="text-sm font-medium">Exclusive Vendor Repair</span>
+    <>
+      <Card className="industrial-card hover:shadow-lg transition-shadow">
+        <CardHeader className="pb-3">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <CardTitle className="text-lg font-semibold text-gray-900 mb-2">
+                {equipment.title}
+              </CardTitle>
+              <Badge variant="secondary" className="mb-2">
+                {equipment.category}
+              </Badge>
             </div>
-            <p className="text-xs text-amber-700 mt-1">
-              This equipment can only be serviced by the vendor during rental period
+            {equipment.available && (
+              <Badge className="bg-green-100 text-green-800">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Available
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          {equipment.image_url && (
+            <div className="mb-4 rounded-lg overflow-hidden">
+              <img 
+                src={equipment.image_url} 
+                alt={equipment.title}
+                className="w-full h-48 object-cover"
+              />
+            </div>
+          )}
+
+          {equipment.description && (
+            <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+              {equipment.description}
             </p>
-          </div>
-        )}
+          )}
 
-        {/* Equipment Verification */}
-        <div className="mb-4">
-          <EquipmentVerificationSystem 
-            equipment={{
-              id: item.id.toString(),
-              name: item.name,
-              hasPhotos: item.hasPhotos,
-              specVerified: item.specVerified
-            }}
-            onRequestPhotos={() => onRequestPhotos(item.name)}
-            onRequestSpecs={() => onRequestSpecs(item.name)}
-            showCustomerActions={true}
-          />
-        </div>
-
-        {/* Compliance Tags */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {item.complianceTags.map((tag, index) => (
-            <span key={index} className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
-              {tag}
-            </span>
-          ))}
-        </div>
-
-        {/* Pricing */}
-        <div className="border-t border-gray-200 pt-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-2xl font-bold text-allrentz-gray">
-                ${item.dailyRate.toLocaleString()}
-                <span className="text-sm font-normal text-gray-600">/day</span>
-              </p>
-              <p className="text-sm text-gray-600">
-                ${item.weeklyRate.toLocaleString()}/week • ${item.monthlyRate.toLocaleString()}/month
-              </p>
+          <div className="space-y-2 mb-4">
+            <div className="flex items-center text-sm text-gray-600">
+              <MapPin className="h-4 w-4 mr-2" />
+              <span>{equipment.location}</span>
             </div>
+            
+            {equipment.response_time_hours && (
+              <div className="flex items-center text-sm text-gray-600">
+                <Clock className="h-4 w-4 mr-2" />
+                <span>{equipment.response_time_hours}hr response time</span>
+              </div>
+            )}
+            
+            {equipment.requires_operator && (
+              <div className="flex items-center text-sm text-gray-600">
+                <Wrench className="h-4 w-4 mr-2" />
+                <span>Operator included</span>
+              </div>
+            )}
           </div>
 
-          {/* Availability */}
-          {item.available ? (
-            <div className="flex items-center space-x-2 mb-4">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              <span className="text-sm text-green-600 font-medium">Available Now</span>
-            </div>
-          ) : (
-            <div className="flex items-center space-x-2 mb-4">
-              <Calendar className="h-4 w-4 text-orange-500" />
-              <span className="text-sm text-orange-600">
-                Next available: {new Date(item.nextAvailable!).toLocaleDateString()}
-              </span>
+          {equipment.compliance_tags && equipment.compliance_tags.length > 0 && (
+            <div className="mb-4">
+              <div className="flex flex-wrap gap-1">
+                {equipment.compliance_tags.map((tag, index) => (
+                  <Badge key={index} variant="outline" className="text-xs">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* CTA Button - Verification Workflow */}
-          {verificationStatus.isFullyVerified ? (
-            <Link 
-              to="/customer-onboarding"
-              className="w-full text-center inline-block bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-md transition-colors"
-            >
-              Reserve Equipment
-            </Link>
-          ) : (
-            <Link 
-              to="/customer-onboarding"
-              className="w-full text-center inline-block industrial-button font-medium py-3 px-6 rounded-md"
+          <div className="flex items-center justify-between pt-4 border-t">
+            <div>
+              <span className="text-2xl font-bold text-allrentz-red">
+                ${equipment.daily_rate}
+              </span>
+              <span className="text-gray-600 text-sm ml-1">/day</span>
+            </div>
+            <Button 
+              onClick={handleRequestQuote}
+              className="bg-allrentz-red hover:bg-red-700"
             >
               Request Quote
-            </Link>
-          )}
-          
-          {!verificationStatus.isFullyVerified && (
-            <p className="text-xs text-gray-500 text-center mt-2">
-              Verification needed before direct booking
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {showQuoteModal && (
+        <EquipmentQuoteRequest
+          equipment={equipment}
+          onClose={() => setShowQuoteModal(false)}
+          onSubmitted={handleQuoteSubmitted}
+        />
+      )}
+    </>
   );
 };
 

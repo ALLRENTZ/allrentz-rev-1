@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -139,7 +138,7 @@ const CustomerDashboard = () => {
             </div>
           </Link>
           
-          <div className="industrial-card p-6">
+          <Link to="/delivery-tracking" className="industrial-card p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center space-x-3">
               <Calendar className="h-8 w-8 text-green-600" />
               <div>
@@ -147,9 +146,9 @@ const CustomerDashboard = () => {
                 <p className="text-sm text-gray-600">Plan your rentals</p>
               </div>
             </div>
-          </div>
+          </Link>
           
-          <div className="industrial-card p-6">
+          <Link to="/documents-management" className="industrial-card p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center space-x-3">
               <FileText className="h-8 w-8 text-purple-600" />
               <div>
@@ -157,7 +156,7 @@ const CustomerDashboard = () => {
                 <p className="text-sm text-gray-600">Manage paperwork</p>
               </div>
             </div>
-          </div>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
