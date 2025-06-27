@@ -21,6 +21,7 @@ import OperationsCenter from "./pages/OperationsCenter";
 import SecurityCenter from "./pages/SecurityCenter";
 import DeliveryTracking from "./pages/DeliveryTracking";
 import DocumentsManagement from "./pages/DocumentsManagement";
+import TurnaroundManagement from "./pages/TurnaroundManagement";
 import NotFound from "./pages/NotFound";
 import Navigation from "./components/Navigation";
 import Footer from "./components/Footer";
@@ -55,6 +56,7 @@ function App() {
                   <Route path="/security-center" element={<SecurityCenter />} />
                   <Route path="/delivery-tracking" element={<DeliveryTracking />} />
                   <Route path="/documents-management" element={<DocumentsManagement />} />
+                  <Route path="/turnaround-management" element={<TurnaroundManagement />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>
