@@ -1,3 +1,4 @@
+
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle, Clock, Shield, Users, Wrench, Gauge, MapPin, HardHat, FileCheck, Truck, Settings, Zap, Bell, Award, Play } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,89 +32,24 @@ const Landing = () => {
               Designed for refineries, terminals, and real-world jobs — by someone who's lived it.
             </p>
             
-            {/* Enhanced Demo CTA */}
+            {/* Simple Demo Buttons */}
             {!user && (
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-8 mb-8 max-w-4xl mx-auto">
-                <h3 className="text-2xl font-bold mb-4">Experience the Complete Rental Flow</h3>
-                <p className="text-gray-200 mb-6 text-lg">
-                  See realistic data, active rentals, and vendor interactions in under 2 minutes
-                </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
+                <Button
+                  onClick={() => handleDemoAccess('customer')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-md"
+                >
+                  <Play className="h-5 w-5 mr-2" />
+                  Try Customer Demo
+                </Button>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <Card className="bg-blue-600/20 border-blue-400/30">
-                    <CardContent className="p-6 text-center">
-                      <div className="mb-4">
-                        <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <HardHat className="h-8 w-8 text-white" />
-                        </div>
-                        <h4 className="text-xl font-bold mb-2">Customer Demo</h4>
-                        <p className="text-sm text-gray-200 mb-4">
-                          Experience ALLRENTZ as <strong>Gulf Coast Refinery</strong>
-                        </p>
-                      </div>
-                      <div className="space-y-2 text-sm text-left mb-4">
-                        <div className="flex items-center space-x-2">
-                          <CheckCircle className="h-4 w-4 text-green-400" />
-                          <span>Active Steam Boiler rental ($6,650)</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <CheckCircle className="h-4 w-4 text-green-400" />
-                          <span>Pending Frac Tank request ($2,275)</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <CheckCircle className="h-4 w-4 text-green-400" />
-                          <span>Live notifications & SmartMatch</span>
-                        </div>
-                      </div>
-                      <Button
-                        onClick={() => handleDemoAccess('customer')}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-md"
-                      >
-                        <Play className="h-5 w-5 mr-2" />
-                        Try Customer Demo
-                      </Button>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card className="bg-green-600/20 border-green-400/30">
-                    <CardContent className="p-6 text-center">
-                      <div className="mb-4">
-                        <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <Truck className="h-8 w-8 text-white" />
-                        </div>
-                        <h4 className="text-xl font-bold mb-2">Vendor Demo</h4>
-                        <p className="text-sm text-gray-200 mb-4">
-                          Experience ALLRENTZ as <strong>Pat-Rentals Equipment Co</strong>
-                        </p>
-                      </div>
-                      <div className="space-y-2 text-sm text-left mb-4">
-                        <div className="flex items-center space-x-2">
-                          <CheckCircle className="h-4 w-4 text-green-400" />
-                          <span>3 active equipment listings</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <CheckCircle className="h-4 w-4 text-green-400" />
-                          <span>4.8★ rating, 95% compliance</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <CheckCircle className="h-4 w-4 text-green-400" />
-                          <span>Real rental requests & payments</span>
-                        </div>
-                      </div>
-                      <Button
-                        onClick={() => handleDemoAccess('vendor')}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-md"
-                      >
-                        <Play className="h-5 w-5 mr-2" />
-                        Try Vendor Demo
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-                
-                <p className="text-sm text-gray-300">
-                  <strong>No signup required</strong> • Each demo includes guided tour • Realistic industrial data
-                </p>
+                <Button
+                  onClick={() => handleDemoAccess('vendor')}
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-md"
+                >
+                  <Play className="h-5 w-5 mr-2" />
+                  Try Vendor Demo
+                </Button>
               </div>
             )}
 

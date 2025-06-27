@@ -9,7 +9,6 @@ import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import DemoTour from '@/components/DemoTour';
-import DemoDataShowcase from '@/components/DemoDataShowcase';
 
 const CustomerDashboard = () => {
   const { user, profile, showDemoTour, setShowDemoTour } = useAuth();
@@ -117,13 +116,6 @@ const CustomerDashboard = () => {
             {profile?.company_name || 'Your Company'} • Customer Dashboard
           </p>
         </div>
-
-        {/* Demo Data Showcase */}
-        {isDemoUser && (
-          <div className="mb-8">
-            <DemoDataShowcase userType="customer" />
-          </div>
-        )}
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
