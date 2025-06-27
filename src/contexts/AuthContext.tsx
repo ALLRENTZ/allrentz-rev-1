@@ -23,6 +23,8 @@ interface AuthContextType {
   session: Session | null;
   profile: UserProfile | null;
   loading: boolean;
+  showDemoTour: boolean;
+  setShowDemoTour: (show: boolean) => void;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -38,6 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showDemoTour, setShowDemoTour] = useState(false);
   const { toast } = useToast();
 
   const refreshProfile = async () => {
@@ -120,9 +123,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
+      // Show demo tour after successful login
+      setShowDemoTour(true);
+
       toast({
-        title: `Signed in as ${type === 'customer' ? 'Pat - Refinery' : 'Pat-Rentals'}`,
-        description: `You're now exploring ALLRENTZ as ${type === 'customer' ? 'a refinery customer' : 'an equipment vendor'}.`,
+        title: `Welcome to the ${type === 'customer' ? 'Customer' : 'Vendor'} Demo!`,
+        description: `You're now exploring ALLRENTZ as ${type === 'customer' ? 'Gulf Coast Refinery' : 'Pat-Rentals Equipment Co'}.`,
       });
     } catch (error) {
       console.error('Demo login error:', error);
@@ -180,6 +186,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     session,
     profile,
     loading,
+    showDemoTour,
+    setShowDemoTour,
     signIn,
     signUp,
     signOut,
