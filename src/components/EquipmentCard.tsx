@@ -122,13 +122,11 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({ equipment, onQuoteRequest
         </CardContent>
       </Card>
 
-      {showQuoteModal && (
-        <EquipmentQuoteRequest
-          equipment={equipment}
-          onClose={() => setShowQuoteModal(false)}
-          onSubmitted={handleQuoteSubmitted}
-        />
-      )}
+      <EquipmentQuoteRequest
+        equipment={equipment}
+        open={showQuoteModal}
+        onOpenChange={setShowQuoteModal}
+      />
     </>
   );
 };
