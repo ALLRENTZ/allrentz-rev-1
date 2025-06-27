@@ -12,6 +12,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { smartMatchEngine, SmartMatchRequest, MatchedVendor } from '@/services/smartMatchEngine';
 
+type UrgencyType = 'immediate' | 'today' | 'this_week' | 'flexible';
+
 const SmartMatchInterface: React.FC = () => {
   const [isMatching, setIsMatching] = useState(false);
   const [matchResults, setMatchResults] = useState<MatchedVendor[]>([]);
@@ -130,7 +132,7 @@ const SmartMatchInterface: React.FC = () => {
               <Label htmlFor="urgency">Urgency</Label>
               <Select 
                 value={request.urgency} 
-                onValueChange={(value: 'immediate' | 'today' | 'this_week' | 'flexible') => setRequest(prev => ({ ...prev, urgency: value }))}
+                onValueChange={(value: UrgencyType) => setRequest(prev => ({ ...prev, urgency: value }))}
               >
                 <SelectTrigger>
                   <SelectValue />
