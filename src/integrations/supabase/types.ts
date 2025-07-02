@@ -265,6 +265,84 @@ export type Database = {
           },
         ]
       }
+      smart_draft_quotes: {
+        Row: {
+          add_on_options: Json | null
+          compliance_notes: string[] | null
+          created_at: string | null
+          customer_id: string
+          delivery_end_date: string
+          delivery_start_date: string
+          delivery_zip_code: string
+          duration_days: number
+          equipment_type: string
+          estimated_daily_rate: number | null
+          estimated_delivery_fee: number | null
+          id: string
+          job_type: string
+          matched_vendor_id: string | null
+          matched_vendor_location: string | null
+          matched_vendor_name: string | null
+          site_requirements: string[] | null
+          special_instructions: string | null
+          status: string | null
+          updated_at: string | null
+          vendor_adjusted_rate: number | null
+          vendor_confirmed: boolean | null
+          vendor_notes: string | null
+        }
+        Insert: {
+          add_on_options?: Json | null
+          compliance_notes?: string[] | null
+          created_at?: string | null
+          customer_id: string
+          delivery_end_date: string
+          delivery_start_date: string
+          delivery_zip_code: string
+          duration_days: number
+          equipment_type: string
+          estimated_daily_rate?: number | null
+          estimated_delivery_fee?: number | null
+          id?: string
+          job_type: string
+          matched_vendor_id?: string | null
+          matched_vendor_location?: string | null
+          matched_vendor_name?: string | null
+          site_requirements?: string[] | null
+          special_instructions?: string | null
+          status?: string | null
+          updated_at?: string | null
+          vendor_adjusted_rate?: number | null
+          vendor_confirmed?: boolean | null
+          vendor_notes?: string | null
+        }
+        Update: {
+          add_on_options?: Json | null
+          compliance_notes?: string[] | null
+          created_at?: string | null
+          customer_id?: string
+          delivery_end_date?: string
+          delivery_start_date?: string
+          delivery_zip_code?: string
+          duration_days?: number
+          equipment_type?: string
+          estimated_daily_rate?: number | null
+          estimated_delivery_fee?: number | null
+          id?: string
+          job_type?: string
+          matched_vendor_id?: string | null
+          matched_vendor_location?: string | null
+          matched_vendor_name?: string | null
+          site_requirements?: string[] | null
+          special_instructions?: string | null
+          status?: string | null
+          updated_at?: string | null
+          vendor_adjusted_rate?: number | null
+          vendor_confirmed?: boolean | null
+          vendor_notes?: string | null
+        }
+        Relationships: []
+      }
       smart_match_requests: {
         Row: {
           additional_requirements: Json | null

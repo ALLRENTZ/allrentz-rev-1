@@ -17,6 +17,7 @@ import CustomerOnboarding from "./pages/CustomerOnboarding";
 import VendorOnboarding from "./pages/VendorOnboarding";
 import EnterpriseOnboarding from "./pages/EnterpriseOnboarding";
 import SmartMatchDemo from "./pages/SmartMatchDemo";
+import SmartDraft from "./pages/SmartDraft";
 import OperationsCenter from "./pages/OperationsCenter";
 import SecurityCenter from "./pages/SecurityCenter";
 import DeliveryTracking from "./pages/DeliveryTracking";
@@ -52,6 +53,7 @@ function App() {
                   <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
                   <Route path="/enterprise-onboarding" element={<EnterpriseOnboarding />} />
                   <Route path="/smartmatch-demo" element={<SmartMatchDemo />} />
+                  <Route path="/smart-draft" element={<SmartDraft />} />
                   <Route path="/operations-center" element={<OperationsCenter />} />
                   <Route path="/security-center" element={<SecurityCenter />} />
                   <Route path="/delivery-tracking" element={<DeliveryTracking />} />

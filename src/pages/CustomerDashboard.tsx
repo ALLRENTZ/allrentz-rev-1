@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Bell, Calendar, DollarSign, Package, Truck, AlertCircle, CheckCircle, Clock, MapPin, FileText, Zap, Settings } from 'lucide-react';
+import { Bell, Calendar, DollarSign, Package, Truck, AlertCircle, CheckCircle, Clock, MapPin, FileText, Zap, Settings, Edit } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -117,7 +117,7 @@ const CustomerDashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
           <Link to="/browse" className="industrial-card p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center space-x-3">
               <Package className="h-8 w-8 text-allrentz-red" />
@@ -134,6 +134,16 @@ const CustomerDashboard = () => {
               <div>
                 <h3 className="font-semibold text-gray-900">SmartMatch</h3>
                 <p className="text-sm text-gray-600">AI-powered matching</p>
+              </div>
+            </div>
+          </Link>
+          
+          <Link to="/smart-draft" className="industrial-card p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center space-x-3">
+              <Edit className="h-8 w-8 text-teal-600" />
+              <div>
+                <h3 className="font-semibold text-gray-900">Smart Draft</h3>
+                <p className="text-sm text-gray-600">AI quote generation</p>
               </div>
             </div>
           </Link>
