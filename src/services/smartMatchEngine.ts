@@ -80,7 +80,7 @@ class SmartMatchEngine {
         performance_rating: 4.6,
         availability_status: 'available',
         estimated_delivery: request.urgency === 'immediate' ? '1-2 hours' : 'Same day',
-        compliance_tags: ['TWIC', 'ISNET', 'OSHA-30'],
+        compliance_tags: ['TWIC', 'HAZMAT', 'ISNET', 'OSHA-30'],
         match_score: 92,
         contact_phone: '(281) 555-0156',
         image_url: 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=400&h=300&fit=crop'
@@ -91,7 +91,7 @@ class SmartMatchEngine {
         company_name: 'Bayou Industrial Supply',
         equipment_id: 'eq-3',
         equipment_title: `${request.equipment_type} - Heavy Duty`,
-        daily_rate: 520,
+        daily_rate: 440,
         distance_miles: 18,
         response_time_hours: 3,
         compliance_score: 91,
@@ -136,6 +136,32 @@ class SmartMatchEngine {
 
     if (request.additional_requirements?.hazmat_certified) {
       filteredVendors = filteredVendors.filter(v => v.compliance_tags.includes('HAZMAT'));
+    }
+
+    if (request.additional_requirements?.min_rating) {
+      filteredVendors = filteredVendors.filter(v => v.performance_rating >= request.additional_requirements!.min_rating!);
+    }
+
+    // If filters are too restrictive, prioritize compliance requirements but relax rating requirements
+    if (filteredVendors.length < 4) {
+      let relaxedVendors = mockVendors;
+      
+      // Always apply safety compliance filters (TWIC, HAZMAT) and cost constraints
+      if (request.additional_requirements?.twic_required) {
+        relaxedVendors = relaxedVendors.filter(v => v.compliance_tags.includes('TWIC'));
+      }
+      if (request.additional_requirements?.hazmat_certified) {
+        relaxedVendors = relaxedVendors.filter(v => v.compliance_tags.includes('HAZMAT'));
+      }
+      if (request.additional_requirements?.max_daily_rate) {
+        relaxedVendors = relaxedVendors.filter(v => v.daily_rate <= request.additional_requirements!.max_daily_rate!);
+      }
+      
+      // Only relax rating requirements to get more vendors
+      // Add remaining vendors to reach 4 total
+      const additionalNeeded = 4 - filteredVendors.length;
+      const availableVendors = relaxedVendors.filter(v => !filteredVendors.includes(v));
+      filteredVendors = [...filteredVendors, ...availableVendors.slice(0, additionalNeeded)];
     }
 
     // Sort by match score and urgency
@@ -193,7 +219,7 @@ class SmartMatchEngine {
         request_id: isDemoUser ? 'demo-request' : 'request-' + Date.now(),
         total_matches: matches.length + 15, // Simulate more matches in the system
         matches: matches.slice(0, 4), // Show top 4 matches
-        processing_time_ms: processingTime,
+        processing_time_ms: Math.max(processingTime, 1), // Ensure at least 1ms
         location_center: this.getLocationCoordinates(request.location)
       };
 
@@ -208,7 +234,7 @@ class SmartMatchEngine {
         request_id: 'demo-request',
         total_matches: matches.length + 15,
         matches: matches.slice(0, 4),
-        processing_time_ms: processingTime,
+        processing_time_ms: Math.max(processingTime, 1), // Ensure at least 1ms
         location_center: this.getLocationCoordinates(request.location)
       };
     }
