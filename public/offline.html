@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALLRENTZ - Offline</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #f1f5f9;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 500px;
+            padding: 40px 30px;
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 16px;
+            border: 1px solid rgba(71, 85, 105, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            background: #dc2626;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+        }
+        
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #dc2626;
+        }
+        
+        .subtitle {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+        }
+        
+        p {
+            color: #94a3b8;
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 16px;
+        }
+        
+        .btn-primary {
+            background: #dc2626;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #b91c1c;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: rgba(71, 85, 105, 0.5);
+            color: #cbd5e1;
+            border: 1px solid rgba(71, 85, 105, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(71, 85, 105, 0.7);
+        }
+        
+        .features {
+            margin-top: 40px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(71, 85, 105, 0.3);
+        }
+        
+        .features h3 {
+            font-size: 16px;
+            margin-bottom: 16px;
+            color: #cbd5e1;
+        }
+        
+        .feature-list {
+            display: grid;
+            gap: 12px;
+            text-align: left;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+        
+        .feature-item::before {
+            content: "✓";
+            color: #10b981;
+            font-weight: bold;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .status-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1000;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+            
+            .actions {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="status-indicator">
+        <span id="connection-status">⚡ Offline Mode</span>
+    </div>
+
+    <div class="container">
+        <div class="icon">
+            🏗️
+        </div>
+        
+        <h1>You're Currently Offline</h1>
+        <div class="subtitle">ALLRENTZ Industrial Equipment Platform</div>
+        <p>
+            Don't worry - you can still access your cached equipment data, 
+            saved searches, and continue working. Your actions will sync 
+            automatically when you're back online.
+        </p>
+        
+        <div class="actions">
+            <button class="btn btn-primary" onclick="tryReconnect()">
+                Try Again
+            </button>
+            <a href="/" class="btn btn-secondary">
+                Go to Homepage
+            </a>
+        </div>
+        
+        <div class="features">
+            <h3>Available Offline:</h3>
+            <div class="feature-list">
+                <div class="feature-item">
+                    Browse cached equipment catalog
+                </div>
+                <div class="feature-item">
+                    View saved equipment requests
+                </div>
+                <div class="feature-item">
+                    Access vendor contact information
+                </div>
+                <div class="feature-item">
+                    Continue equipment comparisons
+                </div>
+                <div class="feature-item">
+                    Draft new rental requests
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Connection status monitoring
+        function updateConnectionStatus() {
+            const statusEl = document.getElementById('connection-status');
+            if (navigator.onLine) {
+                statusEl.innerHTML = '🌐 Back Online';
+                statusEl.style.background = 'rgba(34, 197, 94, 0.9)';
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
+            } else {
+                statusEl.innerHTML = '⚡ Offline Mode';
+                statusEl.style.background = 'rgba(239, 68, 68, 0.9)';
+            }
+        }
+
+        // Try to reconnect
+        async function tryReconnect() {
+            const btn = document.querySelector('.btn-primary');
+            btn.innerHTML = 'Checking...';
+            btn.disabled = true;
+
+            try {
+                // Try to fetch a lightweight resource
+                const response = await fetch('/', { 
+                    method: 'HEAD',
+                    cache: 'no-cache' 
+                });
+                
+                if (response.ok) {
+                    btn.innerHTML = '✓ Connected!';
+                    btn.style.background = '#10b981';
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                } else {
+                    throw new Error('Still offline');
+                }
+            } catch (error) {
+                btn.innerHTML = 'Still Offline';
+                btn.disabled = false;
+                setTimeout(() => {
+                    btn.innerHTML = 'Try Again';
+                }, 2000);
+            }
+        }
+
+        // Listen for connection changes
+        window.addEventListener('online', updateConnectionStatus);
+        window.addEventListener('offline', updateConnectionStatus);
+
+        // Initial status check
+        updateConnectionStatus();
+
+        // Auto-retry every 30 seconds
+        setInterval(() => {
+            if (!navigator.onLine) {
+                tryReconnect();
+            }
+        }, 30000);
+
+        // Service worker message handling
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                if (event.data && event.data.type === 'CACHE_UPDATED') {
+                    console.log('Cache updated, new content available');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
