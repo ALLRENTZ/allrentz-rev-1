@@ -1,0 +1,6 @@
+id,name,type,status,headquarters,founded,employees,website,description,industry,revenue_range,contact_email,contact_phone,created_at,updated_at
+comp_001,Gulf Coast Equipment Rentals,vendor,active,Houston TX,2015,125,www.gulfcoastequip.com,Industrial equipment rental specialists,Oil & Gas,10M-50M,contact@gulfcoastequip.com,713-555-0123,2024-01-15T10:00:00Z,2024-01-15T10:00:00Z
+comp_002,Lone Star Industrial Services,vendor,active,Beaumont TX,2018,85,www.lonestarindustrial.com,Heavy machinery and safety equipment,Industrial Services,5M-25M,info@lonestarindustrial.com,409-555-0156,2024-01-15T10:00:00Z,2024-01-15T10:00:00Z
+comp_003,Bayou Refinery Solutions,customer,active,Port Arthur TX,2010,450,www.bayourefinery.com,Petrochemical refining and processing,Petrochemicals,100M+,procurement@bayourefinery.com,409-555-0189,2024-01-15T10:00:00Z,2024-01-15T10:00:00Z
+comp_004,Corpus Industrial Supply,vendor,active,Corpus Christi TX,2020,65,www.corpusindustrial.com,Equipment and compliance solutions,Industrial Supply,1M-10M,sales@corpusindustrial.com,361-555-0167,2024-01-15T10:00:00Z,2024-01-15T10:00:00Z
+comp_005,Motiva Enterprises,customer,active,Port Arthur TX,2002,2500,www.motivaenterprises.com,Oil refining and petrochemical operations,Oil & Gas,1B+,contracts@motivaenterprises.com,409-555-0200,2024-01-15T10:00:00Z,2024-01-15T10:00:00Z

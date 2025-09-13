@@ -1,0 +1,4 @@
+id,customer_id,equipment_id,vendor_id,booking_id,title,description,priority,status,category,assigned_to,resolved_at,resolution,created_at,updated_at
+ticket_001,comp_003,eq_001,comp_001,book_001,Equipment delivery delay,Steam boiler delivery delayed due to permit issues,medium,in_progress,delivery,user_001,,",2024-11-28T16:00:00Z,2024-11-28T16:30:00Z
+ticket_002,comp_005,eq_002,comp_002,,Compliance documentation request,Need updated HAZMAT certification for frac tank,high,open,compliance,,,2024-11-29T11:15:00Z,2024-11-29T11:15:00Z
+ticket_003,comp_003,eq_004,comp_004,book_003,Equipment malfunction,Pressure vessel showing incorrect readings,critical,resolved,technical,user_004,2024-11-30T14:45:00Z,"Replaced faulty pressure gauge. System tested and operational.",2024-11-26T09:30:00Z,2024-11-30T14:45:00Z
