@@ -1,0 +1,282 @@
+# ALLRENTZ Enterprise Alert Rules
+# Critical monitoring rules for industrial equipment platform
+
+groups:
+  - name: allrentz.application
+    rules:
+      # Application Health
+      - alert: AllrentzApplicationDown
+        expr: up{job="allrentz-web"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+          service: allrentz-web
+        annotations:
+          summary: "ALLRENTZ application is down"
+          description: "The ALLRENTZ application has been down for more than 5 minutes. This affects all customer operations."
+          runbook_url: "https://docs.allrentz.com/runbooks/application-down"
+
+      - alert: AllrentzHighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="allrentz-web"}[5m])) > 2
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+          service: allrentz-web
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s, exceeding 2s threshold"
+
+      - alert: AllrentzHighErrorRate
+        expr: rate(http_requests_total{job="allrentz-web",status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+          service: allrentz-web
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes"
+
+      # Database Connectivity
+      - alert: DatabaseConnectionFailure
+        expr: up{job="postgres-exporter"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+          service: database
+        annotations:
+          summary: "Database connection failure"
+          description: "Cannot connect to database for more than 2 minutes"
+
+  - name: allrentz.infrastructure
+    rules:
+      # System Resources
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: CriticalCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 95
+        for: 5m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "Critical CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: CriticalMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 95
+        for: 5m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "Critical memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: DiskSpaceWarning
+        expr: (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|fuse.lxcfs"})) * 100 > 80
+        for: 15m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "Disk space warning on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value }}% on {{ $labels.mountpoint }} at {{ $labels.instance }}"
+
+      - alert: DiskSpaceCritical
+        expr: (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|fuse.lxcfs"})) * 100 > 90
+        for: 10m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "Critical disk space on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value }}% on {{ $labels.mountpoint }} at {{ $labels.instance }}"
+
+  - name: allrentz.containers
+    rules:
+      # Container Health
+      - alert: ContainerDown
+        expr: up{job="cadvisor"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Container monitoring down"
+          description: "cAdvisor is not collecting container metrics"
+
+      - alert: HighContainerMemoryUsage
+        expr: (container_memory_usage_bytes{container!=""} / container_spec_memory_limit_bytes{container!=""}) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High container memory usage"
+          description: "Container {{ $labels.container_label_com_docker_compose_service }} memory usage is {{ $value }}%"
+
+      - alert: ContainerRestarts
+        expr: increase(container_start_time_seconds{container!=""}[1h]) > 3
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Container restarting frequently"
+          description: "Container {{ $labels.container_label_com_docker_compose_service }} has restarted {{ $value }} times in the last hour"
+
+  - name: allrentz.business
+    rules:
+      # Business Metrics
+      - alert: LowEquipmentAvailability
+        expr: (allrentz_equipment_available / allrentz_equipment_total) * 100 < 75
+        for: 30m
+        labels:
+          severity: warning
+          team: business
+          category: operations
+        annotations:
+          summary: "Low equipment availability"
+          description: "Equipment availability is {{ $value }}%, below 75% threshold"
+
+      - alert: HighFailedBookings
+        expr: rate(allrentz_bookings_failed_total[1h]) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+          team: business
+          category: revenue
+        annotations:
+          summary: "High failed booking rate"
+          description: "Failed booking rate is {{ $value | humanizePercentage }} over the last hour"
+
+      - alert: CustomerSupportBacklog
+        expr: allrentz_support_tickets_open > 50
+        for: 2h
+        labels:
+          severity: warning
+          team: support
+        annotations:
+          summary: "High customer support backlog"
+          description: "{{ $value }} open support tickets, exceeding normal capacity"
+
+  - name: allrentz.security
+    rules:
+      # Security Alerts
+      - alert: HighFailedLoginAttempts
+        expr: rate(allrentz_auth_failed_attempts_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "High failed login attempts"
+          description: "{{ $value }} failed login attempts per second over the last 5 minutes"
+
+      - alert: SuspiciousAPIActivity
+        expr: rate(allrentz_api_requests_total{status=~"4.."}[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "Suspicious API activity detected"
+          description: "High rate of 4xx responses: {{ $value }} requests/second"
+
+      - alert: SecurityScanVulnerabilities
+        expr: allrentz_security_vulnerabilities_critical > 0
+        for: 0m
+        labels:
+          severity: critical
+          team: security
+        annotations:
+          summary: "Critical security vulnerabilities detected"
+          description: "{{ $value }} critical vulnerabilities found in security scan"
+
+  - name: allrentz.external
+    rules:
+      # External Dependencies
+      - alert: ExternalAPIDown
+        expr: probe_success{job="blackbox-http"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "External API/endpoint down"
+          description: "{{ $labels.instance }} is not responding to health checks"
+
+      - alert: SSLCertificateExpiry
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 30
+        for: 1h
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate for {{ $labels.instance }} expires in {{ $value }} days"
+
+      - alert: SSLCertificateExpiryCritical
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 7
+        for: 1h
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "SSL certificate expiring very soon"
+          description: "SSL certificate for {{ $labels.instance }} expires in {{ $value }} days"
+
+  - name: allrentz.compliance
+    rules:
+      # Compliance Monitoring
+      - alert: ComplianceDataMissing
+        expr: allrentz_compliance_checks_failed > 0
+        for: 1h
+        labels:
+          severity: warning
+          team: compliance
+        annotations:
+          summary: "Compliance data validation failed"
+          description: "{{ $value }} compliance checks failed - potential regulatory issues"
+
+      - alert: AuditLogGap
+        expr: increase(allrentz_audit_log_entries_total[1h]) == 0
+        for: 2h
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "Audit logging gap detected"
+          description: "No audit log entries recorded for 2 hours - potential compliance issue"
+
+      - alert: DataRetentionViolation
+        expr: allrentz_data_retention_violations > 0
+        for: 0m
+        labels:
+          severity: critical
+          team: compliance
+        annotations:
+          summary: "Data retention policy violation"
+          description: "{{ $value }} data retention violations detected - immediate action required"

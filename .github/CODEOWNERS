@@ -1,0 +1,57 @@
+# ALLRENTZ Enterprise Code Ownership
+# Defines who owns and reviews different parts of the codebase
+
+# Global fallback - Platform team owns everything by default
+* @allrentz/platform-team
+
+# Security and authentication
+/src/security/ @allrentz/security-team @allrentz/platform-team
+/src/contexts/AuthContext.tsx @allrentz/security-team
+/.github/workflows/ci-cd-pipeline.yml @allrentz/devops-team @allrentz/security-team
+
+# Core infrastructure and deployment
+/terraform/ @allrentz/devops-team @allrentz/platform-team
+/scripts/ @allrentz/devops-team
+/Dockerfile @allrentz/devops-team
+/docker-compose*.yml @allrentz/devops-team
+/.github/workflows/ @allrentz/devops-team
+
+# Business logic and services
+/src/services/ @allrentz/backend-team @allrentz/platform-team
+/src/components/business-logic/ @allrentz/backend-team @allrentz/frontend-team
+
+# Frontend components and UI
+/src/components/ @allrentz/frontend-team
+/src/pages/ @allrentz/frontend-team
+/src/components/ui/ @allrentz/design-system-team
+/tailwind.config.js @allrentz/design-system-team
+
+# Testing infrastructure
+/src/**/*.test.* @allrentz/qa-team @allrentz/platform-team
+/playwright.config.ts @allrentz/qa-team
+/vitest.config.ts @allrentz/qa-team
+/src/test/ @allrentz/qa-team
+
+# Monitoring and observability
+/monitoring/ @allrentz/sre-team @allrentz/devops-team
+/.lighthouserc.js @allrentz/performance-team
+
+# Documentation
+README.md @allrentz/tech-writing-team @allrentz/platform-team
+CLAUDE.md @allrentz/platform-team
+/docs/ @allrentz/tech-writing-team
+
+# Configuration files
+package.json @allrentz/platform-team @allrentz/devops-team
+tsconfig.json @allrentz/platform-team
+vite.config.ts @allrentz/platform-team
+.env.example @allrentz/devops-team @allrentz/security-team
+
+# Compliance and legal
+/compliance/ @allrentz/compliance-team @allrentz/legal-team
+/monitoring/alert-rules.yml @allrentz/compliance-team @allrentz/sre-team
+
+# Critical production files (require multiple approvals)
+/src/security/index.ts @allrentz/security-team @allrentz/cto
+/scripts/deploy-blue-green.sh @allrentz/devops-team @allrentz/cto
+/terraform/main.tf @allrentz/devops-team @allrentz/cto

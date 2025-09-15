@@ -1,0 +1,117 @@
+# OWASP ZAP Security Rules for ALLRENTZ Enterprise Platform
+# Custom security rules for industrial equipment rental platform
+
+# Rule ID	Threshold	Action	Description
+10003	MEDIUM	IGNORE	Vulnerable JS Library - Allow specific versions for industrial compatibility
+10020	HIGH	FAIL	X-Frame-Options Header Not Set
+10021	HIGH	FAIL	X-Content-Type-Options Header Missing
+10023	MEDIUM	WARN	Information Disclosure - Debug Error Messages
+10024	HIGH	FAIL	Information Disclosure - Sensitive Information in URL
+10025	MEDIUM	WARN	Information Disclosure - Sensitive Information in HTTP Referrer Header
+10026	HIGH	FAIL	HTTP Parameter Override
+10027	MEDIUM	WARN	Information Disclosure - Suspicious Comments
+10028	HIGH	FAIL	Open Redirect
+10029	MEDIUM	WARN	Cookie Poisoning
+10030	HIGH	FAIL	User Controllable Charset
+10031	HIGH	FAIL	User Controllable HTML Element Attribute (Potential XSS)
+10032	HIGH	FAIL	Viewstate Scanner
+10033	HIGH	FAIL	Directory Browsing
+10034	HIGH	FAIL	Heartbleed OpenSSL Vulnerability
+10035	HIGH	FAIL	Strict-Transport-Security Header Not Set
+10036	MEDIUM	WARN	HTTP Server Response Header
+10037	MEDIUM	WARN	Server Leaks Information via "X-Powered-By" HTTP Response Header
+10038	MEDIUM	WARN	Content Security Policy (CSP) Header Not Set
+10039	HIGH	FAIL	X-Backend-Server Header Information Leak
+10040	HIGH	FAIL	Secure Pages Include Mixed Content
+10041	HIGH	FAIL	HTTP to HTTPS Insecure Transition in Form Post
+10042	HIGH	FAIL	HTTPS to HTTP Insecure Transition in Form Post
+10043	MEDIUM	WARN	User Controllable JavaScript Event (XSS)
+10044	HIGH	FAIL	Big Redirect Detected (Potential Sensitive Information Leak)
+10045	HIGH	FAIL	Source Code Disclosure - /WEB-INF folder
+10046	HIGH	FAIL	Source Code Disclosure - Git folder
+10047	HIGH	FAIL	Source Code Disclosure - SVN folder
+10048	MEDIUM	WARN	Remote Code Execution - Shell Shock
+10049	HIGH	FAIL	Content Cacheability
+10050	MEDIUM	WARN	Retrieved from Cache
+10051	HIGH	FAIL	Relative Path Overwrite
+10052	HIGH	FAIL	X-ChromeLogger-Data Header Information Leak
+10053	HIGH	FAIL	Apache Range Header DoS (CVE-2011-3192)
+10054	HIGH	FAIL	Cookie Without SameSite Attribute
+10055	HIGH	FAIL	CSP Scanner
+10056	MEDIUM	WARN	X-Debug-Token Information Leak
+10057	HIGH	FAIL	Username Hash Found
+10058	HIGH	FAIL	Cross-Domain Misconfiguration
+10059	MEDIUM	WARN	X-AspNet-Version Response Header
+10060	MEDIUM	WARN	X-Powered-By Response Header
+10061	HIGH	FAIL	X-AspNetMvc-Version Response Header
+10062	HIGH	FAIL	PII Disclosure
+10063	HIGH	FAIL	Feature Policy Header Not Set
+10094	HIGH	FAIL	Base64 Disclosure
+10095	HIGH	FAIL	Backup File Disclosure
+10096	MEDIUM	WARN	Timestamp Disclosure
+10097	HIGH	FAIL	Hash Disclosure
+10098	MEDIUM	WARN	Cross-Domain JavaScript Source File Inclusion
+10099	HIGH	FAIL	Source Code Disclosure
+10100	HIGH	FAIL	ShellShock
+10101	HIGH	FAIL	Sensitive File Disclosure
+10102	MEDIUM	WARN	Session ID in URL Rewrite
+10103	MEDIUM	WARN	Clickjacking Protection
+10104	HIGH	FAIL	User Agent Fuzzer
+10105	HIGH	FAIL	Weak Authentication Method
+10106	MEDIUM	WARN	HTTP Only Site
+10107	HIGH	FAIL	Httpoxy - Proxy Header Misuse
+10108	HIGH	FAIL	Reverse Tabnabbing
+10109	HIGH	FAIL	Modern Web Application
+10110	HIGH	FAIL	Dangerous JS Functions
+10111	HIGH	FAIL	Authentication Request Identified
+10112	HIGH	FAIL	Session Fixation
+40003	HIGH	FAIL	CRLF Injection
+40008	HIGH	FAIL	Parameter Tampering
+40009	HIGH	FAIL	Server Side Include
+40012	HIGH	FAIL	Cross Site Scripting (Reflected)
+40013	HIGH	FAIL	Session ID in URL Rewrite
+40014	HIGH	FAIL	Cross Site Scripting (Persistent)
+40016	HIGH	FAIL	Cross Site Scripting (Persistent) - Prime
+40017	HIGH	FAIL	Cross Site Scripting (Persistent) - Spider
+40018	HIGH	FAIL	SQL Injection
+40019	HIGH	FAIL	SQL Injection - MySQL
+40020	HIGH	FAIL	SQL Injection - Hypersonic SQL
+40021	HIGH	FAIL	SQL Injection - Oracle
+40022	HIGH	FAIL	SQL Injection - PostgreSQL
+40023	HIGH	FAIL	Possible Username Enumeration
+40024	HIGH	FAIL	SQL Injection - SQLite
+40025	HIGH	FAIL	Proxy Disclosure
+40026	HIGH	FAIL	Cross Site Scripting (DOM Based)
+40027	HIGH	FAIL	SQL Injection - MsSQL
+40028	HIGH	FAIL	ELMAH Information Leak
+40029	HIGH	FAIL	Trace.axd Information Leak
+50000	HIGH	FAIL	Script Active Scan Rules
+90001	HIGH	FAIL	Insecure JSF ViewState
+90002	HIGH	FAIL	Java Serialization Object
+90011	HIGH	FAIL	Charset Mismatch
+90017	HIGH	FAIL	XSLT Injection
+90018	HIGH	FAIL	SQL Injection - Blind
+90019	HIGH	FAIL	Code Injection
+90020	HIGH	FAIL	Command Injection
+90021	HIGH	FAIL	XPath Injection
+90022	HIGH	FAIL	Application Error Disclosure
+90023	HIGH	FAIL	XML External Entity Attack
+90024	HIGH	FAIL	Generic Padding Oracle
+90025	HIGH	FAIL	Expression Language Injection
+90026	HIGH	FAIL	SOAP Action Spoofing
+90027	HIGH	FAIL	Cookie Slack Detector
+90028	HIGH	FAIL	Insecure HTTP Method
+90029	HIGH	FAIL	LDAP Injection
+90030	HIGH	FAIL	WSDL File Passive Scanner
+90033	HIGH	FAIL	Loosely Scoped Cookie
+90034	MEDIUM	WARN	Cloud Metadata Potentially Exposed
+
+# Industrial Equipment Specific Rules
+# Additional security considerations for equipment rental platform
+100001	HIGH	FAIL	Equipment Data Exposure
+100002	HIGH	FAIL	Vendor Credential Leakage  
+100003	HIGH	FAIL	Location Data Exposure
+100004	HIGH	FAIL	Compliance Certificate Exposure
+100005	MEDIUM	WARN	Equipment Specification Disclosure
+100006	HIGH	FAIL	Customer Financial Information Leak
+100007	HIGH	FAIL	OSHA/EPA Data Exposure

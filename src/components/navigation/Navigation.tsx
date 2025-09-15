@@ -3,7 +3,7 @@ import { useState, memo, useCallback, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, HardHat, Shield, User, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import LoginModal from './LoginModal';
+import LoginModal from '../security/LoginModal';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,

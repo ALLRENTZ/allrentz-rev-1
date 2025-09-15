@@ -66,10 +66,13 @@ export interface CompanyRepository extends Repository<Company> {
 
 // User entity and repository  
 export interface User extends BaseEntity {
+  name: string;
   email: string;
+  password_hash: string;
   role: 'customer' | 'vendor' | 'admin' | 'manager';
   status: 'active' | 'inactive' | 'pending';
   company_id?: string;
+  phone?: string;
   profile: {
     firstName: string;
     lastName: string;
