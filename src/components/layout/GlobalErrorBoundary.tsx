@@ -1,6 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertCircle, RefreshCw, Home, Bug } from 'lucide-react';
-import { logger } from '@/lib/logger';
+const logger = { error: (...args: unknown[]) => console.error(...args) };
 
 interface Props {
   children: ReactNode;
@@ -38,8 +38,8 @@ export class GlobalErrorBoundary extends Component<Props, State> {
     });
 
     // Report to error tracking service if available
-    if (typeof window !== 'undefined' && (window as { Sentry?: unknown }).Sentry) {
-      const sentry = (window as { Sentry: { captureException: (error: Error, options?: unknown) => void } }).Sentry;
+    if (typeof window !== 'undefined' && (window as unknown as { Sentry?: { captureException: (error: Error, options?: unknown) => void } }).Sentry) {
+      const sentry = (window as unknown as { Sentry: { captureException: (error: Error, options?: unknown) => void } }).Sentry;
       sentry.captureException(error, {
         contexts: {
           react: {
