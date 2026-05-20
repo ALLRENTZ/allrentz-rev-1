@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, MapPin, Calendar, FileText, Bell, Settings, DollarSign, CheckCircle, AlertTriangle, TrendingUp, Package } from 'lucide-react';
 import RentalStatusTimeline from '@/components/RentalStatusTimeline';
+import DigitalBinder from '@/components/DigitalBinder';
 
 const VendorDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
