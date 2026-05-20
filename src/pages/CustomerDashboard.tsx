@@ -314,10 +314,5 @@ const CustomerDashboard = () => {
     </div>
   );
 };
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export default CustomerDashboard;
