@@ -59,7 +59,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     }
 
     // In production, send to error reporting service
-    if (process.env.NODE_ENV === 'production') {
+    if (import.meta.env.MODE === 'production') {
       this.reportError(error, errorInfo, errorId);
     }
   }
@@ -116,7 +116,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             <p className="mt-2 text-sm text-gray-600">
               We encountered an unexpected error. Our team has been notified.
             </p>
-            {process.env.NODE_ENV === 'development' && error && (
+            {import.meta.env.MODE === 'development' && error && (
               <details className="mt-4 text-left bg-red-50 border border-red-200 rounded-md p-4">
                 <summary className="cursor-pointer text-red-800 font-semibold">
                   Error Details (Development)
@@ -181,7 +181,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             This section encountered an error and couldn't load properly.
           </p>
           
-          {process.env.NODE_ENV === 'development' && error && (
+          {import.meta.env.MODE === 'development' && error && (
             <details className="bg-red-100 border border-red-300 rounded p-3">
               <summary className="cursor-pointer text-red-800 text-sm font-medium">
                 Error Details
@@ -288,7 +288,7 @@ export const useErrorHandler = () => {
     });
 
     // In production, send to error reporting
-    if (process.env.NODE_ENV === 'production') {
+    if (import.meta.env.MODE === 'production') {
       // TODO: Send to error service
     }
 
