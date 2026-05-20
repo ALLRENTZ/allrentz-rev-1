@@ -1,10 +1,20 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
-const FeaturedEquipmentHeader: React.FC = () => {
+interface FeaturedEquipmentHeaderProps {
+  onSearch?: (query: string) => void;
+}
+
+const FeaturedEquipmentHeader: React.FC<FeaturedEquipmentHeaderProps> = ({ onSearch }) => {
+  const [query, setQuery] = useState('');
+
+  const triggerSearch = () => {
+    onSearch?.(query.trim());
+  };
+
   return (
     <div className="bg-black text-white py-12 mb-8">
       <div className="max-w-7xl mx-auto px-4">
@@ -21,11 +31,17 @@ const FeaturedEquipmentHeader: React.FC = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <Input
                 type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') triggerSearch(); }}
                 placeholder="Search equipment, categories, or specifications..."
                 className="pl-10 py-3 text-black bg-white border-0 focus:ring-2 focus:ring-white/20"
               />
             </div>
-            <Button className="px-8 py-3 bg-allrentz-red hover:bg-allrentz-red-dark text-white font-semibold">
+            <Button
+              onClick={triggerSearch}
+              className="px-8 py-3 bg-allrentz-red hover:bg-allrentz-red-dark text-white font-semibold"
+            >
               Search
             </Button>
           </div>
