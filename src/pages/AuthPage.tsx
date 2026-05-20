@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ const AuthPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { user, signIn, signUp, loginAsDemo } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Redirect if already authenticated
   if (user) {
@@ -58,8 +59,14 @@ const AuthPage: React.FC = () => {
 
   const handleDemoLogin = async (type: 'customer' | 'vendor') => {
     setLoading(true);
-    await loginAsDemo(type);
-    setLoading(false);
+    try {
+      await loginAsDemo(type);
+      navigate(type === 'customer' ? '/customer-dashboard' : '/vendor-dashboard');
+    } catch (error) {
+      toast({ title: 'Login failed', description: 'Please try again.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -116,6 +123,7 @@ const AuthPage: React.FC = () => {
             </p>
             <div className="grid grid-cols-2 gap-3">
               <Button
+                type="button"
                 onClick={() => handleDemoLogin('customer')}
                 disabled={loading}
                 className="bg-blue-600 hover:bg-blue-700 flex items-center space-x-2"
@@ -124,6 +132,7 @@ const AuthPage: React.FC = () => {
                 <span>Customer Demo</span>
               </Button>
               <Button
+                type="button"
                 onClick={() => handleDemoLogin('vendor')}
                 disabled={loading}
                 className="bg-green-600 hover:bg-green-700 flex items-center space-x-2"
