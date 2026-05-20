@@ -1,5 +1,5 @@
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import FeaturedEquipmentHeader from '@/components/FeaturedEquipmentHeader';
 import FeaturedEquipmentCard from '@/components/FeaturedEquipmentCard';
 import { FeaturedEquipmentItem } from '@/data/featuredEquipment';
@@ -8,6 +8,17 @@ import { supabase } from '@/integrations/supabase/client';
 const FeaturedEquipment: React.FC = () => {
   const [equipmentItems, setEquipmentItems] = useState<FeaturedEquipmentItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+
+  const escapeLikePattern = (value: string) =>
+    value
+      .replace(/\\/g, '\\\\')
+      .replace(/%/g, '\\%')
+      .replace(/_/g, '\\_')
+      .replace(/,/g, '\\,')
+      .replace(/\./g, '\\.')
+      .replace(/:/g, '\\:')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)');
 
   const handleImageUpdate = (equipmentId: string, newImageUrl: string) => {
     setEquipmentItems(prevItems =>
@@ -36,17 +47,19 @@ const FeaturedEquipment: React.FC = () => {
     vendor: '',
   });
 
-  const runSearch = useCallback(async (query: string) => {
+  const runSearch = async (query: string) => {
     setIsSearching(true);
     try {
+      const trimmedQuery = query.trim();
+
       let req = supabase
         .from('equipment')
         .select('*')
         .order('daily_rate', { ascending: true })
         .limit(50);
 
-      if (query) {
-        const pattern = `%${query}%`;
+      if (trimmedQuery) {
+        const pattern = `%${escapeLikePattern(trimmedQuery)}%`;
         req = req.or(
           `title.ilike.${pattern},category.ilike.${pattern},description.ilike.${pattern}`
         );
@@ -64,11 +77,11 @@ const FeaturedEquipment: React.FC = () => {
     } finally {
       setIsSearching(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     void runSearch('');
-  }, [runSearch]);
+  }, []);
 
   return (
     <div>
