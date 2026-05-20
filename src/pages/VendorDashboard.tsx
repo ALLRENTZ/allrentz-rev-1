@@ -511,45 +511,7 @@ const VendorDashboard = () => {
 
             {activeTab === 'documents' && (
               <div className="industrial-card p-6">
-                <h2 className="text-xl font-bold text-allrentz-gray mb-6">Compliance Documents</h2>
-                <div className="space-y-4">
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <FileText className="h-6 w-6 text-allrentz-red" />
-                        <div>
-                          <h3 className="font-semibold text-allrentz-gray">General Liability Insurance</h3>
-                          <p className="text-sm text-gray-600">Expires: December 31, 2024</p>
-                        </div>
-                      </div>
-                      <span className="industrial-badge-approved">Valid</span>
-                    </div>
-                  </div>
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <FileText className="h-6 w-6 text-allrentz-red" />
-                        <div>
-                          <h3 className="font-semibold text-allrentz-gray">Equipment Safety Certificates</h3>
-                          <p className="text-sm text-gray-600">Last updated: June 1, 2024</p>
-                        </div>
-                      </div>
-                      <span className="industrial-badge-approved">Current</span>
-                    </div>
-                  </div>
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <FileText className="h-6 w-6 text-yellow-500" />
-                        <div>
-                          <h3 className="font-semibold text-allrentz-gray">OSHA Compliance Certificate</h3>
-                          <p className="text-sm text-gray-600">Expires: August 15, 2024</p>
-                        </div>
-                      </div>
-                      <span className="industrial-badge-pending">Renewal Due</span>
-                    </div>
-                  </div>
-                </div>
+                <DigitalBinder />
               </div>
             )}
 
