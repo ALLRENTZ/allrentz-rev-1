@@ -32,43 +32,45 @@ const queryClient = new QueryClient();
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <div className="flex flex-col min-h-screen">
-              <Navigation />
-              <main className="flex-1">
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/browse" element={<Browse />} />
-                  <Route path="/browse/results" element={<BrowseResults />} />
-                  <Route path="/landing" element={<Landing />} />
-                  <Route path="/how-it-works" element={<HowItWorks />} />
-                  <Route path="/auth" element={<AuthPage />} />
-                  <Route path="/customer-dashboard" element={<CustomerDashboard />} />
-                  <Route path="/vendor-dashboard" element={<VendorDashboard />} />
-                  <Route path="/customer-onboarding" element={<CustomerOnboarding />} />
-                  <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
-                  <Route path="/enterprise-onboarding" element={<EnterpriseOnboarding />} />
-                  <Route path="/smartmatch-demo" element={<SmartMatchDemo />} />
-                  <Route path="/smart-draft" element={<SmartDraft />} />
-                  <Route path="/operations-center" element={<OperationsCenter />} />
-                  <Route path="/security-center" element={<SecurityCenter />} />
-                  <Route path="/delivery-tracking" element={<DeliveryTracking />} />
-                  <Route path="/documents-management" element={<DocumentsManagement />} />
-                  <Route path="/turnaround-management" element={<TurnaroundManagement />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </main>
-              <Footer />
-            </div>
-          </BrowserRouter>
-        </AuthProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <GlobalErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <AuthProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <div className="flex flex-col min-h-screen">
+                <Navigation />
+                <main className="flex-1">
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/browse" element={<Browse />} />
+                    <Route path="/browse/results" element={<BrowseResults />} />
+                    <Route path="/landing" element={<Landing />} />
+                    <Route path="/how-it-works" element={<HowItWorks />} />
+                    <Route path="/auth" element={<AuthPage />} />
+                    <Route path="/customer-dashboard" element={<CustomerDashboard />} />
+                    <Route path="/vendor-dashboard" element={<VendorDashboard />} />
+                    <Route path="/customer-onboarding" element={<CustomerOnboarding />} />
+                    <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
+                    <Route path="/enterprise-onboarding" element={<EnterpriseOnboarding />} />
+                    <Route path="/smartmatch-demo" element={<SmartMatchDemo />} />
+                    <Route path="/smart-draft" element={<SmartDraft />} />
+                    <Route path="/operations-center" element={<OperationsCenter />} />
+                    <Route path="/security-center" element={<SecurityCenter />} />
+                    <Route path="/delivery-tracking" element={<DeliveryTracking />} />
+                    <Route path="/documents-management" element={<DocumentsManagement />} />
+                    <Route path="/turnaround-management" element={<TurnaroundManagement />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </main>
+                <Footer />
+              </div>
+            </BrowserRouter>
+          </AuthProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </GlobalErrorBoundary>
   );
 }
 
