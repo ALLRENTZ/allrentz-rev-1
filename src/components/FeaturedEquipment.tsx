@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import FeaturedEquipmentHeader from '@/components/FeaturedEquipmentHeader';
 import FeaturedEquipmentCard from '@/components/FeaturedEquipmentCard';
-import { FeaturedEquipmentItem, featuredEquipment as demoEquipment } from '@/data/featuredEquipment';
+import { FeaturedEquipmentItem } from '@/data/featuredEquipment';
 import { supabase } from '@/integrations/supabase/client';
 
 type EquipmentRow = {
