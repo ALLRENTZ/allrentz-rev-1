@@ -172,6 +172,10 @@ const VendorDashboard = () => {
                 <Settings className="h-5 w-5" />
                 <span>Settings</span>
               </button>
+              <Link to="/turnaround-management" className="nav-link w-full">
+                <Settings className="h-5 w-5" />
+                <span>Turnaround Management</span>
+              </Link>
             </nav>
           </div>
 
