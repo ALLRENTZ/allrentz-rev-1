@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import FeaturedEquipmentHeader from '@/components/FeaturedEquipmentHeader';
 import FeaturedEquipmentCard from '@/components/FeaturedEquipmentCard';
-import { FeaturedEquipmentItem, featuredEquipment as demoEquipment } from '@/data/featuredEquipment';
+import { FeaturedEquipmentItem } from '@/data/featuredEquipment';
 import { supabase } from '@/integrations/supabase/client';
 
 type EquipmentRow = {
@@ -60,20 +60,6 @@ const FeaturedEquipment: React.FC = () => {
     vendor: row.vendor_name ?? row.category ?? '',
   });
 
-  const getDemoItems = (query: string) => {
-    const trimmedQuery = query.trim().toLowerCase();
-
-    if (!trimmedQuery) {
-      return demoEquipment;
-    }
-
-    return demoEquipment.filter((item) =>
-      [item.name, item.specifications, item.location, item.vendor]
-        .filter(Boolean)
-        .some((value) => value.toLowerCase().includes(trimmedQuery))
-    );
-  };
-
   const runSearch = async (query: string) => {
     setIsSearching(true);
     try {
@@ -88,7 +74,7 @@ const FeaturedEquipment: React.FC = () => {
       if (trimmedQuery) {
         const pattern = `%${escapeLikePattern(trimmedQuery)}%`;
         req = req.or(
-          `title.ilike.${pattern},category.ilike.${pattern},description.ilike.${pattern}`
+          `title.ilike.${pattern},category.ilike.${pattern}`
         );
       }
 
@@ -98,14 +84,10 @@ const FeaturedEquipment: React.FC = () => {
         throw error;
       }
 
-      if ((data ?? []).length > 0) {
-        setEquipmentItems((data ?? []).map((row) => mapRowToItem(row as EquipmentRow)));
-        return;
-      }
-
-      setEquipmentItems(getDemoItems(trimmedQuery));
-    } catch {
-      setEquipmentItems(getDemoItems(query));
+      setEquipmentItems((data ?? []).map((row) => mapRowToItem(row as EquipmentRow)));
+    } catch (err) {
+      console.error('Equipment search failed:', err);
+      setEquipmentItems([]);
     } finally {
       setIsSearching(false);
     }
