@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
       customer_profiles: {
@@ -54,108 +59,95 @@ export type Database = {
       equipment: {
         Row: {
           available: boolean | null
-          category: string
+          category: string | null
           compliance_tags: string[] | null
           created_at: string | null
-          daily_rate: number
+          daily_rate: number | null
           delivery_radius_miles: number | null
           description: string | null
           hazmat_certified: boolean | null
           id: string
           image_url: string | null
-          location: string
+          location: string | null
           minimum_rental_days: number | null
           requires_operator: boolean | null
           response_time_hours: number | null
           specifications: Json | null
           title: string
+          updated_at: string | null
           vendor_id: string | null
         }
         Insert: {
           available?: boolean | null
-          category: string
+          category?: string | null
           compliance_tags?: string[] | null
           created_at?: string | null
-          daily_rate: number
+          daily_rate?: number | null
           delivery_radius_miles?: number | null
           description?: string | null
           hazmat_certified?: boolean | null
           id?: string
           image_url?: string | null
-          location: string
+          location?: string | null
           minimum_rental_days?: number | null
           requires_operator?: boolean | null
           response_time_hours?: number | null
           specifications?: Json | null
           title: string
+          updated_at?: string | null
           vendor_id?: string | null
         }
         Update: {
           available?: boolean | null
-          category?: string
+          category?: string | null
           compliance_tags?: string[] | null
           created_at?: string | null
-          daily_rate?: number
+          daily_rate?: number | null
           delivery_radius_miles?: number | null
           description?: string | null
           hazmat_certified?: boolean | null
           id?: string
           image_url?: string | null
-          location?: string
+          location?: string | null
           minimum_rental_days?: number | null
           requires_operator?: boolean | null
           response_time_hours?: number | null
           specifications?: Json | null
           title?: string
+          updated_at?: string | null
           vendor_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "equipment_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       notifications: {
         Row: {
           created_at: string | null
           id: string
-          message: string
+          message: string | null
           read: boolean | null
           title: string
           type: string | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
-          message: string
+          message?: string | null
           read?: boolean | null
           title: string
           type?: string | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
-          message?: string
+          message?: string | null
           read?: boolean | null
           title?: string
           type?: string | null
-          user_id?: string | null
+          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "notifications_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -166,9 +158,7 @@ export type Database = {
           full_name: string | null
           id: string
           onboarding_completed: boolean | null
-          phone: string | null
           profile_completion_score: number | null
-          role: string | null
           role_type: Database["public"]["Enums"]["app_role"] | null
           status: string | null
           updated_at: string | null
@@ -181,9 +171,7 @@ export type Database = {
           full_name?: string | null
           id: string
           onboarding_completed?: boolean | null
-          phone?: string | null
           profile_completion_score?: number | null
-          role?: string | null
           role_type?: Database["public"]["Enums"]["app_role"] | null
           status?: string | null
           updated_at?: string | null
@@ -196,9 +184,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           onboarding_completed?: boolean | null
-          phone?: string | null
           profile_completion_score?: number | null
-          role?: string | null
           role_type?: Database["public"]["Enums"]["app_role"] | null
           status?: string | null
           updated_at?: string | null
@@ -208,54 +194,47 @@ export type Database = {
       rental_requests: {
         Row: {
           created_at: string | null
-          customer_id: string | null
+          customer_id: string
           delivery_address: string | null
-          end_date: string
+          end_date: string | null
           equipment_id: string | null
           id: string
           quote_expires_at: string | null
           special_requirements: string | null
-          start_date: string
+          start_date: string | null
           status: string | null
           total_amount: number | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
-          customer_id?: string | null
+          customer_id: string
           delivery_address?: string | null
-          end_date: string
+          end_date?: string | null
           equipment_id?: string | null
           id?: string
           quote_expires_at?: string | null
           special_requirements?: string | null
-          start_date: string
+          start_date?: string | null
           status?: string | null
           total_amount?: number | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
-          customer_id?: string | null
+          customer_id?: string
           delivery_address?: string | null
-          end_date?: string
+          end_date?: string | null
           equipment_id?: string | null
           id?: string
           quote_expires_at?: string | null
           special_requirements?: string | null
-          start_date?: string
+          start_date?: string | null
           status?: string | null
           total_amount?: number | null
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "rental_requests_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "rental_requests_equipment_id_fkey"
             columns: ["equipment_id"]
@@ -387,21 +366,18 @@ export type Database = {
           created_at: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
-          updated_at: string | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
           role: Database["public"]["Enums"]["app_role"]
-          updated_at?: string | null
           user_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
-          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -458,8 +434,8 @@ export type Database = {
     Functions: {
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
@@ -473,21 +449,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -505,14 +485,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -528,14 +510,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -551,14 +535,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -566,14 +552,16 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
