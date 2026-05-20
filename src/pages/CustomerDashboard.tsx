@@ -296,7 +296,24 @@ const CustomerDashboard = () => {
                 )}
               </CardContent>
             </Card>
+
+            <Card className="mt-6">
+              <CardContent className="p-0">
+                <RentalStatusTimeline
+                  currentStatus="en_route"
+                  rentalData={{
+                    scheduledDate: 'Jun 18',
+                    dispatchDate: 'Jun 20',
+                  }}
+                />
+              </CardContent>
+            </Card>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
         </div>
       </div>
     </div>
