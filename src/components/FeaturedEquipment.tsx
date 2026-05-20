@@ -4,7 +4,19 @@ import FeaturedEquipmentHeader from '@/components/FeaturedEquipmentHeader';
 import FeaturedEquipmentCard from '@/components/FeaturedEquipmentCard';
 import { FeaturedEquipmentItem, featuredEquipment as demoEquipment } from '@/data/featuredEquipment';
 import { supabase } from '@/integrations/supabase/client';
-import { Equipment } from '@/types/equipment';
+
+type EquipmentRow = {
+  id: string;
+  title: string | null;
+  description: string | null;
+  category: string | null;
+  daily_rate: number | string | null;
+  image_url: string | null;
+  location: string | null;
+  available: boolean | null;
+  specifications: unknown;
+  vendor_name?: string | null;
+};
 
 const FeaturedEquipment: React.FC = () => {
   const [equipmentItems, setEquipmentItems] = useState<FeaturedEquipmentItem[]>([]);
@@ -31,7 +43,7 @@ const FeaturedEquipment: React.FC = () => {
     );
   };
 
-  const mapRowToItem = (row: Equipment): FeaturedEquipmentItem => ({
+  const mapRowToItem = (row: EquipmentRow): FeaturedEquipmentItem => ({
     id: row.id,
     name: row.title ?? 'Untitled Equipment',
     specifications: row.specifications
@@ -87,7 +99,7 @@ const FeaturedEquipment: React.FC = () => {
       }
 
       if ((data ?? []).length > 0) {
-        setEquipmentItems((data ?? []).map(mapRowToItem));
+        setEquipmentItems((data ?? []).map((row) => mapRowToItem(row as EquipmentRow)));
         return;
       }
 
