@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, FileText, Download, Eye, AlertTriangle, CheckCircle, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 const DocumentsManagement = () => {
   const { profile } = useAuth();
+  const { toast } = useToast();
 
   const documents = [
     {
