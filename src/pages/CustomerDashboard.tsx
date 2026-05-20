@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import DemoTour from '@/components/DemoTour';
+import RentalStatusTimeline from '@/components/RentalStatusTimeline';
 
 const CustomerDashboard = () => {
   const { user, profile, showDemoTour, setShowDemoTour } = useAuth();
@@ -293,6 +294,18 @@ const CustomerDashboard = () => {
                     <p className="text-gray-600">No notifications yet</p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            <Card className="mt-6">
+              <CardContent className="p-0">
+                <RentalStatusTimeline
+                  currentStatus="en_route"
+                  rentalData={{
+                    scheduledDate: 'Jun 18',
+                    dispatchDate: 'Jun 20',
+                  }}
+                />
               </CardContent>
             </Card>
           </div>
