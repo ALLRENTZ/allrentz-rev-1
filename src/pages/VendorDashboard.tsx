@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, MapPin, Calendar, FileText, Bell, Settings, DollarSign, CheckCircle, AlertTriangle, TrendingUp, Package } from 'lucide-react';
+import RentalStatusTimeline from '@/components/RentalStatusTimeline';
 
 const VendorDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -266,6 +267,17 @@ const VendorDashboard = () => {
                       </div>
                     ))}
                   </div>
+                </div>
+
+                {/* Active Rental Status */}
+                <div className="industrial-card p-6">
+                  <RentalStatusTimeline
+                    currentStatus="en_route"
+                    rentalData={{
+                      scheduledDate: 'Jun 18',
+                      dispatchDate: 'Jun 20',
+                    }}
+                  />
                 </div>
 
                 {/* Equipment Overview */}

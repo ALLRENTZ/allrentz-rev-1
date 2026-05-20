@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import DemoTour from '@/components/DemoTour';
+import RentalStatusTimeline from '@/components/RentalStatusTimeline';
 
 const CustomerDashboard = () => {
   const { user, profile, showDemoTour, setShowDemoTour } = useAuth();
