@@ -103,20 +103,18 @@ const BrowseResults: React.FC = () => {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex gap-2 w-full lg:w-auto">
-              <div className="relative flex-1 lg:w-80">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  value={inputQuery}
-                  onChange={(e) => handleQueryChange(e.target.value)}
+            <form onSubmit={(e) => e.preventDefault()} className="flex gap-2 w-full lg:w-auto">
+              <div className="w-full lg:w-96">
+                <SearchAutocomplete
+                  initialValue={urlQ}
+                  onCommit={handleCommit}
+                  category={categoryParam !== 'all' ? categoryParam : null}
                   placeholder="Search within this category..."
-                  className="pl-10"
+                  isSubmitting={loading}
                 />
               </div>
-              <Button type="submit" className="bg-allrentz-red hover:bg-allrentz-red-dark text-white">
-                Search
-              </Button>
             </form>
+
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
