@@ -1,11 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import EquipmentCard from '@/components/EquipmentCard';
 import EquipmentTeaserCard from '@/components/EquipmentTeaserCard';
+import SearchAutocomplete from '@/components/SearchAutocomplete';
+
 import {
   useEquipmentSearch,
   type FullEquipmentRow,
@@ -39,9 +40,7 @@ const BrowseResults: React.FC = () => {
   const categoryParam = searchParams.get('category') ?? 'all';
   const urlQ = searchParams.get('q') ?? '';
 
-  const [inputQuery, setInputQuery] = useState(urlQ);
   const [activeQuery, setActiveQuery] = useState(urlQ);
-  const debounceRef = useRef<number | null>(null);
 
   const categories = resolveCategoryGroup(categoryParam);
   const categoryInfo = equipmentCategories.find((c) => c.category === categoryParam);
@@ -59,19 +58,10 @@ const BrowseResults: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeQuery]);
 
-  const handleQueryChange = (value: string) => {
-    setInputQuery(value);
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(() => {
-      setActiveQuery(value.trim());
-    }, 300);
+  const handleCommit = (value: string) => {
+    setActiveQuery(value.trim());
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    setActiveQuery(inputQuery.trim());
-  };
 
   const goToSignIn = () => navigate('/auth');
 
@@ -113,20 +103,18 @@ const BrowseResults: React.FC = () => {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex gap-2 w-full lg:w-auto">
-              <div className="relative flex-1 lg:w-80">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  value={inputQuery}
-                  onChange={(e) => handleQueryChange(e.target.value)}
+            <form onSubmit={(e) => e.preventDefault()} className="flex gap-2 w-full lg:w-auto">
+              <div className="w-full lg:w-96">
+                <SearchAutocomplete
+                  initialValue={urlQ}
+                  onCommit={handleCommit}
+                  category={categoryParam !== 'all' ? categoryParam : null}
                   placeholder="Search within this category..."
-                  className="pl-10"
+                  isSubmitting={loading}
                 />
               </div>
-              <Button type="submit" className="bg-allrentz-red hover:bg-allrentz-red-dark text-white">
-                Search
-              </Button>
             </form>
+
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
