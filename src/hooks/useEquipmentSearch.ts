@@ -39,7 +39,10 @@ interface UseEquipmentSearchResult {
 
 const escapeIlike = (v: string) => v.replace(/[%_,]/g, '\\$&');
 
-export function useEquipmentSearch(query: string): UseEquipmentSearchResult {
+export function useEquipmentSearch(
+  query: string,
+  categories?: string[] | null,
+): UseEquipmentSearchResult {
   const { user } = useAuth();
   const isAuthed = !!user;
 
@@ -48,6 +51,8 @@ export function useEquipmentSearch(query: string): UseEquipmentSearchResult {
   const [error, setError] = useState<string | null>(null);
   const reqIdRef = useRef(0);
 
+  const categoryKey = categories && categories.length ? categories.join(',') : '';
+
   const run = useCallback(async () => {
     const myReq = ++reqIdRef.current;
     setLoading(true);
@@ -55,6 +60,7 @@ export function useEquipmentSearch(query: string): UseEquipmentSearchResult {
     try {
       const term = query.trim();
       const escaped = term ? escapeIlike(term) : '';
+      const catList = categoryKey ? categoryKey.split(',') : null;
 
       if (isAuthed) {
         let req = supabase
@@ -62,13 +68,14 @@ export function useEquipmentSearch(query: string): UseEquipmentSearchResult {
           .select('*')
           .order('daily_rate', { ascending: true })
           .limit(48);
+        if (catList) req = req.in('category', catList);
         if (term) {
           req = req.or(
             `title.ilike.%${escaped}%,category.ilike.%${escaped}%,description.ilike.%${escaped}%`,
           );
         }
         const { data: rows, error: e } = await req;
-        console.log('equipment query', { tier: 'authed', count: rows?.length, error: e });
+        console.log('equipment query', { tier: 'authed', categories: catList, count: rows?.length, error: e });
         if (e) throw e;
         if (reqIdRef.current === myReq) setData((rows ?? []) as FullEquipmentRow[]);
       } else {
@@ -77,13 +84,14 @@ export function useEquipmentSearch(query: string): UseEquipmentSearchResult {
           .select('*')
           .order('id', { ascending: true })
           .limit(12);
+        if (catList) req = req.in('category', catList);
         if (term) {
           req = req.or(
             `title.ilike.%${escaped}%,category.ilike.%${escaped}%,description_teaser.ilike.%${escaped}%`,
           );
         }
         const { data: rows, error: e } = await req;
-        console.log('equipment query', { tier: 'anon', count: rows?.length, error: e });
+        console.log('equipment query', { tier: 'anon', categories: catList, count: rows?.length, error: e });
         if (e) throw e;
         if (reqIdRef.current === myReq) setData((rows ?? []) as PublicEquipmentRow[]);
       }
@@ -97,7 +105,7 @@ export function useEquipmentSearch(query: string): UseEquipmentSearchResult {
     } finally {
       if (reqIdRef.current === myReq) setLoading(false);
     }
-  }, [query, isAuthed]);
+  }, [query, isAuthed, categoryKey]);
 
   useEffect(() => {
     void run();
