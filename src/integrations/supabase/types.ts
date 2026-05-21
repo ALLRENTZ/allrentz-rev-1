@@ -441,6 +441,7 @@ export type Database = {
           available: boolean | null
           category: string | null
           city: string | null
+          daily_rate: number | null
           description_teaser: string | null
           id: string | null
           image_url: string | null
@@ -452,6 +453,7 @@ export type Database = {
           available?: boolean | null
           category?: string | null
           city?: never
+          daily_rate?: number | null
           description_teaser?: never
           id?: string | null
           image_url?: string | null
@@ -463,6 +465,7 @@ export type Database = {
           available?: boolean | null
           category?: string | null
           city?: never
+          daily_rate?: number | null
           description_teaser?: never
           id?: string | null
           image_url?: string | null
