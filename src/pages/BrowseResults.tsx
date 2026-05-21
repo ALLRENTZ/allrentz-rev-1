@@ -40,9 +40,7 @@ const BrowseResults: React.FC = () => {
   const categoryParam = searchParams.get('category') ?? 'all';
   const urlQ = searchParams.get('q') ?? '';
 
-  const [inputQuery, setInputQuery] = useState(urlQ);
   const [activeQuery, setActiveQuery] = useState(urlQ);
-  const debounceRef = useRef<number | null>(null);
 
   const categories = resolveCategoryGroup(categoryParam);
   const categoryInfo = equipmentCategories.find((c) => c.category === categoryParam);
@@ -60,19 +58,10 @@ const BrowseResults: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeQuery]);
 
-  const handleQueryChange = (value: string) => {
-    setInputQuery(value);
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(() => {
-      setActiveQuery(value.trim());
-    }, 300);
+  const handleCommit = (value: string) => {
+    setActiveQuery(value.trim());
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    setActiveQuery(inputQuery.trim());
-  };
 
   const goToSignIn = () => navigate('/auth');
 
