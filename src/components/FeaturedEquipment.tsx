@@ -1,41 +1,21 @@
-
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import FeaturedEquipmentHeader from '@/components/FeaturedEquipmentHeader';
 import FeaturedEquipmentCard from '@/components/FeaturedEquipmentCard';
+import EquipmentTeaserCard from '@/components/EquipmentTeaserCard';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { supabase } from '@/integrations/supabase/client';
-
-interface CardItem {
-  id: string;
-  name: string;
-  specifications: string;
-  location: string;
-  rating: number;
-  reviews: number;
-  dailyRate: number;
-  image: string;
-  available: boolean;
-  vendor: string;
-}
-
-type EquipmentRow = {
-  id: string;
-  title: string | null;
-  description: string | null;
-  category: string | null;
-  daily_rate: number | string | null;
-  image_url: string | null;
-  location: string | null;
-  available: boolean | null;
-  specifications: unknown;
-};
+import {
+  useEquipmentSearch,
+  type FullEquipmentRow,
+  type PublicEquipmentRow,
+} from '@/hooks/useEquipmentSearch';
+import { FeaturedEquipmentItem } from '@/data/featuredEquipment';
 
 const PLACEHOLDER_IMAGE =
   'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=300&fit=crop&auto=format';
 
-const mapRowToItem = (row: EquipmentRow): CardItem => ({
+const mapFullRowToItem = (row: FullEquipmentRow): FeaturedEquipmentItem => ({
   id: row.id,
   name: row.title ?? 'Untitled Equipment',
   specifications: row.specifications
@@ -55,98 +35,60 @@ const mapRowToItem = (row: EquipmentRow): CardItem => ({
 });
 
 const FeaturedEquipment: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialQ = searchParams.get('q') ?? '';
+  const urlQ = searchParams.get('q') ?? '';
 
-  const [equipmentItems, setEquipmentItems] = useState<CardItem[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [lastTerm, setLastTerm] = useState<string>(initialQ);
-  const [currentInput, setCurrentInput] = useState<string>(initialQ);
+  const [activeQuery, setActiveQuery] = useState(urlQ);
+  const [inputQuery, setInputQuery] = useState(urlQ);
   const debounceRef = useRef<number | null>(null);
 
-  const handleImageUpdate = (equipmentId: string, newImageUrl: string) => {
-    setEquipmentItems((prev) =>
-      prev.map((item) => (item.id === equipmentId ? { ...item, image: newImageUrl } : item)),
-    );
+  const { data, loading, error, isAuthed, refetch } = useEquipmentSearch(activeQuery);
+
+  // Sync activeQuery → URL
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (activeQuery) next.set('q', activeQuery);
+    else next.delete('q');
+    if ((searchParams.get('q') ?? '') !== activeQuery) {
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeQuery]);
+
+  const handleSubmit = (value: string) => {
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    setActiveQuery(value.trim());
   };
 
-  const runSearch = useCallback(
-    async (rawQuery: string) => {
-      const trimmed = rawQuery.trim();
-      setLastTerm(trimmed);
-      setIsSearching(true);
-      setError(null);
-
-      // sync URL
-      const next = new URLSearchParams(searchParams);
-      if (trimmed) next.set('q', trimmed);
-      else next.delete('q');
-      setSearchParams(next, { replace: true });
-
-      try {
-        let req = supabase
-          .from('equipment')
-          .select('*')
-          .order('daily_rate', { ascending: true })
-          .limit(48);
-
-        if (trimmed) {
-          const escaped = trimmed.replace(/[%_,]/g, '\\$&');
-          req = req.or(
-            `title.ilike.%${escaped}%,category.ilike.%${escaped}%,description.ilike.%${escaped}%`,
-          );
-        }
-
-        const { data, error: queryError } = await req;
-        console.log('equipment query', { count: data?.length, error: queryError });
-        if (queryError) throw queryError;
-
-        setEquipmentItems((data ?? []).map((row) => mapRowToItem(row as EquipmentRow)));
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-        console.error('equipment query failed', err);
-        setError(message);
-        setEquipmentItems([]);
-      } finally {
-        setIsSearching(false);
-      }
-    },
-    [searchParams, setSearchParams],
-  );
-
-  // initial load
-  useEffect(() => {
-    void runSearch(initialQ);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // debounced typing
   const handleQueryChange = (value: string) => {
-    setCurrentInput(value);
+    setInputQuery(value);
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
-      void runSearch(value);
+      setActiveQuery(value.trim());
     }, 300);
   };
 
-  const handleSubmitSearch = (value: string) => {
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    void runSearch(value);
+  const clearSearch = () => {
+    setInputQuery('');
+    setActiveQuery('');
   };
 
-  const clearSearch = () => {
-    setCurrentInput('');
-    void runSearch('');
-  };
+  const goToSignIn = () => navigate('/auth');
+
+  const showSkeleton = loading;
+  const showEmpty = !loading && !error && data.length === 0;
+  const countLabel = isAuthed
+    ? `${data.length} listing${data.length === 1 ? '' : 's'}`
+    : `${data.length} listing${data.length === 1 ? '' : 's'} shown — Sign in to see full details`;
 
   return (
     <div>
       <FeaturedEquipmentHeader
-        onSearch={handleSubmitSearch}
+        onSearch={handleSubmit}
         onQueryChange={handleQueryChange}
-        initialQuery={initialQ}
-        isSearching={isSearching}
+        initialQuery={urlQ}
+        isSearching={loading}
       />
 
       <div className="max-w-7xl mx-auto px-4 mb-12">
@@ -155,20 +97,25 @@ const FeaturedEquipment: React.FC = () => {
           <p className="text-gray-600">Hand-picked equipment from our most trusted vendors</p>
         </div>
 
-        {error && (
-          <div className="mb-6 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-800 flex items-center justify-between">
-            <span className="text-sm">Equipment query failed: {error}</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void runSearch(lastTerm)}
-            >
-              Retry
-            </Button>
+        {!loading && !error && data.length > 0 && (
+          <div className="flex items-center justify-between mb-4 text-sm text-gray-600">
+            <span>{countLabel}</span>
+            {!isAuthed && (
+              <Link to="/auth" className="text-allrentz-red font-medium hover:underline">
+                Create a free account →
+              </Link>
+            )}
           </div>
         )}
 
-        {isSearching ? (
+        {error && (
+          <div className="mb-6 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-800 flex items-center justify-between">
+            <span className="text-sm">Equipment query failed: {error}</span>
+            <Button variant="outline" size="sm" onClick={refetch}>Retry</Button>
+          </div>
+        )}
+
+        {showSkeleton ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="industrial-card overflow-hidden">
@@ -182,28 +129,46 @@ const FeaturedEquipment: React.FC = () => {
               </div>
             ))}
           </div>
-        ) : equipmentItems.length === 0 && !error ? (
+        ) : showEmpty ? (
           <div className="text-center py-12">
             <p className="text-gray-700 font-medium mb-2">No equipment found</p>
-            {lastTerm && (
+            {activeQuery && (
               <p className="text-sm text-gray-500 mb-4">
-                No matches for <span className="font-semibold">"{lastTerm}"</span>.
+                No matches for <span className="font-semibold">"{activeQuery}"</span>.
               </p>
             )}
-            {lastTerm && (
-              <Button variant="outline" onClick={clearSearch}>
-                Clear search
-              </Button>
+            {activeQuery && (
+              <Button variant="outline" onClick={clearSearch}>Clear search</Button>
             )}
+          </div>
+        ) : isAuthed ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {(data as FullEquipmentRow[]).map((row) => (
+              <FeaturedEquipmentCard key={row.id} item={mapFullRowToItem(row)} />
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {equipmentItems.map((item) => (
-              <FeaturedEquipmentCard
-                key={item.id}
-                item={item}
-                onImageUpdate={handleImageUpdate}
-              />
+            {(data as PublicEquipmentRow[]).map((row, idx) => (
+              <React.Fragment key={row.id}>
+                <EquipmentTeaserCard item={row} onSignInClick={goToSignIn} />
+                {idx === 2 && (
+                  <div className="industrial-card p-6 flex flex-col items-center justify-center text-center bg-gradient-to-br from-allrentz-red/5 to-allrentz-red/10 border-2 border-dashed border-allrentz-red/30">
+                    <h4 className="text-lg font-bold text-gray-900 mb-2">
+                      See exact pricing & instant quotes
+                    </h4>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Unlock vendor names, specs, compliance tags, and live availability.
+                    </p>
+                    <Button
+                      onClick={goToSignIn}
+                      className="bg-allrentz-red hover:bg-allrentz-red-dark text-white"
+                    >
+                      Create a free account
+                    </Button>
+                  </div>
+                )}
+              </React.Fragment>
             ))}
           </div>
         )}
