@@ -40,8 +40,6 @@ const FeaturedEquipment: React.FC = () => {
   const urlQ = searchParams.get('q') ?? '';
 
   const [activeQuery, setActiveQuery] = useState(urlQ);
-  const [inputQuery, setInputQuery] = useState(urlQ);
-  const debounceRef = useRef<number | null>(null);
 
   const { data, loading, error, isAuthed, refetch } = useEquipmentSearch(activeQuery);
 
@@ -56,21 +54,11 @@ const FeaturedEquipment: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeQuery]);
 
-  const handleSubmit = (value: string) => {
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+  const handleCommit = (value: string) => {
     setActiveQuery(value.trim());
   };
 
-  const handleQueryChange = (value: string) => {
-    setInputQuery(value);
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(() => {
-      setActiveQuery(value.trim());
-    }, 300);
-  };
-
   const clearSearch = () => {
-    setInputQuery('');
     setActiveQuery('');
   };
 
@@ -85,11 +73,11 @@ const FeaturedEquipment: React.FC = () => {
   return (
     <div>
       <FeaturedEquipmentHeader
-        onSearch={handleSubmit}
-        onQueryChange={handleQueryChange}
+        onSearch={handleCommit}
         initialQuery={urlQ}
         isSearching={loading}
       />
+
 
       <div className="max-w-7xl mx-auto px-4 mb-12">
         <div className="text-center mb-8">
