@@ -1,16 +1,27 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 interface FeaturedEquipmentHeaderProps {
   onSearch?: (query: string) => void | Promise<void>;
+  onQueryChange?: (query: string) => void;
+  initialQuery?: string;
   isSearching?: boolean;
 }
 
-const FeaturedEquipmentHeader: React.FC<FeaturedEquipmentHeaderProps> = ({ onSearch, isSearching = false }) => {
-  const [query, setQuery] = useState('');
+const FeaturedEquipmentHeader: React.FC<FeaturedEquipmentHeaderProps> = ({
+  onSearch,
+  onQueryChange,
+  initialQuery = '',
+  isSearching = false,
+}) => {
+  const [query, setQuery] = useState(initialQuery);
+
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
 
   const triggerSearch = () => {
     onSearch?.(query.trim());
@@ -25,7 +36,7 @@ const FeaturedEquipmentHeader: React.FC<FeaturedEquipmentHeaderProps> = ({ onSea
             Browse our extensive catalog of industrial equipment from verified vendors
           </p>
         </div>
-        
+
         <form
           className="max-w-2xl mx-auto"
           onSubmit={(event) => {
@@ -39,7 +50,10 @@ const FeaturedEquipmentHeader: React.FC<FeaturedEquipmentHeaderProps> = ({ onSea
               <Input
                 type="text"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  onQueryChange?.(e.target.value);
+                }}
                 placeholder="Search equipment, categories, or specifications..."
                 className="pl-10 py-3 text-black bg-white border-0 focus:ring-2 focus:ring-white/20"
               />
