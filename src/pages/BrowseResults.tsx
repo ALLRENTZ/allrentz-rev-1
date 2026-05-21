@@ -77,7 +77,11 @@ const BrowseResults: React.FC = () => {
 
   const showSkeleton = loading;
   const showEmpty = !loading && !error && data.length === 0;
-  const headerTitle = categoryInfo ? categoryInfo.title : 'Browse Equipment';
+  const headerTitle = categoryInfo
+    ? categoryInfo.title
+    : categoryParam !== 'all'
+      ? categoryParam
+      : 'Browse Equipment';
   const headerDescription = categoryInfo
     ? categoryInfo.description
     : 'Find verified industrial equipment from trusted vendors';
