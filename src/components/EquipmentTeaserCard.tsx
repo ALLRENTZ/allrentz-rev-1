@@ -35,7 +35,7 @@ const EquipmentTeaserCard: React.FC<Props> = ({ item, onSignInClick }) => {
         )}
         {item.category && (
           <div className="absolute top-3 right-3">
-            <Badge className="bg-allrentz-red text-white border- 0">{item.category}</Badge>
+            <Badge className="bg-allrentz-red text-white border-0">{item.category}</Badge>
           </div>
         )}
       </div>
