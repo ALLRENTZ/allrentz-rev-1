@@ -1,11 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import EquipmentCard from '@/components/EquipmentCard';
 import EquipmentTeaserCard from '@/components/EquipmentTeaserCard';
+import SearchAutocomplete from '@/components/SearchAutocomplete';
+
 import {
   useEquipmentSearch,
   type FullEquipmentRow,
