@@ -93,8 +93,14 @@ const FeaturedEquipment: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 mb-12">
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Featured Equipment</h2>
-          <p className="text-gray-600">Hand-picked equipment from our most trusted vendors</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {activeQuery ? `Search results for "${activeQuery}"` : 'Featured Equipment'}
+          </h2>
+          <p className="text-gray-600">
+            {activeQuery
+              ? `${data.length} match${data.length === 1 ? '' : 'es'}`
+              : 'Hand-picked equipment from our most trusted vendors'}
+          </p>
         </div>
 
         {!loading && !error && data.length > 0 && (

@@ -1,88 +1,95 @@
-
-import { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import { ChevronLeft, Map } from 'lucide-react';
-import { useToast } from "@/hooks/use-toast";
-import EquipmentFilters from '@/components/EquipmentFilters';
-import EquipmentGrid from '@/components/EquipmentGrid';
-import { equipment as originalEquipment } from '@/data/equipment';
-import { FilterState, EquipmentItem } from '@/data/types';
+import React, { useEffect, useRef, useState } from 'react';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { ChevronLeft, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import EquipmentCard from '@/components/EquipmentCard';
+import EquipmentTeaserCard from '@/components/EquipmentTeaserCard';
+import {
+  useEquipmentSearch,
+  type FullEquipmentRow,
+  type PublicEquipmentRow,
+} from '@/hooks/useEquipmentSearch';
+import { resolveCategoryGroup } from '@/data/categoryGroupMap';
 import { equipmentCategories } from '@/data/equipmentCategories';
+import type { Equipment } from '@/types/equipment';
 
-const BrowseResults = () => {
-  const [searchParams] = useSearchParams();
-  const category = searchParams.get('category') || 'all';
-  const [viewMode, setViewMode] = useState('grid');
-  const [equipment, setEquipment] = useState<EquipmentItem[]>(originalEquipment);
-  const [filters, setFilters] = useState<FilterState>({
-    category: category,
-    location: '',
-    maxRate: '',
-    vendorRating: 'any',
-    refineryReady: false
-  });
+const PLACEHOLDER_IMAGE =
+  'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=300&fit=crop&auto=format';
 
-  const { toast } = useToast();
+const mapToEquipment = (row: FullEquipmentRow): Equipment => ({
+  id: row.id,
+  title: row.title ?? 'Untitled Equipment',
+  description: row.description ?? '',
+  category: row.category ?? '',
+  daily_rate: Number(row.daily_rate ?? 0),
+  location: row.location ?? '—',
+  image_url: row.image_url ?? PLACEHOLDER_IMAGE,
+  specifications: (row.specifications as Record<string, unknown>) ?? {},
+  vendor_name: undefined,
+  compliance_score: undefined,
+  response_time_hours: row.response_time_hours ?? undefined,
+  compliance_tags: row.compliance_tags ?? [],
+} as Equipment);
 
-  // Load saved images from localStorage on component mount
+const BrowseResults: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const categoryParam = searchParams.get('category') ?? 'all';
+  const urlQ = searchParams.get('q') ?? '';
+
+  const [inputQuery, setInputQuery] = useState(urlQ);
+  const [activeQuery, setActiveQuery] = useState(urlQ);
+  const debounceRef = useRef<number | null>(null);
+
+  const categories = resolveCategoryGroup(categoryParam);
+  const categoryInfo = equipmentCategories.find((c) => c.category === categoryParam);
+
+  const { data, loading, error, isAuthed, refetch } = useEquipmentSearch(activeQuery, categories);
+
+  // Sync activeQuery → URL ?q=
   useEffect(() => {
-    const updatedEquipment = originalEquipment.map(item => {
-      const savedImage = localStorage.getItem(`equipment_image_${item.id}`);
-      return savedImage ? { ...item, image: savedImage } : item;
-    });
-    setEquipment(updatedEquipment);
-  }, []);
+    const next = new URLSearchParams(searchParams);
+    if (activeQuery) next.set('q', activeQuery);
+    else next.delete('q');
+    if ((searchParams.get('q') ?? '') !== activeQuery) {
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeQuery]);
 
-  // Update filters when category changes
-  useEffect(() => {
-    setFilters(prev => ({ ...prev, category }));
-  }, [category]);
-
-  const filteredEquipment = equipment.filter(item => {
-    if (filters.category !== 'all' && item.category !== filters.category) return false;
-    if (filters.location && !item.location.toLowerCase().includes(filters.location.toLowerCase())) return false;
-    if (filters.maxRate && item.dailyRate > parseInt(filters.maxRate)) return false;
-    if (filters.vendorRating && filters.vendorRating !== 'any' && item.rating < parseFloat(filters.vendorRating)) return false;
-    if (filters.refineryReady && !item.refineryAccess) return false;
-    return true;
-  });
-
-  const categoryInfo = equipmentCategories.find(cat => cat.category === category);
-
-  const handleRequestPhotos = (equipmentName: string) => {
-    toast({
-      title: "Photos Requested",
-      description: `We've notified the vendor to upload photos for ${equipmentName}. You'll be updated once they're available.`,
-    });
+  const handleQueryChange = (value: string) => {
+    setInputQuery(value);
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      setActiveQuery(value.trim());
+    }, 300);
   };
 
-  const handleRequestSpecs = (equipmentName: string) => {
-    toast({
-      title: "Spec Verification Requested",
-      description: `We've asked the vendor to verify specifications for ${equipmentName}. You'll be notified when completed.`,
-    });
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    setActiveQuery(inputQuery.trim());
   };
 
-  const handleImageUpdate = (equipmentId: number, newImageUrl: string) => {
-    setEquipment(prevEquipment => 
-      prevEquipment.map(item => 
-        item.id === equipmentId 
-          ? { ...item, image: newImageUrl }
-          : item
-      )
-    );
-    console.log(`Image updated for equipment ${equipmentId}:`, newImageUrl);
-  };
+  const goToSignIn = () => navigate('/auth');
+
+  const showSkeleton = loading;
+  const showEmpty = !loading && !error && data.length === 0;
+  const headerTitle = categoryInfo ? categoryInfo.title : 'Browse Equipment';
+  const headerDescription = categoryInfo
+    ? categoryInfo.description
+    : 'Find verified industrial equipment from trusted vendors';
 
   return (
     <div className="min-h-screen bg-allrentz-gray-light">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {/* Breadcrumb */}
           <div className="mb-4">
-            <Link 
-              to="/browse" 
+            <Link
+              to="/browse"
               className="inline-flex items-center text-sm text-gray-600 hover:text-allrentz-red transition-colors"
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
@@ -90,56 +97,52 @@ const BrowseResults = () => {
             </Link>
           </div>
 
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-allrentz-gray">
-                {categoryInfo ? categoryInfo.title : 'Browse Equipment'}
+                {activeQuery ? `Search results for "${activeQuery}"` : headerTitle}
               </h1>
               <p className="text-gray-600 mt-1">
-                {categoryInfo ? categoryInfo.description : 'Find verified industrial equipment from trusted vendors'}
+                {activeQuery
+                  ? `${data.length} match${data.length === 1 ? '' : 'es'} in ${headerTitle}`
+                  : headerDescription}
               </p>
             </div>
-            <div className="mt-4 lg:mt-0 flex items-center space-x-3">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${
-                  viewMode === 'grid' 
-                    ? 'bg-allrentz-red text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                Grid View
-              </button>
-              <button
-                onClick={() => setViewMode('map')}
-                className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${
-                  viewMode === 'map' 
-                    ? 'bg-allrentz-red text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                <Map className="h-4 w-4 inline mr-2" />
-                Map View
-              </button>
-            </div>
+
+            <form onSubmit={handleSubmit} className="flex gap-2 w-full lg:w-auto">
+              <div className="relative flex-1 lg:w-80">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  value={inputQuery}
+                  onChange={(e) => handleQueryChange(e.target.value)}
+                  placeholder="Search within this category..."
+                  className="pl-10"
+                />
+              </div>
+              <Button type="submit" className="bg-allrentz-red hover:bg-allrentz-red-dark text-white">
+                Search
+              </Button>
+            </form>
           </div>
 
-          {/* Filter Summary Bar */}
           <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
             <span className="text-gray-600">Active Filters:</span>
-            {filters.category !== 'all' && (
+            {categoryParam !== 'all' && (
               <span className="bg-allrentz-red text-white px-2 py-1 rounded">
-                {categoryInfo?.title || filters.category}
+                {categoryInfo?.title ?? categoryParam}
               </span>
             )}
-            {filters.location && (
+            {activeQuery && (
               <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                Location: {filters.location}
+                Query: {activeQuery}
               </span>
             )}
-            {filters.refineryReady && (
-              <span className="bg-green-100 text-green-800 px-2 py-1 rounded">
-                Refinery-Ready
+            {!isAuthed && (
+              <span className="ml-auto text-xs text-gray-500">
+                Showing public previews —{' '}
+                <Link to="/auth" className="text-allrentz-red font-medium hover:underline">
+                  sign in for full details
+                </Link>
               </span>
             )}
           </div>
@@ -147,24 +150,53 @@ const BrowseResults = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Filters Sidebar */}
-          <div className="lg:col-span-1">
-            <EquipmentFilters filters={filters} setFilters={setFilters} />
+        {error && (
+          <div className="mb-6 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-800 flex items-center justify-between">
+            <span className="text-sm">Equipment query failed: {error}</span>
+            <Button variant="outline" size="sm" onClick={refetch}>
+              Retry
+            </Button>
           </div>
+        )}
 
-          {/* Results */}
-          <div className="lg:col-span-3">
-            <EquipmentGrid
-              equipment={filteredEquipment}
-              totalEquipment={equipment.length}
-              viewMode={viewMode}
-              onRequestPhotos={handleRequestPhotos}
-              onRequestSpecs={handleRequestSpecs}
-              onImageUpdate={handleImageUpdate}
-            />
+        {showSkeleton ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="industrial-card overflow-hidden">
+                <Skeleton className="w-full h-48 rounded-none" />
+                <div className="p-4 space-y-3">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-9 w-full" />
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        ) : showEmpty ? (
+          <div className="text-center py-16">
+            <p className="text-gray-700 font-medium mb-2">No equipment found</p>
+            <p className="text-sm text-gray-500 mb-4">
+              {activeQuery
+                ? <>No matches for <span className="font-semibold">"{activeQuery}"</span> in {headerTitle}.</>
+                : <>No listings available in {headerTitle} yet.</>}
+            </p>
+            <Link to="/browse">
+              <Button variant="outline">Back to all categories</Button>
+            </Link>
+          </div>
+        ) : isAuthed ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {(data as FullEquipmentRow[]).map((row) => (
+              <EquipmentCard key={row.id} equipment={mapToEquipment(row)} />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {(data as PublicEquipmentRow[]).map((row) => (
+              <EquipmentTeaserCard key={row.id} item={row} onSignInClick={goToSignIn} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
