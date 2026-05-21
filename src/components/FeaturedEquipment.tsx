@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import FeaturedEquipmentHeader from '@/components/FeaturedEquipmentHeader';
 import FeaturedEquipmentCard from '@/components/FeaturedEquipmentCard';
