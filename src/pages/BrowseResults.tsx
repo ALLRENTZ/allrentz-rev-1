@@ -185,17 +185,34 @@ const BrowseResults: React.FC = () => {
             </Link>
           </div>
         ) : isAuthed ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(data as FullEquipmentRow[]).map((row) => (
-              <EquipmentCard key={row.id} equipment={mapToEquipment(row)} />
-            ))}
-          </div>
+          <>
+            <p className="text-sm text-gray-600 mb-4">{data.length} listing{data.length === 1 ? '' : 's'} available</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {(data as FullEquipmentRow[]).map((row) => (
+                <EquipmentCard key={row.id} equipment={mapToEquipment(row)} />
+              ))}
+            </div>
+          </>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(data as PublicEquipmentRow[]).map((row) => (
-              <EquipmentTeaserCard key={row.id} item={row} onSignInClick={goToSignIn} />
-            ))}
-          </div>
+          <>
+            <p className="text-sm text-gray-600 mb-4">
+              {data.length} listing{data.length === 1 ? '' : 's'} shown — <Link to="/auth" className="text-allrentz-red font-medium hover:underline">Sign in to see full details</Link>
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {(data as PublicEquipmentRow[]).map((row, idx) => (
+                <React.Fragment key={row.id}>
+                  <EquipmentTeaserCard item={row} onSignInClick={goToSignIn} />
+                  {idx === 2 && (
+                    <div className="industrial-card p-6 flex flex-col items-center justify-center text-center bg-gradient-to-br from-allrentz-red/5 to-allrentz-red/10 border-2 border-dashed border-allrentz-red/30">
+                      <h4 className="text-lg font-bold text-gray-900 mb-2">See exact pricing & instant quotes</h4>
+                      <p className="text-sm text-gray-600 mb-4">Unlock vendor names, specs, compliance tags, and live availability.</p>
+                      <Button onClick={goToSignIn} className="bg-allrentz-red hover:bg-allrentz-red-dark text-white">Create a free account</Button>
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>
