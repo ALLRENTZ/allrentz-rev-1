@@ -1,0 +1,1 @@
+ALTER VIEW equipment_public SET (security_invoker = on);

@@ -9,6 +9,7 @@ export interface PublicEquipmentRow {
   image_url: string | null;
   description_teaser: string | null;
   city: string | null;
+  daily_rate: number | string | null;
   price_band: string | null;
   price_range_label: string | null;
   available: boolean | null;
