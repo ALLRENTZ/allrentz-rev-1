@@ -99,6 +99,7 @@ const FeaturedEquipment: React.FC = () => {
         }
 
         const { data, error: queryError } = await req;
+        console.log('equipment query', { count: data?.length, error: queryError });
         if (queryError) throw queryError;
 
         setEquipmentItems((data ?? []).map((row) => mapRowToItem(row as EquipmentRow)));
