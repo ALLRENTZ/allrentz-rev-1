@@ -7,35 +7,34 @@ import { Plus, MapPin, Calendar, FileText, Bell, Settings, DollarSign, CheckCirc
 const VendorDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Mock data for vendor
   const equipmentInventory = [
     {
       id: 1,
-      name: 'Steam Boiler - 150 HP',
-      category: 'Boilers',
+      name: '600 CFM Diesel Air Compressor',
+      category: 'Air Compressors',
       status: 'Rented',
-      dailyRate: 850,
-      location: 'Gulf Coast Refinery',
-      rentedUntil: '2024-07-15',
+      dailyRate: 365,
+      location: 'Gulf Coast Refinery — Port Arthur, TX',
+      rentedUntil: '2026-06-12',
       image: 'https://images.unsplash.com/photo-1487887235947-a955ef187fcc?w=300&h=200&fit=crop'
     },
     {
       id: 2,
-      name: 'Frac Tank - 21,000 Gal',
-      category: 'Storage',
+      name: 'Zone 2 Explosion-Proof Light Tower',
+      category: 'Lighting Equipment',
       status: 'Available',
-      dailyRate: 125,
-      location: 'Warehouse A',
+      dailyRate: 210,
+      location: 'Yard — Beaumont, TX',
       rentedUntil: null,
       image: 'https://images.unsplash.com/photo-1493962853295-0fd70327578a?w=300&h=200&fit=crop'
     },
     {
       id: 3,
-      name: 'Industrial Generator - 500kW',
-      category: 'Power',
+      name: '40K PSI UHP Water Blasting Pump',
+      category: 'Pressure Equipment',
       status: 'Maintenance',
-      dailyRate: 450,
-      location: 'Service Bay 2',
+      dailyRate: 800,
+      location: 'Service Bay 1 — Beaumont, TX',
       rentedUntil: null,
       image: 'https://images.unsplash.com/photo-1469041797191-50ace28483c3?w=300&h=200&fit=crop'
     }
@@ -44,22 +43,32 @@ const VendorDashboard = () => {
   const quoteRequests = [
     {
       id: 1,
-      customer: 'Gulf Coast Refinery',
-      equipment: 'Industrial Crane - 50 Ton',
-      requestDate: '2024-06-18',
-      location: 'Offshore Platform C-14',
-      duration: '30 days',
+      customer: 'Bayou Bend Petroleum',
+      equipment: 'Confined Space Ventilation Fan (x2)',
+      requestDate: '2026-05-22',
+      location: 'Texas City Refinery — Texas City, TX',
+      duration: '21 days',
       status: 'New',
       urgency: 'High'
     },
     {
       id: 2,
-      customer: 'Texas Tank Terminal',
-      equipment: 'Frac Tank - 15,000 Gal',
-      requestDate: '2024-06-17',
-      location: 'Terminal B Complex',
-      duration: '60 days',
+      customer: 'Flint Hills Resources',
+      equipment: 'Diesel Rollback Generator — 250kW',
+      requestDate: '2026-05-21',
+      location: 'Corpus Christi Refinery — Corpus Christi, TX',
+      duration: '45 days',
       status: 'Quoted',
+      urgency: 'Medium'
+    },
+    {
+      id: 3,
+      customer: 'LyondellBasell',
+      equipment: 'Vacuum Box System',
+      requestDate: '2026-05-20',
+      location: 'Houston Refinery — Channelview, TX',
+      duration: '14 days',
+      status: 'New',
       urgency: 'Medium'
     }
   ];
@@ -185,7 +194,7 @@ const VendorDashboard = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-gray-600">Total Equipment</p>
-                        <p className="text-2xl font-bold text-allrentz-gray">24</p>
+                        <p className="text-2xl font-bold text-allrentz-gray">14</p>
                       </div>
                       <Package className="h-8 w-8 text-blue-500" />
                     </div>
@@ -194,7 +203,7 @@ const VendorDashboard = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-gray-600">Currently Rented</p>
-                        <p className="text-2xl font-bold text-allrentz-gray">8</p>
+                        <p className="text-2xl font-bold text-allrentz-gray">5</p>
                       </div>
                       <CheckCircle className="h-8 w-8 text-green-500" />
                     </div>
@@ -203,7 +212,7 @@ const VendorDashboard = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-gray-600">This Month</p>
-                        <p className="text-2xl font-bold text-allrentz-gray">$45,320</p>
+                        <p className="text-2xl font-bold text-allrentz-gray">$38,640</p>
                       </div>
                       <DollarSign className="h-8 w-8 text-allrentz-red" />
                     </div>
@@ -415,22 +424,22 @@ const VendorDashboard = () => {
                   <div className="dashboard-stat">
                     <div className="text-center">
                       <p className="text-sm text-gray-600">This Month</p>
-                      <p className="text-3xl font-bold text-allrentz-gray">$45,320</p>
-                      <p className="text-sm text-green-600">+12% from last month</p>
+                      <p className="text-3xl font-bold text-allrentz-gray">$38,640</p>
+                      <p className="text-sm text-green-600">+14% from last month</p>
                     </div>
                   </div>
                   <div className="dashboard-stat">
                     <div className="text-center">
                       <p className="text-sm text-gray-600">This Year</p>
-                      <p className="text-3xl font-bold text-allrentz-gray">$425,680</p>
-                      <p className="text-sm text-green-600">+28% from last year</p>
+                      <p className="text-3xl font-bold text-allrentz-gray">$187,320</p>
+                      <p className="text-sm text-green-600">+22% from last year</p>
                     </div>
                   </div>
                   <div className="dashboard-stat">
                     <div className="text-center">
                       <p className="text-sm text-gray-600">Next Payout</p>
-                      <p className="text-3xl font-bold text-allrentz-gray">$12,450</p>
-                      <p className="text-sm text-gray-600">June 30, 2024</p>
+                      <p className="text-3xl font-bold text-allrentz-gray">$14,210</p>
+                      <p className="text-sm text-gray-600">June 30, 2026</p>
                     </div>
                   </div>
                 </div>
@@ -440,22 +449,22 @@ const VendorDashboard = () => {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between py-3 border-b border-gray-200">
                       <div>
-                        <p className="font-medium text-allrentz-gray">Steam Boiler - 150 HP</p>
-                        <p className="text-sm text-gray-600">Gulf Coast Refinery • 30 days</p>
+                        <p className="font-medium text-allrentz-gray">600 CFM Diesel Air Compressor</p>
+                        <p className="text-sm text-gray-600">Gulf Coast Refinery — Port Arthur, TX • 21 days</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-allrentz-gray">$25,500</p>
-                        <p className="text-sm text-gray-600">Completed</p>
+                        <p className="font-semibold text-allrentz-gray">$7,665</p>
+                        <p className="text-sm text-green-600">Active</p>
                       </div>
                     </div>
                     <div className="flex items-center justify-between py-3 border-b border-gray-200">
                       <div>
-                        <p className="font-medium text-allrentz-gray">Frac Tank - 21,000 Gal</p>
-                        <p className="text-sm text-gray-600">Texas Tank Terminal • 60 days</p>
+                        <p className="font-medium text-allrentz-gray">40K PSI UHP Water Blasting Pump</p>
+                        <p className="text-sm text-gray-600">Flint Hills Resources — Corpus Christi, TX • 16 days</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-allrentz-gray">$7,500</p>
-                        <p className="text-sm text-green-600">Active</p>
+                        <p className="font-semibold text-allrentz-gray">$12,800</p>
+                        <p className="text-sm text-gray-600">Completed</p>
                       </div>
                     </div>
                   </div>
@@ -503,7 +512,7 @@ const VendorDashboard = () => {
                         <FileText className="h-6 w-6 text-allrentz-red" />
                         <div>
                           <h3 className="font-semibold text-allrentz-gray">General Liability Insurance</h3>
-                          <p className="text-sm text-gray-600">Expires: December 31, 2024</p>
+                          <p className="text-sm text-gray-600">Expires: December 31, 2026</p>
                         </div>
                       </div>
                       <span className="industrial-badge-approved">Valid</span>
@@ -515,7 +524,7 @@ const VendorDashboard = () => {
                         <FileText className="h-6 w-6 text-allrentz-red" />
                         <div>
                           <h3 className="font-semibold text-allrentz-gray">Equipment Safety Certificates</h3>
-                          <p className="text-sm text-gray-600">Last updated: June 1, 2024</p>
+                          <p className="text-sm text-gray-600">Last updated: May 1, 2026</p>
                         </div>
                       </div>
                       <span className="industrial-badge-approved">Current</span>
@@ -527,7 +536,7 @@ const VendorDashboard = () => {
                         <FileText className="h-6 w-6 text-yellow-500" />
                         <div>
                           <h3 className="font-semibold text-allrentz-gray">OSHA Compliance Certificate</h3>
-                          <p className="text-sm text-gray-600">Expires: August 15, 2024</p>
+                          <p className="text-sm text-gray-600">Expires: July 31, 2026</p>
                         </div>
                       </div>
                       <span className="industrial-badge-pending">Renewal Due</span>

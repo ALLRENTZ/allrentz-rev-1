@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import DemoTour from '@/components/DemoTour';
+import { demoCustomerRentalRequests, demoCustomerNotifications } from '@/data/demoDashboardData';
 
 const CustomerDashboard = () => {
   const { user, profile, showDemoTour, setShowDemoTour } = useAuth();
@@ -20,8 +21,14 @@ const CustomerDashboard = () => {
 
   useEffect(() => {
     if (user) {
-      fetchNotifications();
-      fetchRentalRequests();
+      if (isDemoUser) {
+        setNotifications(demoCustomerNotifications);
+        setRentalRequests(demoCustomerRentalRequests);
+        setLoading(false);
+      } else {
+        fetchNotifications();
+        fetchRentalRequests();
+      }
     }
   }, [user]);
 
@@ -70,6 +77,8 @@ const CustomerDashboard = () => {
     switch (status) {
       case 'approved': return 'bg-green-100 text-green-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'in_transit': return 'bg-blue-100 text-blue-800';
+      case 'completed': return 'bg-gray-100 text-gray-600';
       case 'rejected': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -79,6 +88,8 @@ const CustomerDashboard = () => {
     switch (status) {
       case 'approved': return <CheckCircle className="h-4 w-4" />;
       case 'pending': return <Clock className="h-4 w-4" />;
+      case 'in_transit': return <Truck className="h-4 w-4" />;
+      case 'completed': return <CheckCircle className="h-4 w-4" />;
       case 'rejected': return <AlertCircle className="h-4 w-4" />;
       default: return <FileText className="h-4 w-4" />;
     }
@@ -229,7 +240,7 @@ const CustomerDashboard = () => {
                           </div>
                           <div>
                             <p className="text-gray-500">Total</p>
-                            <p className="font-medium">${request.total_amount}</p>
+                            <p className="font-medium">{request.total_amount != null ? `$${request.total_amount.toLocaleString()}` : 'Quote pending'}</p>
                           </div>
                         </div>
                         
