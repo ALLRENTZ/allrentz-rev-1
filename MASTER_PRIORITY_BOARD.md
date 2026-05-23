@@ -116,7 +116,7 @@ Reduce:
 - [x] Fix quote request error handling <!-- bda5769 -->
 - [ ] Audit quote lifecycle consistency
 - [ ] Audit quote approval flow
-- [ ] Audit vendor response flow
+- [x] Audit vendor response flow <!-- 1e24195 -->
 
 ## Dashboard Stability
 - [ ] Audit customer dashboard continuity
@@ -149,7 +149,7 @@ Reduce:
 - [ ] Closeout workflow
 
 ## Vendor Demo
-- [ ] RFQ handling
+- [x] RFQ handling <!-- 1e24195 -->
 - [ ] Equipment management
 - [ ] Compliance upload flow
 - [ ] Vendor performance view
