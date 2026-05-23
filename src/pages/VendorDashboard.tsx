@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Plus, MapPin, Calendar, FileText, Bell, Settings, DollarSign, CheckCircle, AlertTriangle, TrendingUp, Package } from 'lucide-react';
 
 const VendorDashboard = () => {
@@ -104,11 +105,11 @@ const VendorDashboard = () => {
               <p className="text-gray-600 mt-1">Gulf Coast Equipment Rentals</p>
             </div>
             <div className="mt-4 md:mt-0 flex space-x-3">
-              <button className="industrial-button inline-flex items-center space-x-2">
+              <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="industrial-button inline-flex items-center space-x-2">
                 <Plus className="h-4 w-4" />
                 <span>Add Equipment</span>
               </button>
-              <button className="industrial-button-secondary inline-flex items-center space-x-2">
+              <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="industrial-button-secondary inline-flex items-center space-x-2">
                 <Bell className="h-4 w-4" />
                 <span>Notifications</span>
               </button>
@@ -222,7 +223,7 @@ const VendorDashboard = () => {
                 <div className="industrial-card p-6">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-allrentz-gray">Recent Quote Requests</h2>
-                    <button className="text-allrentz-red hover:text-allrentz-red-dark font-medium">
+                    <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="text-allrentz-red hover:text-allrentz-red-dark font-medium">
                       View All
                     </button>
                   </div>
@@ -254,10 +255,10 @@ const VendorDashboard = () => {
                               {request.status}
                             </span>
                             <div className="flex space-x-2">
-                              <button className="industrial-button text-sm py-1 px-3">
+                              <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="industrial-button text-sm py-1 px-3">
                                 {request.status === 'New' ? 'Send Quote' : 'View Quote'}
                               </button>
-                              <button className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-1 px-3 rounded-md text-sm">
+                              <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-1 px-3 rounded-md text-sm">
                                 Details
                               </button>
                             </div>
@@ -316,7 +317,7 @@ const VendorDashboard = () => {
                 <div className="industrial-card p-6">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-allrentz-gray">Equipment Inventory</h2>
-                    <button className="industrial-button inline-flex items-center space-x-2">
+                    <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="industrial-button inline-flex items-center space-x-2">
                       <Plus className="h-4 w-4" />
                       <span>Add Equipment</span>
                     </button>
@@ -345,10 +346,10 @@ const VendorDashboard = () => {
                             <span>{item.location}</span>
                           </div>
                           <div className="flex space-x-2">
-                            <button className="flex-1 industrial-button-secondary text-sm py-2">
+                            <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="flex-1 industrial-button-secondary text-sm py-2">
                               Edit
                             </button>
-                            <button className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-4 rounded-md text-sm">
+                            <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-4 rounded-md text-sm">
                               Track
                             </button>
                           </div>
@@ -389,14 +390,14 @@ const VendorDashboard = () => {
                           </div>
                         </div>
                         <div className="mt-4 lg:mt-0 flex flex-col space-y-2">
-                          <button className="industrial-button text-sm py-2 px-6">
+                          <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="industrial-button text-sm py-2 px-6">
                             {request.status === 'New' ? 'Send Quote' : 'View Quote'}
                           </button>
-                          <button className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-6 rounded-md text-sm">
+                          <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-6 rounded-md text-sm">
                             View Details
                           </button>
                           {request.status === 'New' && (
-                            <button className="text-red-600 hover:text-red-700 font-medium py-2 px-6 text-sm">
+                            <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="text-red-600 hover:text-red-700 font-medium py-2 px-6 text-sm">
                               Decline
                             </button>
                           )}
@@ -483,7 +484,7 @@ const VendorDashboard = () => {
                           <p className="text-sm text-gray-600">{item.location}</p>
                         </div>
                       </div>
-                      <button className="text-allrentz-red hover:text-allrentz-red-dark font-medium text-sm">
+                      <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="text-allrentz-red hover:text-allrentz-red-dark font-medium text-sm">
                         View on Map
                       </button>
                     </div>
@@ -567,7 +568,7 @@ const VendorDashboard = () => {
                       <p className="text-sm text-gray-600 mb-2">Connected to Stripe for secure payments</p>
                       <div className="flex items-center space-x-4">
                         <span className="text-sm text-gray-700">Account: ****1234</span>
-                        <button className="text-allrentz-red hover:text-allrentz-red-dark font-medium text-sm">
+                        <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="text-allrentz-red hover:text-allrentz-red-dark font-medium text-sm">
                           Update
                         </button>
                       </div>
