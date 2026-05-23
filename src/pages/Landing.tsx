@@ -256,13 +256,13 @@ const Landing = () => {
             <div className="text-center mb-8">
               <div className="inline-flex items-center space-x-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium mb-4">
                 <Zap className="h-4 w-4" />
-                <span>AI-Powered SmartMatch</span>
+                <span>SmartMatch</span>
               </div>
               <h2 className="text-3xl lg:text-4xl font-bold text-allrentz-gray mb-4">
                 See SmartMatch in Action
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Watch how our AI instantly connects you with the right equipment and vendors based on your exact needs.
+                See how SmartMatch connects you with the right equipment and vendors based on your requirements.
               </p>
             </div>
             
@@ -270,17 +270,17 @@ const Landing = () => {
               <div className="bg-white rounded-lg p-6 shadow-sm">
                 <Clock className="h-8 w-8 text-blue-600 mb-3" />
                 <h3 className="font-bold text-gray-900 mb-2">Instant Matching</h3>
-                <p className="text-sm text-gray-600">AI analyzes 50+ factors to find perfect equipment matches in seconds</p>
+                <p className="text-sm text-gray-600">Matches equipment and vendors based on your type, location, urgency, and compliance requirements</p>
               </div>
               <div className="bg-white rounded-lg p-6 shadow-sm">
                 <Award className="h-8 w-8 text-blue-600 mb-3" />
                 <h3 className="font-bold text-gray-900 mb-2">Vendor Scoring</h3>
-                <p className="text-sm text-gray-600">Real-time performance ratings based on compliance, delivery, and quality</p>
+                <p className="text-sm text-gray-600">Vendor scoring based on compliance, delivery, and quality</p>
               </div>
               <div className="bg-white rounded-lg p-6 shadow-sm">
                 <Bell className="h-8 w-8 text-blue-600 mb-3" />
                 <h3 className="font-bold text-gray-900 mb-2">Live Notifications</h3>
-                <p className="text-sm text-gray-600">Instant alerts to vendors with immediate response tracking</p>
+                <p className="text-sm text-gray-600">Vendor notifications with response tracking</p>
               </div>
             </div>
             
