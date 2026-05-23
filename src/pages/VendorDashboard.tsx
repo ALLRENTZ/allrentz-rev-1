@@ -6,6 +6,8 @@ import { Plus, MapPin, Calendar, FileText, Bell, Settings, DollarSign, CheckCirc
 
 const VendorDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [quotingId, setQuotingId] = useState<number | null>(null);
+  const [quoteForm, setQuoteForm] = useState({ amount: '', notes: '' });
 
   const equipmentInventory = [
     {
@@ -40,7 +42,7 @@ const VendorDashboard = () => {
     }
   ];
 
-  const quoteRequests = [
+  const [quoteRequests, setQuoteRequests] = useState([
     {
       id: 1,
       customer: 'Bayou Bend Petroleum',
@@ -71,7 +73,18 @@ const VendorDashboard = () => {
       status: 'New',
       urgency: 'Medium'
     }
-  ];
+  ]);
+
+  const handleSendQuote = (id: number) => {
+    if (!quoteForm.amount) {
+      toast.info('Enter a quote amount to proceed.');
+      return;
+    }
+    setQuoteRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'Quoted' } : r));
+    setQuotingId(null);
+    setQuoteForm({ amount: '', notes: '' });
+    toast.success('Quote sent to customer.');
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -264,7 +277,10 @@ const VendorDashboard = () => {
                               {request.status}
                             </span>
                             <div className="flex space-x-2">
-                              <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="industrial-button text-sm py-1 px-3">
+                              <button
+                                onClick={() => request.status === 'New' ? setQuotingId(request.id) : toast.info("Feature scheduled for upcoming release")}
+                                className="industrial-button text-sm py-1 px-3"
+                              >
                                 {request.status === 'New' ? 'Send Quote' : 'View Quote'}
                               </button>
                               <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-1 px-3 rounded-md text-sm">
@@ -273,6 +289,44 @@ const VendorDashboard = () => {
                             </div>
                           </div>
                         </div>
+                        {quotingId === request.id && (
+                          <div className="mt-3 pt-3 border-t border-gray-200 space-y-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Quote Amount ($)</label>
+                              <input
+                                type="number"
+                                value={quoteForm.amount}
+                                onChange={e => setQuoteForm(prev => ({ ...prev, amount: e.target.value }))}
+                                className="industrial-input w-full"
+                                placeholder="e.g. 12600"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Response Note</label>
+                              <textarea
+                                value={quoteForm.notes}
+                                onChange={e => setQuoteForm(prev => ({ ...prev, notes: e.target.value }))}
+                                className="industrial-input w-full"
+                                rows={2}
+                                placeholder="Availability, delivery window, certifications..."
+                              />
+                            </div>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleSendQuote(request.id)}
+                                className="industrial-button text-sm py-1 px-4"
+                              >
+                                Confirm Quote
+                              </button>
+                              <button
+                                onClick={() => { setQuotingId(null); setQuoteForm({ amount: '', notes: '' }); }}
+                                className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-1 px-4 rounded-md text-sm"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -399,7 +453,10 @@ const VendorDashboard = () => {
                           </div>
                         </div>
                         <div className="mt-4 lg:mt-0 flex flex-col space-y-2">
-                          <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="industrial-button text-sm py-2 px-6">
+                          <button
+                            onClick={() => request.status === 'New' ? setQuotingId(request.id) : toast.info("Feature scheduled for upcoming release")}
+                            className="industrial-button text-sm py-2 px-6"
+                          >
                             {request.status === 'New' ? 'Send Quote' : 'View Quote'}
                           </button>
                           <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-6 rounded-md text-sm">
@@ -412,6 +469,46 @@ const VendorDashboard = () => {
                           )}
                         </div>
                       </div>
+                      {quotingId === request.id && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Quote Amount ($)</label>
+                              <input
+                                type="number"
+                                value={quoteForm.amount}
+                                onChange={e => setQuoteForm(prev => ({ ...prev, amount: e.target.value }))}
+                                className="industrial-input w-full"
+                                placeholder="e.g. 12600"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Response Note</label>
+                              <textarea
+                                value={quoteForm.notes}
+                                onChange={e => setQuoteForm(prev => ({ ...prev, notes: e.target.value }))}
+                                className="industrial-input w-full"
+                                rows={2}
+                                placeholder="Availability, delivery window, certifications..."
+                              />
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleSendQuote(request.id)}
+                              className="industrial-button text-sm py-2 px-6"
+                            >
+                              Confirm Quote
+                            </button>
+                            <button
+                              onClick={() => { setQuotingId(null); setQuoteForm({ amount: '', notes: '' }); }}
+                              className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-6 rounded-md text-sm"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

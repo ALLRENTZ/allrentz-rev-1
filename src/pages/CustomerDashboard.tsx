@@ -77,6 +77,7 @@ const CustomerDashboard = () => {
     switch (status) {
       case 'approved': return 'bg-green-100 text-green-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'quoted': return 'bg-teal-100 text-teal-800';
       case 'in_transit': return 'bg-blue-100 text-blue-800';
       case 'completed': return 'bg-gray-100 text-gray-600';
       case 'rejected': return 'bg-red-100 text-red-800';
@@ -88,6 +89,7 @@ const CustomerDashboard = () => {
     switch (status) {
       case 'approved': return <CheckCircle className="h-4 w-4" />;
       case 'pending': return <Clock className="h-4 w-4" />;
+      case 'quoted': return <DollarSign className="h-4 w-4" />;
       case 'in_transit': return <Truck className="h-4 w-4" />;
       case 'completed': return <CheckCircle className="h-4 w-4" />;
       case 'rejected': return <AlertCircle className="h-4 w-4" />;
@@ -221,7 +223,7 @@ const CustomerDashboard = () => {
                           </div>
                           <Badge className={getStatusColor(request.status)}>
                             {getStatusIcon(request.status)}
-                            <span className="ml-1 capitalize">{request.status}</span>
+                            <span className="ml-1 capitalize">{request.status.replace(/_/g, ' ')}</span>
                           </Badge>
                         </div>
                         
@@ -248,6 +250,16 @@ const CustomerDashboard = () => {
                           <div className="mt-3 flex items-center space-x-2 text-sm text-gray-600">
                             <MapPin className="h-4 w-4" />
                             <span>{request.delivery_address}</span>
+                          </div>
+                        )}
+                        {request.status === 'quoted' && request.vendor_name && (
+                          <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
+                            <p className="text-sm font-semibold text-teal-900">
+                              Quote received — {request.vendor_name}
+                            </p>
+                            {request.quote_notes && (
+                              <p className="text-xs text-teal-700 mt-1">{request.quote_notes}</p>
+                            )}
                           </div>
                         )}
                       </div>

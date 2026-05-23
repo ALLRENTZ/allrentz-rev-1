@@ -28,13 +28,15 @@ export const demoCustomerRentalRequests = [
   {
     id: 'demo-req-002',
     customer_id: 'demo-customer',
-    status: 'pending',
+    status: 'quoted',
     start_date: relDate(5),
     end_date: relDate(35),
-    total_amount: null,
+    total_amount: 12600,
     delivery_address: '4400 Terminal Blvd, Beaumont Tank Terminal, Beaumont, TX 77705',
     special_requirements: 'Zone 2 rated required. Quantity: 2 units.',
     created_at: rel(-1),
+    vendor_name: 'Atlas Industrial Equipment',
+    quote_notes: 'Both Zone 2 units confirmed available. Zone 2 certifications on file. Delivery window: Monday 06:00 — Gate B access required. TWIC-compliant driver assigned.',
     equipment: {
       title: 'Zone 2 Explosion-Proof Light Tower (x2)',
       daily_rate: 210,
