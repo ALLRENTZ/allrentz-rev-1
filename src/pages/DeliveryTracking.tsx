@@ -62,6 +62,11 @@ const DeliveryTracking = () => {
           </p>
         </div>
 
+        {/* Demo data notice */}
+        <div className="mb-6 text-sm text-gray-500 bg-gray-100 border border-gray-200 rounded-lg px-4 py-3">
+          Sample demo data — delivery records shown are for demonstration purposes only.
+        </div>
+
         {/* Deliveries */}
         <div className="space-y-6">
           {deliveries.map((delivery) => (

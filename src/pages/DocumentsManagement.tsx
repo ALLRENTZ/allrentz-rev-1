@@ -118,6 +118,11 @@ const DocumentsManagement = () => {
           </p>
         </div>
 
+        {/* Demo data notice */}
+        <div className="mb-6 text-sm text-gray-500 bg-gray-100 border border-gray-200 rounded-lg px-4 py-3">
+          Sample demo data — documents shown are for demonstration purposes only.
+        </div>
+
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="industrial-card">

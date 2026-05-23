@@ -47,7 +47,7 @@ const EnterpriseSecurityDashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Enterprise Security Center</h1>
-              <p className="text-gray-600 mt-2">ALLRENTZ Triple-Layer Security & Intelligence Platform</p>
+              <p className="text-gray-600 mt-2">ALLRENTZ Security &amp; Compliance Overview</p>
             </div>
             <div className={`px-4 py-2 rounded-full flex items-center space-x-2 ${getSecurityStatusColor()}`}>
               <Shield className="h-5 w-5" />
@@ -56,7 +56,12 @@ const EnterpriseSecurityDashboard = () => {
           </div>
         </div>
 
-        {/* Enhanced Security Metrics Grid - same layout, more metrics */}
+        {/* Internal access notice */}
+        <div className="mb-6 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          Internal access only — sample scenario data.
+        </div>
+
+        {/* Security Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {securityMetrics.map((metric, index) => {
             const Icon = metric.icon;
