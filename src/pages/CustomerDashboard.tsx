@@ -162,8 +162,8 @@ const CustomerDashboard = () => {
             <div className="flex items-center space-x-3">
               <Calendar className="h-8 w-8 text-green-600" />
               <div>
-                <h3 className="font-semibold text-gray-900">Schedule Delivery</h3>
-                <p className="text-sm text-gray-600">Plan your rentals</p>
+                <h3 className="font-semibold text-gray-900">Track Delivery</h3>
+                <p className="text-sm text-gray-600">Track equipment deliveries</p>
               </div>
             </div>
           </Link>

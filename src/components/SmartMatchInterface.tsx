@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { smartMatchEngine, SmartMatchRequest, MatchedVendor } from '@/services/smartMatchEngine';
@@ -95,10 +96,12 @@ const SmartMatchInterface: React.FC = () => {
                   <strong>Demo Mode:</strong> You're experiencing SmartMatch with simulated data. 
                   Sign in to access real vendor networks and request actual quotes.
                 </p>
-                <Button size="sm" variant="outline" className="mt-2 border-blue-300 text-blue-700 hover:bg-blue-100">
-                  <UserPlus className="h-4 w-4 mr-1" />
-                  Sign Up for Full Access
-                </Button>
+                <Link to="/auth">
+                  <Button size="sm" variant="outline" className="mt-2 border-blue-300 text-blue-700 hover:bg-blue-100">
+                    <UserPlus className="h-4 w-4 mr-1" />
+                    Sign Up for Full Access
+                  </Button>
+                </Link>
               </div>
             </div>
           </CardContent>

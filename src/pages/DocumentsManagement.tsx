@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, FileText, Download, Eye, AlertTriangle, CheckCircle, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 const DocumentsManagement = () => {
   const { profile } = useAuth();
@@ -196,11 +197,11 @@ const DocumentsManagement = () => {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => toast.info("Feature scheduled for upcoming release")}>
                         <Eye className="h-4 w-4 mr-2" />
                         View
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => toast.info("Feature scheduled for upcoming release")}>
                         <Download className="h-4 w-4 mr-2" />
                         Download
                       </Button>
