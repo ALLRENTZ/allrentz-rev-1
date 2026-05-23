@@ -139,7 +139,7 @@ Reduce:
 
 ## Demo Environment
 - [x] Create explicit Demo Mode banner <!-- 3a0bfd9 -->
-- [ ] Build structured demo dataset
+- [x] Build structured demo dataset <!-- 330d2a9 -->
 - [ ] Separate demo users from production architecture
 
 ## Customer Demo
