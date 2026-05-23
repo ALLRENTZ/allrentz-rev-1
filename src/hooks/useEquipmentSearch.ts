@@ -76,7 +76,6 @@ export function useEquipmentSearch(
           );
         }
         const { data: rows, error: e } = await req;
-        console.log('equipment query', { tier: 'authed', categories: catList, count: rows?.length, error: e });
         if (e) throw e;
         if (reqIdRef.current === myReq) setData((rows ?? []) as FullEquipmentRow[]);
       } else {
@@ -92,7 +91,6 @@ export function useEquipmentSearch(
           );
         }
         const { data: rows, error: e } = await req;
-        console.log('equipment query', { tier: 'anon', categories: catList, count: rows?.length, error: e });
         if (e) throw e;
         if (reqIdRef.current === myReq) setData((rows ?? []) as PublicEquipmentRow[]);
       }
