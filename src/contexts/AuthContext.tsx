@@ -101,26 +101,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         demoCredentials[type].password
       );
 
-      // If sign in fails, create the demo account
       if (signInError) {
-        const { error: signUpError } = await supabase.auth.signUp({
-          email: demoCredentials[type].email,
-          password: demoCredentials[type].password,
-          options: {
-            data: {
-              full_name: type === 'customer' ? 'Pat - Refinery' : 'Pat-Rentals',
-              role: type,
-            },
-            emailRedirectTo: `${window.location.origin}/`
-          }
+        toast({
+          title: "Demo login failed",
+          description: "Please try again or contact support.",
+          variant: "destructive",
         });
-
-        if (signUpError) {
-          console.error('Demo signup error:', signUpError);
-        } else {
-          // For demo purposes, sign in immediately after signup
-          await signIn(demoCredentials[type].email, demoCredentials[type].password);
-        }
+        return;
       }
 
       // Show demo tour after successful login
