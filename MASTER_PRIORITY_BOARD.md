@@ -103,8 +103,8 @@ Reduce:
 - [x] Audit fake customer/vendor indicators <!-- 6718689 -->
 
 ### Navigation + UX
-- [ ] Audit dead routes
-- [ ] Audit broken buttons
+- [x] Audit dead routes <!-- 2705860 -->
+- [x] Audit broken buttons <!-- 2e1264e -->
 - [ ] Audit empty pages
 - [ ] Audit inconsistent navigation flows
 
