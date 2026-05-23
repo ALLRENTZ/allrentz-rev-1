@@ -133,7 +133,7 @@ const CustomerDashboard = () => {
               <Zap className="h-8 w-8 text-blue-600" />
               <div>
                 <h3 className="font-semibold text-gray-900">SmartMatch</h3>
-                <p className="text-sm text-gray-600">AI-powered matching</p>
+                <p className="text-sm text-gray-600">Find equipment matches</p>
               </div>
             </div>
           </Link>
@@ -143,7 +143,7 @@ const CustomerDashboard = () => {
               <Edit className="h-8 w-8 text-teal-600" />
               <div>
                 <h3 className="font-semibold text-gray-900">Smart Draft</h3>
-                <p className="text-sm text-gray-600">AI quote generation</p>
+                <p className="text-sm text-gray-600">Draft a quote request</p>
               </div>
             </div>
           </Link>

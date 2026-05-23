@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, ChevronLeft, CheckCircle, Building2, MapPin, Phone, Mail, User, FileText } from 'lucide-react';
+import { toast } from 'sonner';
 
 const CustomerOnboarding = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -93,7 +94,7 @@ const CustomerOnboarding = () => {
   };
 
   const completeOnboarding = () => {
-    // In a real app, this would save the data and redirect
+    toast.success('Account setup complete. Welcome to ALLRENTZ.');
     window.location.href = '/customer-dashboard';
   };
 
