@@ -45,9 +45,9 @@ const EquipmentGrid: React.FC<EquipmentGridProps> = ({
         <div className="bg-gray-100 rounded-lg h-96 flex items-center justify-center">
           <div className="text-center">
             <Map className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-600 mb-2">Interactive Equipment Map</h3>
+            <h3 className="text-lg font-semibold text-gray-600 mb-2">Map View</h3>
             <p className="text-gray-500">
-              View equipment locations and get directions to vendor locations
+              Map view is not available in this version. Use grid view to browse equipment by location.
             </p>
           </div>
         </div>

@@ -19,8 +19,8 @@ const SmartMatchDemo = () => {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-allrentz-gray">SmartMatch AI Demo</h1>
-              <p className="text-gray-600">AI-powered equipment matching for industrial rentals</p>
+              <h1 className="text-3xl font-bold text-allrentz-gray">SmartMatch</h1>
+              <p className="text-gray-600">Equipment matching based on type, location, and compliance requirements</p>
             </div>
           </div>
         </div>
