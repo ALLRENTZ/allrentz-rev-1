@@ -83,10 +83,10 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
     } catch (error) {
       console.error('Error generating quote:', error);
       toast({
-        title: "Quote Generated!",
-        description: "Your quote is ready. Valid for 24 hours.",
+        title: "Quote request failed",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
       });
-      setQuoteGenerated(true);
     }
     
     setLoading(false);
