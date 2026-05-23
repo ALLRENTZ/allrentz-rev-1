@@ -186,27 +186,30 @@ class SmartMatchEngine {
       }
 
       // Get mock matches (same for demo and authenticated users for now)
+      if (!isDemoUser) {
+        console.warn('SmartMatch: returning mock vendors for authenticated user', customer_id);
+      }
       const matches = this.getMockMatches(request);
       const processingTime = Date.now() - startTime;
 
       return {
         request_id: isDemoUser ? 'demo-request' : 'request-' + Date.now(),
-        total_matches: matches.length + 15, // Simulate more matches in the system
-        matches: matches.slice(0, 4), // Show top 4 matches
+        total_matches: matches.length,
+        matches: matches.slice(0, 4),
         processing_time_ms: processingTime,
         location_center: this.getLocationCoordinates(request.location)
       };
 
     } catch (error) {
       console.error('SmartMatch processing error:', error);
-      
-      // Fallback to demo mode
+
+      // Fallback to mock matches on error
       const matches = this.getMockMatches(request);
       const processingTime = Date.now() - startTime;
 
       return {
-        request_id: 'demo-request',
-        total_matches: matches.length + 15,
+        request_id: isDemoUser ? 'demo-request' : 'request-' + Date.now(),
+        total_matches: matches.length,
         matches: matches.slice(0, 4),
         processing_time_ms: processingTime,
         location_center: this.getLocationCoordinates(request.location)
