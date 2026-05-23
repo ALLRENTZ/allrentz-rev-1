@@ -105,8 +105,8 @@ Reduce:
 ### Navigation + UX
 - [x] Audit dead routes <!-- 2705860 -->
 - [x] Audit broken buttons <!-- 2e1264e -->
-- [ ] Audit empty pages
-- [ ] Audit inconsistent navigation flows
+- [x] Audit empty pages <!-- a11871a -->
+- [x] Audit inconsistent navigation flows <!-- cc4954e -->
 
 ---
 
@@ -138,7 +138,7 @@ Reduce:
 # PRIORITY 3 — DEMO EXPERIENCE
 
 ## Demo Environment
-- [ ] Create explicit Demo Mode banner
+- [x] Create explicit Demo Mode banner <!-- 3a0bfd9 -->
 - [ ] Build structured demo dataset
 - [ ] Separate demo users from production architecture
 
