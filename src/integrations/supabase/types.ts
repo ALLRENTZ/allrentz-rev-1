@@ -242,6 +242,13 @@ export type Database = {
             referencedRelation: "equipment"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "rental_requests_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       smart_draft_quotes: {
@@ -429,7 +436,45 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      equipment_public: {
+        Row: {
+          available: boolean | null
+          category: string | null
+          city: string | null
+          daily_rate: number | null
+          description_teaser: string | null
+          id: string | null
+          image_url: string | null
+          price_band: string | null
+          price_range_label: string | null
+          title: string | null
+        }
+        Insert: {
+          available?: boolean | null
+          category?: string | null
+          city?: never
+          daily_rate?: number | null
+          description_teaser?: never
+          id?: string | null
+          image_url?: string | null
+          price_band?: never
+          price_range_label?: never
+          title?: string | null
+        }
+        Update: {
+          available?: boolean | null
+          category?: string | null
+          city?: never
+          daily_rate?: number | null
+          description_teaser?: never
+          id?: string | null
+          image_url?: string | null
+          price_band?: never
+          price_range_label?: never
+          title?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
