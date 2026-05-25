@@ -1,3 +1,13 @@
+# GOVERNANCE
+
+Read ALLRENTZ_CONSTITUTION.md before performing any planning, architecture, implementation, migration, schema modification, workflow change, SmartMatch work, compliance logic, or AI-related work.
+
+All implementation decisions must follow the operational authority order defined in the constitution.
+
+Do not expand scope sideways.
+Do not prioritize features over operational authority.
+Do not introduce architecture that bypasses backend authority, auditability, migration integrity, or workflow enforcement.
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code when working with code in this repository.
