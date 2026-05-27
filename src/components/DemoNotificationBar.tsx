@@ -5,14 +5,14 @@ import { Zap, Info, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const DemoNotificationBar: React.FC = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [dismissed, setDismissed] = React.useState(false);
-  
-  const isDemoUser = user?.email?.includes('demo.') || false;
-  
+
+  const isDemoUser = profile?.is_demo ?? false;
+
   if (!isDemoUser || dismissed) return null;
 
-  const demoType = user?.email?.includes('customer') ? 'customer' : 'vendor';
+  const demoType = profile?.role_type === 'vendor' ? 'vendor' : 'customer';
 
   return (
     <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 relative">

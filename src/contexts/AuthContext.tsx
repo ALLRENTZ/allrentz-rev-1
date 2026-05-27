@@ -16,6 +16,7 @@ interface UserProfile {
   status: string | null;
   onboarding_completed: boolean | null;
   profile_completion_score: number | null;
+  is_demo: boolean;
 }
 
 interface AuthContextType {

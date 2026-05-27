@@ -16,7 +16,7 @@ const SmartMatchInterface: React.FC = () => {
   const [matchResults, setMatchResults] = useState<MatchedVendor[]>([]);
   const [processingTime, setProcessingTime] = useState<number>(0);
   const [totalMatches, setTotalMatches] = useState<number>(0);
-  const { user, hasRole } = useAuth();
+  const { user, profile, hasRole } = useAuth();
   const { toast } = useToast();
 
   const [request, setRequest] = useState<SmartMatchRequest>({
@@ -40,9 +40,8 @@ const SmartMatchInterface: React.FC = () => {
     setMatchResults([]);
 
     try {
-      // Use demo customer ID if no user is authenticated
-      const customerId = user?.id || 'demo-customer';
-      const result = await smartMatchEngine.processMatch(request, customerId);
+      const customerId = user?.id ?? 'unauthenticated';
+      const result = await smartMatchEngine.processMatch(request, customerId, profile?.is_demo ?? !user);
       
       setMatchResults(result.matches);
       setTotalMatches(result.total_matches);

@@ -17,7 +17,7 @@ const CustomerDashboard = () => {
   const [rentalRequests, setRentalRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const isDemoUser = user?.email === 'demo.customer@allrentz.com';
+  const isDemoUser = profile?.is_demo ?? false;
 
   useEffect(() => {
     if (user) {
