@@ -91,7 +91,7 @@ Reduce:
 - [ ] P1-2 Audit event integrity verified
 - [ ] P1-2 RFQ transition validation tested
 - [ ] P1-2 Org membership authority tested
-- [ ] P1-2 Migration pushed to remote safely
+- [x] P1-2 Migration pushed to remote safely <!-- 276de05 -->
 
 ---
 
