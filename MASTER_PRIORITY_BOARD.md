@@ -92,6 +92,7 @@ Reduce:
 - [ ] P1-2 RFQ transition validation tested
 - [ ] P1-2 Org membership authority tested
 - [x] P1-2 Migration pushed to remote safely <!-- 276de05 -->
+- [x] P1-3A Gate 1 DB transition allowlist enforcement validated <!-- 41af643 -->
 
 ---
 
