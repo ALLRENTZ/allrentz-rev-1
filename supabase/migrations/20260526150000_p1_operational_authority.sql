@@ -205,8 +205,9 @@ ALTER TABLE public.notification_events        ENABLE ROW LEVEL SECURITY;
 
 REVOKE INSERT, UPDATE, DELETE ON public.audit_events           FROM authenticated, anon;
 REVOKE INSERT, UPDATE, DELETE ON public.rfq_operational_status FROM authenticated, anon;
--- notification_events: clients may update delivery_status; no insert or delete
+-- notification_events: authenticated may update delivery_status; anon has no write path
 REVOKE INSERT, DELETE ON public.notification_events            FROM authenticated, anon;
+REVOKE UPDATE         ON public.notification_events            FROM anon;
 
 -- ============================================================
 -- SECTION 5: RLS POLICIES
@@ -532,18 +533,32 @@ $$;
 
 -- ============================================================
 -- SECTION 8: REVOKE EXECUTE — Edge Function gate
--- Client roles (anon, authenticated) cannot call these functions directly.
--- Edge Functions invoke via service_role key; service_role retains EXECUTE.
+-- Supabase local stack sets default privileges granting EXECUTE to anon and
+-- authenticated when functions are created. REVOKE FROM PUBLIC alone is not
+-- enough — must also REVOKE the direct grants created by those default privileges.
+-- Explicit GRANT to service_role so Edge Functions retain access via service key.
+-- The internal call transition_rfq_status → log_audit_event is safe because
+-- SECURITY DEFINER runs as the function owner (postgres superuser), which
+-- bypasses privilege checks entirely.
 -- ============================================================
 
 REVOKE EXECUTE ON FUNCTION public.log_audit_event(
   uuid, text, uuid, text, text, uuid, text, text,
   jsonb, jsonb, text, text, text, boolean, uuid, uuid, uuid, uuid, jsonb
-) FROM anon, authenticated;
+) FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION public.log_audit_event(
+  uuid, text, uuid, text, text, uuid, text, text,
+  jsonb, jsonb, text, text, text, boolean, uuid, uuid, uuid, uuid, jsonb
+) TO service_role;
 
 REVOKE EXECUTE ON FUNCTION public.transition_rfq_status(
   uuid, public.app_rfq_status, uuid, text, text, text, boolean
-) FROM anon, authenticated;
+) FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION public.transition_rfq_status(
+  uuid, public.app_rfq_status, uuid, text, text, text, boolean
+) TO service_role;
 
 -- ============================================================
 -- SECTION 9: DEMO SEED RECORDS
