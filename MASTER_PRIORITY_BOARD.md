@@ -90,7 +90,7 @@ Reduce:
 - [ ] P1-2 Demo org seed validation completed
 - [x] P1-2 Audit event integrity verified <!-- 1f4525a -->
 - [ ] P1-2 RFQ transition validation tested
-- [ ] P1-2 Org membership authority tested
+- [x] P1-2 Org membership authority tested <!-- a893b30 -->
 - [x] P1-2 Migration pushed to remote safely <!-- 276de05 -->
 - [x] P1-3A Gate 1 DB transition allowlist enforcement validated <!-- 41af643 -->
 
