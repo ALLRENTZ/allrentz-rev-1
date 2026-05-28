@@ -88,7 +88,7 @@ Reduce:
 - [x] P1-2 RLS validation completed <!-- 308f5f9 -->
 - [x] P1-2 Edge Function transition gateway implemented <!-- 94ed0dc -->
 - [ ] P1-2 Demo org seed validation completed
-- [x] P1-2 Audit event integrity verified
+- [x] P1-2 Audit event integrity verified <!-- 1f4525a -->
 - [ ] P1-2 RFQ transition validation tested
 - [ ] P1-2 Org membership authority tested
 - [x] P1-2 Migration pushed to remote safely <!-- 276de05 -->
