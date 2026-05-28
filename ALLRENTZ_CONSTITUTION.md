@@ -97,6 +97,25 @@ No authoritative state change may occur without an authoritative event.
 
 ---
 
+# Operational Reason Code Doctrine
+
+Future operational transitions should evolve toward structured reason classification:
+- a mandatory `reason_code` (enum) identifying the operational cause
+- an optional `reason_detail` (text) for free-form context
+
+Freeform `reason` text alone is insufficient for:
+- deterministic operational semantics
+- operational memory and replay
+- audit intelligence and dispute analysis
+- workflow analytics
+- compliance traceability
+- future AI-assisted orchestration
+
+Do NOT implement reason codes until the workflow state machine and audit schema are stable.
+When the time comes, reason codes belong at the DB layer first, enforced in `transition_rfq_status()`.
+
+---
+
 # Demo Isolation Rule
 
 Simulation/demo data must never:
