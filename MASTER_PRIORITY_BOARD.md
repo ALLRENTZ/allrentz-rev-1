@@ -87,7 +87,7 @@ Reduce:
 - [x] P1-2 Migration applied locally and verified <!-- 308f5f9 -->
 - [x] P1-2 RLS validation completed <!-- 308f5f9 -->
 - [x] P1-2 Edge Function transition gateway implemented <!-- 94ed0dc -->
-- [ ] P1-2 Demo org seed validation completed
+- [x] P1-2 Demo org seed validation completed <!-- d02c3a0 -->
 - [x] P1-2 Audit event integrity verified <!-- 1f4525a -->
 - [x] P1-2 RFQ transition validation tested <!-- 94563c4 -->
 - [x] P1-2 Org membership authority tested <!-- e5af3c0 -->
