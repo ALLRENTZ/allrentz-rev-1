@@ -89,7 +89,7 @@ Reduce:
 - [x] P1-2 Edge Function transition gateway implemented <!-- 94ed0dc -->
 - [ ] P1-2 Demo org seed validation completed
 - [x] P1-2 Audit event integrity verified <!-- 1f4525a -->
-- [ ] P1-2 RFQ transition validation tested
+- [x] P1-2 RFQ transition validation tested <!-- 94563c4 -->
 - [x] P1-2 Org membership authority tested <!-- e5af3c0 -->
 - [x] P1-2 Migration pushed to remote safely <!-- 276de05 -->
 - [x] P1-3A Gate 1 DB transition allowlist enforcement validated <!-- 41af643 -->
