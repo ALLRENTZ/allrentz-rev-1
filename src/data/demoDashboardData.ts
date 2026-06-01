@@ -11,7 +11,7 @@ export const demoCustomerRentalRequests = [
   {
     id: 'demo-req-001',
     customer_id: 'demo-customer',
-    status: 'in_transit',
+    operational_status: 'in_transit',
     start_date: relDate(-1),
     end_date: relDate(20),
     total_amount: 7665,
@@ -28,7 +28,7 @@ export const demoCustomerRentalRequests = [
   {
     id: 'demo-req-002',
     customer_id: 'demo-customer',
-    status: 'quoted',
+    operational_status: 'vendor_quote_received',
     start_date: relDate(5),
     end_date: relDate(35),
     total_amount: 12600,
@@ -47,7 +47,7 @@ export const demoCustomerRentalRequests = [
   {
     id: 'demo-req-003',
     customer_id: 'demo-customer',
-    status: 'approved',
+    operational_status: 'vendor_confirmed',
     start_date: relDate(3),
     end_date: relDate(17),
     total_amount: 3780,
@@ -64,7 +64,7 @@ export const demoCustomerRentalRequests = [
   {
     id: 'demo-req-004',
     customer_id: 'demo-customer',
-    status: 'completed',
+    operational_status: 'completed',
     start_date: relDate(-21),
     end_date: relDate(-5),
     total_amount: 12800,

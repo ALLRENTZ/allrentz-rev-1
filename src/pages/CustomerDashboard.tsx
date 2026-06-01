@@ -75,11 +75,21 @@ const CustomerDashboard = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'quoted': return 'bg-teal-100 text-teal-800';
+      case 'draft': return 'bg-gray-100 text-gray-700';
+      case 'submitted': return 'bg-yellow-100 text-yellow-800';
+      case 'pending_vendor_review': return 'bg-yellow-100 text-yellow-800';
+      case 'vendor_quote_received': return 'bg-teal-100 text-teal-800';
+      case 'quote_accepted': return 'bg-green-100 text-green-800';
+      case 'vendor_confirmed': return 'bg-green-100 text-green-800';
+      case 'mobilizing': return 'bg-blue-100 text-blue-800';
       case 'in_transit': return 'bg-blue-100 text-blue-800';
+      case 'on_rent': return 'bg-blue-100 text-blue-800';
+      case 'rental_extended': return 'bg-blue-100 text-blue-800';
+      case 'off_rent_requested': return 'bg-yellow-100 text-yellow-800';
+      case 'demobilizing': return 'bg-yellow-100 text-yellow-800';
+      case 'off_rent': return 'bg-gray-100 text-gray-600';
       case 'completed': return 'bg-gray-100 text-gray-600';
+      case 'cancelled': return 'bg-gray-100 text-gray-600';
       case 'rejected': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -87,11 +97,21 @@ const CustomerDashboard = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'approved': return <CheckCircle className="h-4 w-4" />;
-      case 'pending': return <Clock className="h-4 w-4" />;
-      case 'quoted': return <DollarSign className="h-4 w-4" />;
+      case 'draft': return <Clock className="h-4 w-4" />;
+      case 'submitted': return <Clock className="h-4 w-4" />;
+      case 'pending_vendor_review': return <Clock className="h-4 w-4" />;
+      case 'vendor_quote_received': return <DollarSign className="h-4 w-4" />;
+      case 'quote_accepted': return <CheckCircle className="h-4 w-4" />;
+      case 'vendor_confirmed': return <CheckCircle className="h-4 w-4" />;
+      case 'mobilizing': return <Truck className="h-4 w-4" />;
       case 'in_transit': return <Truck className="h-4 w-4" />;
+      case 'on_rent': return <CheckCircle className="h-4 w-4" />;
+      case 'rental_extended': return <Truck className="h-4 w-4" />;
+      case 'off_rent_requested': return <Clock className="h-4 w-4" />;
+      case 'demobilizing': return <Truck className="h-4 w-4" />;
+      case 'off_rent': return <CheckCircle className="h-4 w-4" />;
       case 'completed': return <CheckCircle className="h-4 w-4" />;
+      case 'cancelled': return <AlertCircle className="h-4 w-4" />;
       case 'rejected': return <AlertCircle className="h-4 w-4" />;
       default: return <FileText className="h-4 w-4" />;
     }
@@ -221,9 +241,9 @@ const CustomerDashboard = () => {
                               <p className="text-sm text-gray-600">{request.equipment?.category}</p>
                             </div>
                           </div>
-                          <Badge className={getStatusColor(request.status)}>
-                            {getStatusIcon(request.status)}
-                            <span className="ml-1 capitalize">{request.status.replace(/_/g, ' ')}</span>
+                          <Badge className={getStatusColor(request.operational_status)}>
+                            {getStatusIcon(request.operational_status)}
+                            <span className="ml-1 capitalize">{request.operational_status?.replace(/_/g, ' ')}</span>
                           </Badge>
                         </div>
                         
@@ -252,7 +272,7 @@ const CustomerDashboard = () => {
                             <span>{request.delivery_address}</span>
                           </div>
                         )}
-                        {request.status === 'quoted' && request.vendor_name && (
+                        {request.operational_status === 'vendor_quote_received' && request.vendor_name && (
                           <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
                             <p className="text-sm font-semibold text-teal-900">
                               Quote received — {request.vendor_name}
