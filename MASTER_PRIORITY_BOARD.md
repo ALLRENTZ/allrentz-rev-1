@@ -94,6 +94,7 @@ Reduce:
 - [x] P1-2 Migration pushed to remote safely <!-- 276de05 -->
 - [x] P1-3A Gate 1 DB transition allowlist enforcement validated <!-- 41af643 -->
 - [x] B1a RFQ RLS hardening — remove authenticated UPDATE/DELETE authority from rental_requests <!-- 508fa96 -->
+- [x] B3a migrate frontend RFQ rendering to operational_status <!-- 7794abe -->
 
 ---
 
