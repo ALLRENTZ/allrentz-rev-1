@@ -1,0 +1,25 @@
+-- B3b: Drop legacy rental_requests.status column
+--
+-- This column was the original MVP status field (text DEFAULT 'pending').
+-- It was superseded by operational_status (app_rfq_status enum, NOT NULL DEFAULT 'draft')
+-- introduced in migration 20260526150000_p1_operational_authority.sql.
+--
+-- B2 (68d3dff) removed all frontend writes to this column.
+-- B3a (7794abe) removed all frontend reads from this column.
+-- No RLS policy, Edge Function, script, or query reads this column.
+-- All existing rows hold the value 'pending' (the default, never updated).
+--
+-- Pre-drop catalog verification confirmed (2026-06-01):
+--   No indexes on status. No triggers. No function dependencies.
+--   No views. No policies. No constraints. No pg_depend entries.
+--
+-- After applying: regenerate types with:
+--   supabase gen types typescript --local > src/integrations/supabase/types.ts
+--
+-- Rollback (emergency only -- restores column with DEFAULT, no data recovery):
+--   ALTER TABLE public.rental_requests ADD COLUMN status text DEFAULT 'pending';
+--
+-- Depends on: 20260601000000_b1a_rfq_rls_hardening.sql
+--             7794abe B3a frontend migration
+
+ALTER TABLE public.rental_requests DROP COLUMN status;
