@@ -54,8 +54,8 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
     setLoading(true);
 
     try {
-      // Use type assertion temporarily until types are properly generated
-      const { error } = await (supabase as any)
+      // Step 1: INSERT draft rental_request and capture row ID
+      const { data: insertData, error: insertError } = await (supabase as any)
         .from('rental_requests')
         .insert({
           customer_id: user.id,
@@ -64,9 +64,26 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
           end_date: format(endDate, 'yyyy-MM-dd'),
           delivery_address: deliveryAddress,
           special_requirements: specialRequirements
-        });
+        })
+        .select('id')
+        .single();
 
-      if (error) throw error;
+      if (insertError) throw insertError;
+
+      // Step 2: Transition draft → submitted via Edge Function gate
+      const { error: transitionError } = await supabase.functions.invoke('rfq-transition', {
+        body: { rfq_id: insertData.id, new_status: 'submitted' }
+      });
+
+      if (transitionError) {
+        console.error('Transition failed:', transitionError);
+        toast({
+          title: "Request saved as draft",
+          description: "Request saved as draft but submission failed. Please try again from your dashboard.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       setQuoteGenerated(true);
 
@@ -81,9 +98,9 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
         description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   if (quoteGenerated) {

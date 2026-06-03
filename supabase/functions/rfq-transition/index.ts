@@ -186,7 +186,7 @@ Deno.serve(async (req: Request) => {
   if (adminRoleRow) {
     actorSource = 'admin_action'
   } else {
-    // 5b. Customer authority — active non-viewer org membership on customer org
+    // 5b. Customer authority — org membership when org is set; direct owner when org is absent
     let hasCustomerAuth = false
     if (rfq.customer_organization_id) {
       const { data: membership } = await svc
@@ -199,6 +199,8 @@ Deno.serve(async (req: Request) => {
         .limit(1)
         .maybeSingle()
       hasCustomerAuth = !!membership
+    } else if (rfq.customer_id === user.id) {
+      hasCustomerAuth = true
     }
 
     // 5c. Vendor authority — accepted quote only (submitted-only quote is rejected)
