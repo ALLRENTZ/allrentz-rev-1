@@ -96,6 +96,7 @@ Reduce:
 - [x] B1a RFQ RLS hardening — remove authenticated UPDATE/DELETE authority from rental_requests <!-- 508fa96 -->
 - [x] B3a migrate frontend RFQ rendering to operational_status <!-- 7794abe -->
 - [x] B3b remove legacy rental_requests.status column <!-- f642c53 -->
+- [x] B4 wire RFQ submission through operational authority transition gate <!-- c778b75 -->
 
 ---
 
