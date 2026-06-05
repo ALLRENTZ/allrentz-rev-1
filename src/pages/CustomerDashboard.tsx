@@ -17,6 +17,8 @@ const CustomerDashboard = () => {
   const [rentalRequests, setRentalRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [acceptingVqrId, setAcceptingVqrId] = useState<string | null>(null);
+  const [rejectingRfqId, setRejectingRfqId] = useState<string | null>(null);
+  const [cancellingRfqId, setCancellingRfqId] = useState<string | null>(null);
 
   const isDemoUser = profile?.is_demo ?? false;
 
@@ -101,6 +103,46 @@ const CustomerDashboard = () => {
       });
     } finally {
       setAcceptingVqrId(null);
+    }
+  };
+
+  const handleRejectQuote = async (rfqId: string) => {
+    setRejectingRfqId(rfqId);
+    try {
+      const { error } = await supabase.functions.invoke('rfq-transition', {
+        body: { rfq_id: rfqId, new_status: 'rejected' },
+      });
+      if (error) throw error;
+      toast({ title: 'Quote rejected', description: 'The RFQ has been closed.' });
+      await fetchRentalRequests();
+    } catch (err: any) {
+      toast({
+        title: 'Reject failed',
+        description: err?.message || 'Unable to reject quote. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setRejectingRfqId(null);
+    }
+  };
+
+  const handleCancelRfq = async (rfqId: string) => {
+    setCancellingRfqId(rfqId);
+    try {
+      const { error } = await supabase.functions.invoke('rfq-transition', {
+        body: { rfq_id: rfqId, new_status: 'cancelled' },
+      });
+      if (error) throw error;
+      toast({ title: 'RFQ cancelled', description: 'The rental request has been cancelled.' });
+      await fetchRentalRequests();
+    } catch (err: any) {
+      toast({
+        title: 'Cancel failed',
+        description: err?.message || 'Unable to cancel RFQ. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCancellingRfqId(null);
     }
   };
 
@@ -338,11 +380,27 @@ const CustomerDashboard = () => {
                                 {vqr.vendor_notes && (
                                   <p className="text-xs text-teal-700 mt-1">{vqr.vendor_notes}</p>
                                 )}
-                                <div className="flex justify-end pt-1">
+                                <div className="flex justify-end gap-2 pt-1">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleCancelRfq(request.id)}
+                                    disabled={cancellingRfqId === request.id || rejectingRfqId === request.id || acceptingVqrId === vqr.id}
+                                  >
+                                    {cancellingRfqId === request.id ? 'Cancelling...' : 'Cancel RFQ'}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleRejectQuote(request.id)}
+                                    disabled={rejectingRfqId === request.id || cancellingRfqId === request.id || acceptingVqrId === vqr.id}
+                                  >
+                                    {rejectingRfqId === request.id ? 'Rejecting...' : 'Reject Quote'}
+                                  </Button>
                                   <Button
                                     size="sm"
                                     onClick={() => handleAcceptQuote(request.id, vqr.id)}
-                                    disabled={acceptingVqrId === vqr.id}
+                                    disabled={acceptingVqrId === vqr.id || rejectingRfqId === request.id || cancellingRfqId === request.id}
                                   >
                                     {acceptingVqrId === vqr.id ? 'Accepting...' : 'Accept Quote'}
                                   </Button>
