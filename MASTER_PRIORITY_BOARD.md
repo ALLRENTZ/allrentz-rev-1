@@ -98,7 +98,7 @@ Reduce:
 - [x] B3b remove legacy rental_requests.status column <!-- f642c53 -->
 - [x] B4 wire RFQ submission through operational authority transition gate <!-- c778b75 -->
 - [x] B4a enforce quote acceptance authority and vendor RFQ visibility <!-- 2bde5b3 -->
-- [ ] B5-1 VQR acceptance write path — atomically set VQR status to accepted inside transition_rfq_status on quote_accepted transition
+- [x] B5-1 VQR acceptance write path — atomically set VQR status to accepted inside transition_rfq_status on quote_accepted transition <!-- 806dd28 -->
 - [ ] B5-2 CustomerDashboard VQR data display — join and display vendor_quote_responses for vendor_quote_received state
 - [ ] B5-3 Customer quote accept action — wire vendor_quote_received:quote_accepted through Edge Function with vqr_id
 - [ ] B5-4 Customer quote reject and cancel actions — wire rejection and cancellation UI for vendor_quote_received state
