@@ -16,6 +16,7 @@ const CustomerDashboard = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [rentalRequests, setRentalRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [acceptingVqrId, setAcceptingVqrId] = useState<string | null>(null);
 
   const isDemoUser = profile?.is_demo ?? false;
 
@@ -80,6 +81,26 @@ const CustomerDashboard = () => {
       console.error('Error fetching rental requests:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAcceptQuote = async (rfqId: string, vqrId: string) => {
+    setAcceptingVqrId(vqrId);
+    try {
+      const { error } = await supabase.functions.invoke('rfq-transition', {
+        body: { rfq_id: rfqId, new_status: 'quote_accepted', vqr_id: vqrId },
+      });
+      if (error) throw error;
+      toast({ title: 'Quote accepted', description: 'The vendor will be notified to confirm.' });
+      await fetchRentalRequests();
+    } catch (err: any) {
+      toast({
+        title: 'Accept failed',
+        description: err?.message || 'Unable to accept quote. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setAcceptingVqrId(null);
     }
   };
 
@@ -317,6 +338,15 @@ const CustomerDashboard = () => {
                                 {vqr.vendor_notes && (
                                   <p className="text-xs text-teal-700 mt-1">{vqr.vendor_notes}</p>
                                 )}
+                                <div className="flex justify-end pt-1">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleAcceptQuote(request.id, vqr.id)}
+                                    disabled={acceptingVqrId === vqr.id}
+                                  >
+                                    {acceptingVqrId === vqr.id ? 'Accepting...' : 'Accept Quote'}
+                                  </Button>
+                                </div>
                               </div>
                             ))
                         }
