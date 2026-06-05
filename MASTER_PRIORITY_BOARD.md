@@ -101,7 +101,7 @@ Reduce:
 - [x] B5-1 VQR acceptance write path — atomically set VQR status to accepted inside transition_rfq_status on quote_accepted transition <!-- 806dd28 -->
 - [x] B5-2 CustomerDashboard VQR data display — join and display vendor_quote_responses for vendor_quote_received state <!-- 7d97f10 -->
 - [x] B5-3 Customer quote accept action — wire vendor_quote_received:quote_accepted through Edge Function with vqr_id <!-- ef8db74 -->
-- [ ] B5-4 Customer quote reject and cancel actions — wire rejection and cancellation UI for vendor_quote_received state
+- [x] B5-4 Customer quote reject and cancel actions — wire rejection and cancellation UI for vendor_quote_received state <!-- 0c6a506 -->
 - [ ] B5-5 Minimal vendor quote submission — real VQR INSERT from VendorDashboard for pending_vendor_review RFQs
 - [ ] B5-GOV document rental_extended intentional exclusion from Edge Function VALID_TRANSITIONS
 
