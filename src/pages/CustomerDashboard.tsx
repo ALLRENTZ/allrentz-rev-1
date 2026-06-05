@@ -59,6 +59,16 @@ const CustomerDashboard = () => {
             daily_rate,
             category,
             image_url
+          ),
+          vendor_quote_responses (
+            id,
+            status,
+            daily_rate,
+            delivery_fee,
+            mobilization_fee,
+            vendor_notes,
+            compliance_confirmed,
+            available_start_date
           )
         `)
         .eq('customer_id', user?.id)
@@ -272,7 +282,7 @@ const CustomerDashboard = () => {
                             <span>{request.delivery_address}</span>
                           </div>
                         )}
-                        {request.operational_status === 'vendor_quote_received' && request.vendor_name && (
+                        {request.operational_status === 'vendor_quote_received' && isDemoUser && request.vendor_name && (
                           <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
                             <p className="text-sm font-semibold text-teal-900">
                               Quote received — {request.vendor_name}
@@ -282,6 +292,34 @@ const CustomerDashboard = () => {
                             )}
                           </div>
                         )}
+                        {request.operational_status === 'vendor_quote_received' && !isDemoUser &&
+                          (request.vendor_quote_responses || [])
+                            .filter((v: any) => v.status === 'submitted' || v.status === 'revised')
+                            .slice(0, 1)
+                            .map((vqr: any) => (
+                              <div key={vqr.id} className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg space-y-2">
+                                <p className="text-sm font-semibold text-teal-900">Quote received</p>
+                                <div className="grid grid-cols-2 gap-2 text-xs text-teal-800">
+                                  {vqr.daily_rate != null && (
+                                    <div><span className="text-teal-600">Daily Rate: </span>${vqr.daily_rate.toFixed(2)}/day</div>
+                                  )}
+                                  {vqr.delivery_fee != null && (
+                                    <div><span className="text-teal-600">Delivery Fee: </span>${vqr.delivery_fee.toFixed(2)}</div>
+                                  )}
+                                  {vqr.mobilization_fee != null && (
+                                    <div><span className="text-teal-600">Mobilization: </span>${vqr.mobilization_fee.toFixed(2)}</div>
+                                  )}
+                                  {vqr.available_start_date && (
+                                    <div><span className="text-teal-600">Available: </span>{new Date(vqr.available_start_date).toLocaleDateString()}</div>
+                                  )}
+                                  <div><span className="text-teal-600">Compliance: </span>{vqr.compliance_confirmed ? 'Confirmed' : 'Pending'}</div>
+                                </div>
+                                {vqr.vendor_notes && (
+                                  <p className="text-xs text-teal-700 mt-1">{vqr.vendor_notes}</p>
+                                )}
+                              </div>
+                            ))
+                        }
                       </div>
                     ))}
                   </div>
