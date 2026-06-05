@@ -99,7 +99,7 @@ Reduce:
 - [x] B4 wire RFQ submission through operational authority transition gate <!-- c778b75 -->
 - [x] B4a enforce quote acceptance authority and vendor RFQ visibility <!-- 2bde5b3 -->
 - [x] B5-1 VQR acceptance write path — atomically set VQR status to accepted inside transition_rfq_status on quote_accepted transition <!-- 806dd28 -->
-- [ ] B5-2 CustomerDashboard VQR data display — join and display vendor_quote_responses for vendor_quote_received state
+- [x] B5-2 CustomerDashboard VQR data display — join and display vendor_quote_responses for vendor_quote_received state <!-- 7d97f10 -->
 - [ ] B5-3 Customer quote accept action — wire vendor_quote_received:quote_accepted through Edge Function with vqr_id
 - [ ] B5-4 Customer quote reject and cancel actions — wire rejection and cancellation UI for vendor_quote_received state
 - [ ] B5-5 Minimal vendor quote submission — real VQR INSERT from VendorDashboard for pending_vendor_review RFQs
