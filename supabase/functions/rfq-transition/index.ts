@@ -136,12 +136,16 @@ Deno.serve(async (req: Request) => {
   const rfqId = body['rfq_id']
   const newStatus = body['new_status']
   const reason = typeof body['reason'] === 'string' ? body['reason'] : null
+  const vqrId = typeof body['vqr_id'] === 'string' ? body['vqr_id'] : null
 
   if (!rfqId || typeof rfqId !== 'string') {
     return jsonError(400, 'rfq_id is required')
   }
   if (!newStatus || typeof newStatus !== 'string' || !VALID_STATUSES.has(newStatus)) {
     return jsonError(400, 'new_status must be a valid RFQ status value')
+  }
+  if (newStatus === 'quote_accepted' && !vqrId) {
+    return jsonError(400, 'vqr_id is required for quote_accepted transition')
   }
 
   // ── Step 3: Fetch RFQ ──────────────────────────────────────────────────────
@@ -251,6 +255,7 @@ Deno.serve(async (req: Request) => {
       p_reason: reason,
       p_source: actorSource,
       p_is_simulated: rfq.is_simulated,
+      p_vqr_id: vqrId,
     },
   )
 
