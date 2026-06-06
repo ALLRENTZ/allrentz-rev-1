@@ -1,13 +1,23 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Plus, MapPin, Calendar, FileText, Bell, Settings, DollarSign, CheckCircle, AlertTriangle, TrendingUp, Package } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const VendorDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [quotingId, setQuotingId] = useState<number | null>(null);
   const [quoteForm, setQuoteForm] = useState({ amount: '', notes: '' });
+
+  const { user, profile } = useAuth();
+  const isDemoUser = profile?.is_demo ?? false;
+  const [pendingRfqs, setPendingRfqs] = useState<any[]>([]);
+  const [vendorOrgId, setVendorOrgId] = useState<string | null>(null);
+  const [quotingRealId, setQuotingRealId] = useState<string | null>(null);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [realQuoteForm, setRealQuoteForm] = useState({ daily_rate: '', vendor_notes: '', compliance_confirmed: false });
 
   const equipmentInventory = [
     {
@@ -85,6 +95,65 @@ const VendorDashboard = () => {
     setQuoteForm({ amount: '', notes: '' });
     toast.success('Quote sent to customer.');
   };
+
+  const fetchPendingRfqs = async () => {
+    const { data } = await supabase
+      .from('rental_requests')
+      .select('id, operational_status, created_at, start_date, end_date, delivery_address, notes, equipment(title, category)')
+      .eq('operational_status', 'pending_vendor_review')
+      .order('created_at', { ascending: false });
+    setPendingRfqs(data || []);
+  };
+
+  const fetchVendorOrg = async () => {
+    const { data } = await supabase
+      .from('organization_memberships')
+      .select('organization_id')
+      .eq('user_id', user!.id)
+      .is('archived_at', null)
+      .in('role', ['owner', 'admin', 'member'])
+      .limit(1)
+      .maybeSingle();
+    if (data) setVendorOrgId(data.organization_id);
+  };
+
+  const handleSubmitRealQuote = async (rfqId: string) => {
+    if (!realQuoteForm.daily_rate) {
+      toast.warning('Enter a daily rate to proceed.');
+      return;
+    }
+    if (!vendorOrgId || !user) {
+      toast.error('Vendor organization not found. Contact support.');
+      return;
+    }
+    setSubmittingId(rfqId);
+    const { error } = await supabase.from('vendor_quote_responses').insert({
+      rfq_id: rfqId,
+      vendor_organization_id: vendorOrgId,
+      submitted_by: user.id,
+      status: 'submitted',
+      daily_rate: parseFloat(realQuoteForm.daily_rate),
+      vendor_notes: realQuoteForm.vendor_notes || null,
+      compliance_confirmed: realQuoteForm.compliance_confirmed,
+      submitted_at: new Date().toISOString(),
+    });
+    setSubmittingId(null);
+    if (error) {
+      toast.error('Failed to submit quote: ' + (error.message || 'Unknown error'));
+      return;
+    }
+    toast.success('Quote submitted successfully.');
+    setQuotingRealId(null);
+    setRealQuoteForm({ daily_rate: '', vendor_notes: '', compliance_confirmed: false });
+    fetchPendingRfqs();
+  };
+
+  useEffect(() => {
+    if (user && !isDemoUser) {
+      fetchPendingRfqs();
+      fetchVendorOrg();
+    }
+  }, [user]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -427,6 +496,91 @@ const VendorDashboard = () => {
             {activeTab === 'requests' && (
               <div className="industrial-card p-6">
                 <h2 className="text-xl font-bold text-allrentz-gray mb-6">Quote Requests</h2>
+                {!isDemoUser && (
+                  <div className="mb-6">
+                    <h3 className="font-semibold text-allrentz-gray mb-3">Pending from Platform</h3>
+                    {pendingRfqs.length === 0 ? (
+                      <p className="text-sm text-gray-500 py-2">No pending quote requests from the platform.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {pendingRfqs.map((rfq) => (
+                          <div key={rfq.id} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-allrentz-gray">{rfq.equipment?.title || 'Equipment Request'}</h4>
+                                {rfq.equipment?.category && <p className="text-sm text-gray-500">{rfq.equipment.category}</p>}
+                                <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mt-2">
+                                  {rfq.delivery_address && <div><span className="font-medium">Location: </span>{rfq.delivery_address}</div>}
+                                  {rfq.start_date && <div><span className="font-medium">Start: </span>{new Date(rfq.start_date).toLocaleDateString()}</div>}
+                                  {rfq.end_date && <div><span className="font-medium">End: </span>{new Date(rfq.end_date).toLocaleDateString()}</div>}
+                                </div>
+                                {rfq.notes && <p className="text-sm text-gray-600 mt-1">{rfq.notes}</p>}
+                              </div>
+                              <div className="mt-3 lg:mt-0">
+                                <button
+                                  onClick={() => setQuotingRealId(quotingRealId === rfq.id ? null : rfq.id)}
+                                  className="industrial-button text-sm py-1 px-4"
+                                >
+                                  {quotingRealId === rfq.id ? 'Cancel' : 'Submit Quote'}
+                                </button>
+                              </div>
+                            </div>
+                            {quotingRealId === rfq.id && (
+                              <div className="mt-3 pt-3 border-t border-gray-200 space-y-3">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Daily Rate ($) *</label>
+                                    <input
+                                      type="number"
+                                      value={realQuoteForm.daily_rate}
+                                      onChange={e => setRealQuoteForm(prev => ({ ...prev, daily_rate: e.target.value }))}
+                                      className="industrial-input w-full"
+                                      placeholder="e.g. 850"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Vendor Notes</label>
+                                    <textarea
+                                      value={realQuoteForm.vendor_notes}
+                                      onChange={e => setRealQuoteForm(prev => ({ ...prev, vendor_notes: e.target.value }))}
+                                      className="industrial-input w-full"
+                                      rows={2}
+                                      placeholder="Availability, delivery window, certifications..."
+                                    />
+                                  </div>
+                                </div>
+                                <label className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={realQuoteForm.compliance_confirmed}
+                                    onChange={e => setRealQuoteForm(prev => ({ ...prev, compliance_confirmed: e.target.checked }))}
+                                    className="rounded"
+                                  />
+                                  <span>Compliance confirmed for this request</span>
+                                </label>
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() => handleSubmitRealQuote(rfq.id)}
+                                    disabled={submittingId === rfq.id}
+                                    className="industrial-button text-sm py-1 px-4"
+                                  >
+                                    {submittingId === rfq.id ? 'Submitting...' : 'Confirm Quote'}
+                                  </button>
+                                  <button
+                                    onClick={() => { setQuotingRealId(null); setRealQuoteForm({ daily_rate: '', vendor_notes: '', compliance_confirmed: false }); }}
+                                    className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-1 px-4 rounded-md text-sm"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="space-y-4">
                   {quoteRequests.map((request) => (
                     <div key={request.id} className="border border-gray-200 rounded-lg p-6">
