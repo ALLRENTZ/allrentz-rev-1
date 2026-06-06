@@ -103,7 +103,7 @@ Reduce:
 - [x] B5-3 Customer quote accept action — wire vendor_quote_received:quote_accepted through Edge Function with vqr_id <!-- ef8db74 -->
 - [x] B5-4 Customer quote reject and cancel actions — wire rejection and cancellation UI for vendor_quote_received state <!-- 0c6a506 -->
 - [x] B5-5 Minimal vendor quote submission — real VQR INSERT from VendorDashboard for pending_vendor_review RFQs <!-- e943113 -->
-- [ ] B5-6 Fix vendor authority for pending_vendor_review → vendor_quote_received — check submitted/revised VQR in Edge Function Step 5c for this transition only
+- [x] B5-6 Fix vendor authority for pending_vendor_review → vendor_quote_received — check submitted/revised VQR in Edge Function Step 5c for this transition only <!-- 22856b8 -->
 - [ ] B5-GOV document rental_extended intentional exclusion from Edge Function VALID_TRANSITIONS
 
 ---
