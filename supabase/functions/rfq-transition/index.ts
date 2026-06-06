@@ -207,7 +207,11 @@ Deno.serve(async (req: Request) => {
       hasCustomerAuth = true
     }
 
-    // 5c. Vendor authority — accepted quote only (submitted-only quote is rejected)
+    // 5c. Vendor authority
+    // pending_vendor_review → vendor_quote_received: requires submitted or revised VQR.
+    // The accepted-VQR check cannot be satisfied at this stage — acceptance only
+    // occurs atomically inside transition_rfq_status() on the quote_accepted
+    // transition (B5-1). All other vendor transitions require an accepted VQR.
     let hasVendorAuth = false
     const { data: vendorMemberships } = await svc
       .from('organization_memberships')
@@ -220,15 +224,27 @@ Deno.serve(async (req: Request) => {
       const vendorOrgIds = vendorMemberships.map(
         (m: { organization_id: string }) => m.organization_id,
       )
-      const { data: acceptedQuote } = await svc
-        .from('vendor_quote_responses')
-        .select('id')
-        .eq('rfq_id', rfqId)
-        .eq('status', 'accepted')
-        .in('vendor_organization_id', vendorOrgIds)
-        .limit(1)
-        .maybeSingle()
-      hasVendorAuth = !!acceptedQuote
+      if (transitionKey === 'pending_vendor_review:vendor_quote_received') {
+        const { data: submittedQuote } = await svc
+          .from('vendor_quote_responses')
+          .select('id')
+          .eq('rfq_id', rfqId)
+          .in('status', ['submitted', 'revised'])
+          .in('vendor_organization_id', vendorOrgIds)
+          .limit(1)
+          .maybeSingle()
+        hasVendorAuth = !!submittedQuote
+      } else {
+        const { data: acceptedQuote } = await svc
+          .from('vendor_quote_responses')
+          .select('id')
+          .eq('rfq_id', rfqId)
+          .eq('status', 'accepted')
+          .in('vendor_organization_id', vendorOrgIds)
+          .limit(1)
+          .maybeSingle()
+        hasVendorAuth = !!acceptedQuote
+      }
     }
 
     // Match the requested transition to the authority the caller holds
