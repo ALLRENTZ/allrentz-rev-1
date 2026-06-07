@@ -140,6 +140,10 @@ Reduce:
 
 # PRIORITY 2 — OPERATIONAL STABILIZATION
 
+## Vendor RFQ Authority & Quote Wiring
+- [ ] B6-1 Add rfq_vendor_pending_select RLS policy — vendor SELECT on pending_vendor_review RFQs
+- [ ] B6-2 Wire VQR submission → Edge Function transition in VendorDashboard (pending_vendor_review → vendor_quote_received)
+
 ## Quote Workflow
 - [x] Fix quote request error handling <!-- bda5769 -->
 - [x] Audit quote lifecycle consistency <!-- 68d3dff -->
