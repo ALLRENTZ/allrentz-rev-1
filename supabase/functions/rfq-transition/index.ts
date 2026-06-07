@@ -37,6 +37,30 @@ const VALID_TRANSITIONS = new Set([
   'off_rent:completed',
 ])
 
+// rental_extended is intentionally excluded from VALID_STATUSES and VALID_TRANSITIONS.
+//
+// Governance rationale:
+//   rental_extended is a valid app_rfq_status enum value in the DB schema but
+//   represents a commercial renegotiation event, not a standard lifecycle
+//   transition. A rental extension requires:
+//     - New terms (revised end date, adjusted rates, deposit changes)
+//     - Bilateral agreement — both customer and vendor must consent
+//     - A dedicated extension request and approval workflow
+//
+//   The unilateral authority model used here (customer-owns, vendor-owns,
+//   admin-override) is not appropriate for a rental extension. Including
+//   rental_extended in VALID_TRANSITIONS without a proper extension workflow
+//   would create an unauthorized transition path with no commercial guard.
+//
+//   When a rental extension workflow is designed, it must include:
+//     - An explicit extension request (revised scope, dates, terms)
+//     - Vendor confirmation of availability and revised pricing
+//     - Customer acceptance of revised terms
+//     - Audit trail for the extension event separate from the standard lifecycle
+//
+//   Until that workflow exists, any attempt to transition to rental_extended
+//   returns 400 (unrecognized status) at Step 3 of this function.
+
 // Customer-owned transitions: pre-acceptance, acceptance decisions, cancellations
 const CUSTOMER_TRANSITIONS = new Set([
   'draft:submitted',
