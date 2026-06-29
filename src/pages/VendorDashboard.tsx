@@ -142,6 +142,13 @@ const VendorDashboard = () => {
       toast.error('Failed to submit quote: ' + (error.message || 'Unknown error'));
       return;
     }
+    const { error: transitionError } = await supabase.functions.invoke('rfq-transition', {
+      body: { rfq_id: rfqId, new_status: 'vendor_quote_received' },
+    });
+    if (transitionError) {
+      toast.error('Quote saved but RFQ status update failed. Contact support.');
+      return;
+    }
     toast.success('Quote submitted successfully.');
     setQuotingRealId(null);
     setRealQuoteForm({ daily_rate: '', vendor_notes: '', compliance_confirmed: false });
