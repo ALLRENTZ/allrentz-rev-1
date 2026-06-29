@@ -14,9 +14,11 @@ const VendorDashboard = () => {
   const { user, profile } = useAuth();
   const isDemoUser = profile?.is_demo ?? false;
   const [pendingRfqs, setPendingRfqs] = useState<any[]>([]);
+  const [acceptedRfqs, setAcceptedRfqs] = useState<any[]>([]);
   const [vendorOrgId, setVendorOrgId] = useState<string | null>(null);
   const [quotingRealId, setQuotingRealId] = useState<string | null>(null);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [realQuoteForm, setRealQuoteForm] = useState({ daily_rate: '', vendor_notes: '', compliance_confirmed: false });
 
   const equipmentInventory = [
@@ -99,10 +101,19 @@ const VendorDashboard = () => {
   const fetchPendingRfqs = async () => {
     const { data } = await supabase
       .from('rental_requests')
-      .select('id, operational_status, created_at, start_date, end_date, delivery_address, notes, equipment(title, category)')
+      .select('id, operational_status, created_at, start_date, end_date, delivery_address, special_requirements, equipment(title, category)')
       .eq('operational_status', 'pending_vendor_review')
       .order('created_at', { ascending: false });
     setPendingRfqs(data || []);
+  };
+
+  const fetchAcceptedRfqs = async () => {
+    const { data } = await supabase
+      .from('rental_requests')
+      .select('id, operational_status, start_date, end_date, delivery_address, special_requirements, equipment(title, category)')
+      .eq('operational_status', 'quote_accepted')
+      .order('created_at', { ascending: false });
+    setAcceptedRfqs(data || []);
   };
 
   const fetchVendorOrg = async () => {
@@ -153,11 +164,31 @@ const VendorDashboard = () => {
     setQuotingRealId(null);
     setRealQuoteForm({ daily_rate: '', vendor_notes: '', compliance_confirmed: false });
     fetchPendingRfqs();
+    fetchAcceptedRfqs();
+  };
+
+  const handleConfirmRfq = async (rfqId: string) => {
+    setConfirmingId(rfqId);
+    try {
+      const { error } = await supabase.functions.invoke('rfq-transition', {
+        body: { rfq_id: rfqId, new_status: 'vendor_confirmed' },
+      });
+      if (error) {
+        toast.error('Confirmation failed: ' + (error.message || 'Unknown error'));
+        return;
+      }
+      toast.success('Deployment confirmed.');
+      fetchAcceptedRfqs();
+      fetchPendingRfqs();
+    } finally {
+      setConfirmingId(null);
+    }
   };
 
   useEffect(() => {
     if (user && !isDemoUser) {
       fetchPendingRfqs();
+      fetchAcceptedRfqs();
       fetchVendorOrg();
     }
   }, [user]);
@@ -503,6 +534,38 @@ const VendorDashboard = () => {
             {activeTab === 'requests' && (
               <div className="industrial-card p-6">
                 <h2 className="text-xl font-bold text-allrentz-gray mb-6">Quote Requests</h2>
+                {!isDemoUser && acceptedRfqs.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="font-semibold text-allrentz-gray mb-3">Accepted Quotes — Awaiting Confirmation</h3>
+                    <div className="space-y-3">
+                      {acceptedRfqs.map((rfq) => (
+                        <div key={rfq.id} className="border border-green-200 bg-green-50 rounded-lg p-4">
+                          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-allrentz-gray">{rfq.equipment?.title || 'Equipment Request'}</h4>
+                              {rfq.equipment?.category && <p className="text-sm text-gray-500">{rfq.equipment.category}</p>}
+                              <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mt-2">
+                                {rfq.delivery_address && <div><span className="font-medium">Location: </span>{rfq.delivery_address}</div>}
+                                {rfq.start_date && <div><span className="font-medium">Start: </span>{new Date(rfq.start_date).toLocaleDateString()}</div>}
+                                {rfq.end_date && <div><span className="font-medium">End: </span>{new Date(rfq.end_date).toLocaleDateString()}</div>}
+                              </div>
+                              {rfq.special_requirements && <p className="text-sm text-gray-600 mt-1">{rfq.special_requirements}</p>}
+                            </div>
+                            <div className="mt-3 lg:mt-0">
+                              <button
+                                onClick={() => handleConfirmRfq(rfq.id)}
+                                disabled={confirmingId === rfq.id}
+                                className="industrial-button text-sm py-1 px-4 disabled:opacity-50"
+                              >
+                                {confirmingId === rfq.id ? 'Confirming...' : 'Confirm Deployment'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {!isDemoUser && (
                   <div className="mb-6">
                     <h3 className="font-semibold text-allrentz-gray mb-3">Pending from Platform</h3>
@@ -521,7 +584,7 @@ const VendorDashboard = () => {
                                   {rfq.start_date && <div><span className="font-medium">Start: </span>{new Date(rfq.start_date).toLocaleDateString()}</div>}
                                   {rfq.end_date && <div><span className="font-medium">End: </span>{new Date(rfq.end_date).toLocaleDateString()}</div>}
                                 </div>
-                                {rfq.notes && <p className="text-sm text-gray-600 mt-1">{rfq.notes}</p>}
+                                {rfq.special_requirements && <p className="text-sm text-gray-600 mt-1">{rfq.special_requirements}</p>}
                               </div>
                               <div className="mt-3 lg:mt-0">
                                 <button
