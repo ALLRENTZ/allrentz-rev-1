@@ -27,6 +27,7 @@ import TurnaroundManagement from "./pages/TurnaroundManagement";
 import NotFound from "./pages/NotFound";
 import Navigation from "./components/Navigation";
 import Footer from "./components/Footer";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -49,8 +50,8 @@ function App() {
                     <Route path="/landing" element={<Landing />} />
                     <Route path="/how-it-works" element={<HowItWorks />} />
                     <Route path="/auth" element={<AuthPage />} />
-                    <Route path="/customer-dashboard" element={<CustomerDashboard />} />
-                    <Route path="/vendor-dashboard" element={<VendorDashboard />} />
+                    <Route path="/customer-dashboard" element={<ProtectedRoute requiredRole="customer"><CustomerDashboard /></ProtectedRoute>} />
+                    <Route path="/vendor-dashboard" element={<ProtectedRoute requiredRole="vendor"><VendorDashboard /></ProtectedRoute>} />
                     <Route path="/customer-onboarding" element={<CustomerOnboarding />} />
                     <Route path="/vendor-onboarding" element={<VendorOnboarding />} />
                     <Route path="/enterprise-onboarding" element={<EnterpriseOnboarding />} />

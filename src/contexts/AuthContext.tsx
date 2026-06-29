@@ -44,14 +44,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [showDemoTour, setShowDemoTour] = useState(false);
   const { toast } = useToast();
 
-  const refreshProfile = async () => {
-    if (!user) return;
-    
+  const fetchProfileForUser = async (authUser: User) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', authUser.id)
         .single();
 
       if (error) throw error;
@@ -59,6 +57,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
+  };
+
+  const refreshProfile = async () => {
+    if (!user) return;
+    await fetchProfileForUser(user);
   };
 
   const signIn = async (email: string, password: string) => {
@@ -140,9 +143,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Defer profile fetch to avoid potential issues
           setTimeout(() => {
-            refreshProfile();
+            fetchProfileForUser(session.user);
           }, 0);
         } else {
           setProfile(null);
@@ -159,10 +161,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (session?.user) {
         setTimeout(() => {
-          refreshProfile();
+          fetchProfileForUser(session.user);
         }, 0);
       }
-      
+
       setLoading(false);
     });
 
