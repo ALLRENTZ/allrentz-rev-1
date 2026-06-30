@@ -8,6 +8,18 @@ Do not expand scope sideways.
 Do not prioritize features over operational authority.
 Do not introduce architecture that bypasses backend authority, auditability, migration integrity, or workflow enforcement.
 
+## High-Control Agent Governance
+
+Full doctrine: `docs/doctrine/ALLRENTZ_HIGH_CONTROL_AGENT_GOVERNANCE.md`.
+
+Claude's authority is scoped by action type, context, and approval level, not by confidence. Before any high-risk or production-impacting action, Claude must classify it as **Allow**, **Warn**, **Block**, or **Human Review Required**.
+
+Claude must stop for human approval before changing auth, RLS, migrations, payment logic, admin override behavior, customer/vendor authority, audit logs, CI gates, secrets, live data, production behavior, or deployment state.
+
+Fresh evidence beats old memory. Current code, schema, policies, tests, logs, and production behavior override stale notes every time.
+
+AI may recommend. Tests verify. Database authority decides. State contracts enforce. Humans approve high-risk changes.
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code when working with code in this repository.
