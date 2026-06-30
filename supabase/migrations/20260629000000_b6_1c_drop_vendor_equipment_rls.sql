@@ -1,0 +1,51 @@
+-- B6-1c: Drop pre-org-model vendor RLS policy on rental_requests
+--
+-- Policy dropped:
+--   "Vendors view requests for own equipment" ON public.rental_requests FOR SELECT
+--   USING (EXISTS (
+--     SELECT 1 FROM public.equipment e
+--     WHERE e.id = rental_requests.equipment_id AND e.vendor_id = auth.uid()
+--   ))
+--
+-- Why this policy must be dropped:
+--   Created in the initial schema migration (20260520165815). It was a pre-org-model
+--   design where vendors were individual auth.users rows and equipment rows carried
+--   vendor_id referencing auth.users(id) directly.
+--
+--   The P1 operational authority layer (B1a through B6) replaced this with an
+--   organization_memberships-based model. Vendor RFQ visibility is now fully
+--   covered by two policies installed in later migrations:
+--
+--     rfq_vendor_pending_select — any active member of a vendor/both org may SELECT
+--       rental_requests rows in pending_vendor_review status (broadcast model,
+--       installed by 20260628000000_b6_1_fix_rfq_vendor_pending_select.sql)
+--
+--     rfq_vendor_select — any active member of a vendor org that holds an accepted
+--       vendor_quote_response may SELECT the parent rental_request (installed by
+--       20260526150000_p1_operational_authority.sql, hardened by B4a and B5)
+--
+--   Neither path involves equipment.vendor_id. The old policy creates a shadow
+--   SELECT path that is entirely outside the org-membership authority model: if
+--   equipment.vendor_id is ever populated with any auth user's UUID, that user
+--   gains SELECT on any rental_request linked to that equipment row with no org
+--   membership check, no VQR check, and no Edge Function involvement.
+--
+-- Current live state:
+--   equipment.vendor_id = NULL on all equipment rows. The policy is currently
+--   inert and returns zero rows for any caller. Dropping it does not affect any
+--   vendor's current ability to see any RFQ.
+--
+-- equipment.vendor_id FK drift (noted, not fixed here):
+--   The original migration declared equipment.vendor_id REFERENCES auth.users(id)
+--   ON DELETE CASCADE. No committed migration drops that FK constraint, but the
+--   live DB shows the FK is absent. This is unexplained out-of-band drift. It is
+--   not addressed in this migration. The equipment ownership model and its
+--   relationship to the org authority layer has not been designed yet; that
+--   decision is deferred. This migration does not touch equipment.vendor_id, the
+--   equipment table schema, or the "Vendors manage own equipment" policy on
+--   public.equipment.
+--
+-- No schema changes. No column changes. No FK changes. No other policy changes.
+-- Depends on: 20260628000000_b6_1_fix_rfq_vendor_pending_select.sql
+
+DROP POLICY IF EXISTS "Vendors view requests for own equipment" ON public.rental_requests;
