@@ -25,6 +25,7 @@ There are two homes for ALLRENTZ knowledge. They are not interchangeable.
 
 ```
 docs/
+  doctrine/     Governance that binds the agent (Claude) and the build process
   product/      How the platform behaves — lifecycle, workflows, test definitions
   engineering/  Build doctrine — authority order, verification, AI governance
   strategy/     Market positioning and competitive intelligence
@@ -36,6 +37,11 @@ docs/
 
 ## Index
 
+### doctrine/
+| File | Status | Authority source |
+|---|---|---|
+| `ALLRENTZ_HIGH_CONTROL_AGENT_GOVERNANCE.md` | Active | subordinate to `/ALLRENTZ_CONSTITUTION.md`; referenced from `/CLAUDE.md` |
+
 ### product/
 | File | Status | Source in raw archive |
 |---|---|---|
@@ -46,7 +52,7 @@ docs/
 | File | Status | Authority source |
 |---|---|---|
 | `authority-first-loop.md` | Draft | derives from `/ALLRENTZ_CONSTITUTION.md` (Operational Authority Order) |
-| `p7-verify-doctrine.md` | Stub — needs input | relates to Constitution "Verification & Testing Authority" — Pat to confirm what "P7" denotes |
+| `p7-verify-doctrine.md` | Draft | derives from `/ALLRENTZ_CONSTITUTION.md` (Formal Workflow Safety and Advanced Verification Doctrine) — P7 = P7-VERIFY harness workstream |
 | `ai-governance.md` | Draft | derives from `/ALLRENTZ_CONSTITUTION.md` (AI Governance Rule) |
 
 ### strategy/

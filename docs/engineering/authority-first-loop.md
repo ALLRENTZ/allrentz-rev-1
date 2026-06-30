@@ -32,7 +32,7 @@ Per the Constitution's Operational Authority Order, build foundation before bran
 2. **Confirm preconditions** (Scope Discipline Rule): current layer stable, auditable, authoritative; migration baseline stable; event integrity exists; no demo contamination risk; backend authority preserved.
 3. **Build server-side first.** Frontend may display, collect, suggest — never define operational truth (Backend Authority Rule).
 4. **Record the event.** No authoritative state change without an authoritative event (Event Integrity Rule).
-5. **Verify against Definition of Done** before marking complete.
+5. **Verify against Definition of Done** before marking complete — see `p7-verify-doctrine.md` for the full verification checklist, VFA requirement, and runtime action classification rules.
 6. **Update `/MASTER_PRIORITY_BOARD.md`** with the commit hash.
 
 ## Anti-patterns this loop prevents

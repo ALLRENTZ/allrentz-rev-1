@@ -174,6 +174,24 @@ No workflow is production-safe until recovery paths are defined.
 
 ---
 
+# Formal Workflow Safety and Advanced Verification Doctrine
+
+Critical workflows must have explicit state-transition contracts defining allowed states, allowed transitions, forbidden transitions, required actor authority, required database mutations, required audit events, required tests, and rollback considerations. Critical workflows include: RFQ lifecycle, vendor quote submission, customer approval, dispatch, completion, invoicing, payment status, audit log creation, membership verification, and admin override.
+
+Operational authority must never be inferred from UI behavior. Database state, RLS policies, Edge Function contracts, and audit logs are authoritative. UI behavior and AI inference are evidence only — never authority.
+
+Every production blocker, authority failure, RLS drift, migration drift, audit-event failure, CORS or Edge Function contract failure, bad assumption that affected implementation, or failure requiring human approval must produce a Verification Failure Artifact before correction is applied.
+
+Causal memory must be file-based before any graph database is introduced. Each causal note records cause, effect, evidence, impacted workflow, related files, failure class, test added, prevention rule, last verified date, and confidence level.
+
+Meta-improvement of verification specs, failure templates, test coverage strategy, and Claude instructions is allowed only as a proposal requiring human approval. Claude must not automatically rewrite or enforce production workflow authority, security rules, RLS policy, payment logic, migration policy, CI gates, compliance behavior, or customer/vendor permission boundaries.
+
+Uncertainty in authority, RLS behavior, workflow state, compliance impact, payment impact, audit behavior, production risk, data ownership, or customer/vendor boundary blocks implementation until evidence is confirmed.
+
+See `docs/engineering/p7-verify-doctrine.md` for operational schemas, artifact templates, workflow contract definitions, and production-grade agent safety rules.
+
+---
+
 # Simplicity Rule
 
 Prefer:

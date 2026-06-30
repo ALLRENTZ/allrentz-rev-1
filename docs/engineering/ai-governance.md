@@ -23,6 +23,7 @@ AI is **layer 10** of the operational authority order — the last layer, never 
 - SmartMatch and any model output write to a non-authoritative surface; a human or server-side authority action promotes it to operational state.
 - No AI path may bypass the transition gate (`transition_rfq_status()`) or RLS.
 - AI features ship only after the layers below them (1–9) are stable per the Scope Discipline Rule.
+- For runtime action classification and tool permission boundary rules governing AI-assisted operations, see `p7-verify-doctrine.md`.
 
 ## Current posture (from Priority Board)
 
