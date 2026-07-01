@@ -48,6 +48,11 @@ const CustomerDashboard = () => {
       setNotifications(data || []);
     } catch (error) {
       console.error('Error fetching notifications:', error);
+      toast({
+        title: 'Unable to load dashboard notifications',
+        description: 'Please refresh the page or try again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -81,6 +86,11 @@ const CustomerDashboard = () => {
       setRentalRequests(data || []);
     } catch (error) {
       console.error('Error fetching rental requests:', error);
+      toast({
+        title: 'Unable to load your dashboard',
+        description: 'Please refresh the page or try again.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
