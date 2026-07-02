@@ -20,6 +20,8 @@ const VendorDashboard = () => {
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [realQuoteForm, setRealQuoteForm] = useState({ daily_rate: '', vendor_notes: '', compliance_confirmed: false });
+  const [pendingRfqsError, setPendingRfqsError] = useState(false);
+  const [acceptedRfqsError, setAcceptedRfqsError] = useState(false);
 
   const equipmentInventory = [
     {
@@ -99,20 +101,32 @@ const VendorDashboard = () => {
   };
 
   const fetchPendingRfqs = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('rental_requests')
       .select('id, operational_status, created_at, start_date, end_date, delivery_address, special_requirements, equipment(title, category)')
       .eq('operational_status', 'pending_vendor_review')
       .order('created_at', { ascending: false });
+    if (error) {
+      setPendingRfqsError(true);
+      toast.error('Failed to load pending quote requests: ' + (error.message || 'Unknown error'));
+      return;
+    }
+    setPendingRfqsError(false);
     setPendingRfqs(data || []);
   };
 
   const fetchAcceptedRfqs = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('rental_requests')
       .select('id, operational_status, start_date, end_date, delivery_address, special_requirements, equipment(title, category)')
       .eq('operational_status', 'quote_accepted')
       .order('created_at', { ascending: false });
+    if (error) {
+      setAcceptedRfqsError(true);
+      toast.error('Failed to load accepted quotes: ' + (error.message || 'Unknown error'));
+      return;
+    }
+    setAcceptedRfqsError(false);
     setAcceptedRfqs(data || []);
   };
 
@@ -308,6 +322,8 @@ const VendorDashboard = () => {
           <div className="lg:col-span-3">
             {activeTab === 'overview' && (
               <div className="space-y-6">
+                {isDemoUser ? (
+                <>
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="dashboard-stat">
@@ -479,11 +495,18 @@ const VendorDashboard = () => {
                     ))}
                   </div>
                 </div>
+                </>
+                ) : (
+                  <div className="industrial-card p-6">
+                    <p className="text-gray-600">Live equipment and quote metrics are not yet available.</p>
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === 'inventory' && (
               <div className="space-y-6">
+                {isDemoUser ? (
                 <div className="industrial-card p-6">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-allrentz-gray">Equipment Inventory</h2>
@@ -528,6 +551,11 @@ const VendorDashboard = () => {
                     ))}
                   </div>
                 </div>
+                ) : (
+                  <div className="industrial-card p-6">
+                    <p className="text-gray-600">Equipment inventory management is not yet available.</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -569,7 +597,9 @@ const VendorDashboard = () => {
                 {!isDemoUser && (
                   <div className="mb-6">
                     <h3 className="font-semibold text-allrentz-gray mb-3">Pending from Platform</h3>
-                    {pendingRfqs.length === 0 ? (
+                    {pendingRfqsError ? (
+                      <p className="text-sm text-red-600 py-2">Unable to load pending quote requests. Please refresh or contact support.</p>
+                    ) : pendingRfqs.length === 0 ? (
                       <p className="text-sm text-gray-500 py-2">No pending quote requests from the platform.</p>
                     ) : (
                       <div className="space-y-3">
@@ -651,6 +681,7 @@ const VendorDashboard = () => {
                     )}
                   </div>
                 )}
+                {isDemoUser && (
                 <div className="space-y-4">
                   {quoteRequests.map((request) => (
                     <div key={request.id} className="border border-gray-200 rounded-lg p-6">
@@ -736,11 +767,14 @@ const VendorDashboard = () => {
                     </div>
                   ))}
                 </div>
+                )}
               </div>
             )}
 
             {activeTab === 'earnings' && (
               <div className="space-y-6">
+                {isDemoUser ? (
+                <>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="dashboard-stat">
                     <div className="text-center">
@@ -790,11 +824,19 @@ const VendorDashboard = () => {
                     </div>
                   </div>
                 </div>
+                </>
+                ) : (
+                  <div className="industrial-card p-6">
+                    <p className="text-gray-600">Earnings reporting is not yet available.</p>
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === 'tracking' && (
               <div className="industrial-card p-6">
+                {isDemoUser ? (
+                <>
                 <h2 className="text-xl font-bold text-allrentz-gray mb-6">Asset Tracking</h2>
                 <div className="bg-gray-100 rounded-lg h-96 flex items-center justify-center mb-6">
                   <div className="text-center">
@@ -820,11 +862,17 @@ const VendorDashboard = () => {
                     </div>
                   ))}
                 </div>
+                </>
+                ) : (
+                  <p className="text-gray-600">Asset tracking is not yet available.</p>
+                )}
               </div>
             )}
 
             {activeTab === 'documents' && (
               <div className="industrial-card p-6">
+                {isDemoUser ? (
+                <>
                 <h2 className="text-xl font-bold text-allrentz-gray mb-6">Compliance Documents</h2>
                 <div className="space-y-4">
                   <div className="border border-gray-200 rounded-lg p-4">
@@ -864,11 +912,17 @@ const VendorDashboard = () => {
                     </div>
                   </div>
                 </div>
+                </>
+                ) : (
+                  <p className="text-gray-600">Compliance document tracking is not yet available.</p>
+                )}
               </div>
             )}
 
             {activeTab === 'settings' && (
               <div className="industrial-card p-6">
+                {isDemoUser ? (
+                <>
                 <h2 className="text-xl font-bold text-allrentz-gray mb-6">Vendor Settings</h2>
                 <div className="space-y-6">
                   <div>
@@ -905,6 +959,10 @@ const VendorDashboard = () => {
                     </div>
                   </div>
                 </div>
+                </>
+                ) : (
+                  <p className="text-gray-600">Vendor account settings are not yet available.</p>
+                )}
               </div>
             )}
           </div>
