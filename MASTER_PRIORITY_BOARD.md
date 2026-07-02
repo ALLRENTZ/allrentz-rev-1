@@ -153,7 +153,7 @@ Reduce:
 
 ## Dashboard Stability
 - [x] Audit customer dashboard continuity <!-- 1c7ea55 -->
-- [ ] Audit vendor dashboard continuity
+- [x] Audit vendor dashboard continuity <!-- add34f2 -->
 - [ ] Audit operations dashboard continuity
 
 ## Compliance Workflows
