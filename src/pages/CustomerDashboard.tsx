@@ -9,9 +9,10 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import DemoTour from '@/components/DemoTour';
 import { demoCustomerRentalRequests, demoCustomerNotifications } from '@/data/demoDashboardData';
+import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
 
 const CustomerDashboard = () => {
-  const { user, profile, showDemoTour, setShowDemoTour } = useAuth();
+  const { user, profile, showDemoTour, setShowDemoTour, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [rentalRequests, setRentalRequests] = useState<any[]>([]);
@@ -20,20 +21,20 @@ const CustomerDashboard = () => {
   const [rejectingRfqId, setRejectingRfqId] = useState<string | null>(null);
   const [cancellingRfqId, setCancellingRfqId] = useState<string | null>(null);
 
-  const isDemoUser = profile?.is_demo ?? false;
+  const authority = getOperationalAuthority({ user, authLoading, profile });
+  const isDemoUser = profile?.is_demo === true;
 
   useEffect(() => {
-    if (user) {
-      if (isDemoUser) {
-        setNotifications(demoCustomerNotifications);
-        setRentalRequests(demoCustomerRentalRequests);
-        setLoading(false);
-      } else {
-        fetchNotifications();
-        fetchRentalRequests();
-      }
+    if (!user || authLoading || !profile) return;
+    if (profile.is_demo) {
+      setNotifications(demoCustomerNotifications);
+      setRentalRequests(demoCustomerRentalRequests);
+      setLoading(false);
+    } else {
+      fetchNotifications();
+      fetchRentalRequests();
     }
-  }, [user]);
+  }, [user, authLoading, profile]);
 
   const fetchNotifications = async () => {
     try {
@@ -97,6 +98,9 @@ const CustomerDashboard = () => {
   };
 
   const handleAcceptQuote = async (rfqId: string, vqrId: string) => {
+    if (!requireOperationalProfile({ user, authLoading, profile, toast })) {
+      return;
+    }
     setAcceptingVqrId(vqrId);
     try {
       const { error } = await supabase.functions.invoke('rfq-transition', {
@@ -117,6 +121,9 @@ const CustomerDashboard = () => {
   };
 
   const handleRejectQuote = async (rfqId: string) => {
+    if (!requireOperationalProfile({ user, authLoading, profile, toast })) {
+      return;
+    }
     setRejectingRfqId(rfqId);
     try {
       const { error } = await supabase.functions.invoke('rfq-transition', {
@@ -137,6 +144,9 @@ const CustomerDashboard = () => {
   };
 
   const handleCancelRfq = async (rfqId: string) => {
+    if (!requireOperationalProfile({ user, authLoading, profile, toast })) {
+      return;
+    }
     setCancellingRfqId(rfqId);
     try {
       const { error } = await supabase.functions.invoke('rfq-transition', {
@@ -365,7 +375,7 @@ const CustomerDashboard = () => {
                             )}
                           </div>
                         )}
-                        {request.operational_status === 'vendor_quote_received' && !isDemoUser &&
+                        {request.operational_status === 'vendor_quote_received' && authority.canUseOperationalData &&
                           (request.vendor_quote_responses || [])
                             .filter((v: any) => v.status === 'submitted' || v.status === 'revised')
                             .slice(0, 1)

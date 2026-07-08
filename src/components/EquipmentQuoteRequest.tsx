@@ -13,6 +13,7 @@ import { format, addDays, differenceInDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { requireOperationalProfile } from '@/lib/operationalAuthority';
 
 interface Equipment {
   id: string;
@@ -40,7 +41,7 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
   const [specialRequirements, setSpecialRequirements] = useState('');
   const [loading, setLoading] = useState(false);
   const [quoteGenerated, setQuoteGenerated] = useState(false);
-  const { user } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   if (!equipment) return null;
@@ -50,6 +51,10 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
 
   const handleRequestQuote = async () => {
     if (!user || !startDate || !endDate) return;
+
+    if (!requireOperationalProfile({ user, authLoading, profile, toast })) {
+      return;
+    }
 
     setLoading(true);
 
@@ -250,7 +255,7 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
 
             <Button
               onClick={handleRequestQuote}
-              disabled={loading || !startDate || !endDate || !deliveryAddress}
+              disabled={loading || !startDate || !endDate || !deliveryAddress || authLoading || (!!user && !profile)}
               className="w-full bg-allrentz-red hover:bg-red-700"
             >
               {loading ? 'Submitting...' : 'Submit Request'}

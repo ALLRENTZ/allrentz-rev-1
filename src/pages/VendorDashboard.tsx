@@ -5,14 +5,19 @@ import { toast } from 'sonner';
 import { Plus, MapPin, Calendar, FileText, Bell, Settings, DollarSign, CheckCircle, AlertTriangle, TrendingUp, Package } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
 
 const VendorDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [quotingId, setQuotingId] = useState<number | null>(null);
   const [quoteForm, setQuoteForm] = useState({ amount: '', notes: '' });
 
-  const { user, profile } = useAuth();
-  const isDemoUser = profile?.is_demo ?? false;
+  const { user, profile, loading: authLoading } = useAuth();
+  const authority = getOperationalAuthority({ user, authLoading, profile });
+  const isDemoUser = profile?.is_demo === true;
+  const showBlockedToast = ({ title, description }: { title: string; description: string }) => {
+    toast.error(title, { description });
+  };
   const [pendingRfqs, setPendingRfqs] = useState<any[]>([]);
   const [acceptedRfqs, setAcceptedRfqs] = useState<any[]>([]);
   const [vendorOrgId, setVendorOrgId] = useState<string | null>(null);
@@ -143,6 +148,9 @@ const VendorDashboard = () => {
   };
 
   const handleSubmitRealQuote = async (rfqId: string) => {
+    if (!requireOperationalProfile({ user, authLoading, profile, toast: showBlockedToast })) {
+      return;
+    }
     if (!realQuoteForm.daily_rate) {
       toast.warning('Enter a daily rate to proceed.');
       return;
@@ -182,6 +190,9 @@ const VendorDashboard = () => {
   };
 
   const handleConfirmRfq = async (rfqId: string) => {
+    if (!requireOperationalProfile({ user, authLoading, profile, toast: showBlockedToast })) {
+      return;
+    }
     setConfirmingId(rfqId);
     try {
       const { error } = await supabase.functions.invoke('rfq-transition', {
@@ -200,12 +211,12 @@ const VendorDashboard = () => {
   };
 
   useEffect(() => {
-    if (user && !isDemoUser) {
+    if (authority.canUseOperationalData) {
       fetchPendingRfqs();
       fetchAcceptedRfqs();
       fetchVendorOrg();
     }
-  }, [user]);
+  }, [authority.canUseOperationalData]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -562,7 +573,7 @@ const VendorDashboard = () => {
             {activeTab === 'requests' && (
               <div className="industrial-card p-6">
                 <h2 className="text-xl font-bold text-allrentz-gray mb-6">Quote Requests</h2>
-                {!isDemoUser && acceptedRfqs.length > 0 && (
+                {authority.canUseOperationalData && acceptedRfqs.length > 0 && (
                   <div className="mb-6">
                     <h3 className="font-semibold text-allrentz-gray mb-3">Accepted Quotes — Awaiting Confirmation</h3>
                     <div className="space-y-3">
@@ -594,7 +605,7 @@ const VendorDashboard = () => {
                     </div>
                   </div>
                 )}
-                {!isDemoUser && (
+                {authority.canUseOperationalData && (
                   <div className="mb-6">
                     <h3 className="font-semibold text-allrentz-gray mb-3">Pending from Platform</h3>
                     {pendingRfqsError ? (

@@ -10,13 +10,14 @@ import HowItWorksSection from '@/components/HowItWorksSection';
 import { Card, CardContent } from '@/components/ui/card';
 import { Info, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getOperationalAuthority } from '@/lib/operationalAuthority';
 
 const SmartMatchInterface: React.FC = () => {
   const [isMatching, setIsMatching] = useState(false);
   const [matchResults, setMatchResults] = useState<MatchedVendor[]>([]);
   const [processingTime, setProcessingTime] = useState<number>(0);
   const [totalMatches, setTotalMatches] = useState<number>(0);
-  const { user, profile, hasRole } = useAuth();
+  const { user, profile, hasRole, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   const [request, setRequest] = useState<SmartMatchRequest>({
@@ -41,8 +42,26 @@ const SmartMatchInterface: React.FC = () => {
 
     try {
       const customerId = user?.id ?? 'unauthenticated';
-      const result = await smartMatchEngine.processMatch(request, customerId, profile?.is_demo ?? !user);
-      
+      let effectiveIsDemo: boolean;
+
+      if (!user) {
+        effectiveIsDemo = true;
+      } else {
+        const authority = getOperationalAuthority({ user, authLoading, profile });
+        if (!authority.canUseOperationalData && authority.blockedReason !== 'demo_user') {
+          toast({
+            title: "Account is still loading",
+            description: "Please wait until your account is fully loaded before running SmartMatch.",
+            variant: "destructive",
+          });
+          setIsMatching(false);
+          return;
+        }
+        effectiveIsDemo = authority.blockedReason === 'demo_user';
+      }
+
+      const result = await smartMatchEngine.processMatch(request, customerId, effectiveIsDemo);
+
       setMatchResults(result.matches);
       setTotalMatches(result.total_matches);
       setProcessingTime(result.processing_time_ms);
