@@ -112,7 +112,7 @@ Reduce:
 
 ### Authentication
 - [x] Remove automatic demo account creation fallback <!-- 62f002e -->
-- [ ] Audit remaining demo auth behavior
+- [x] Audit remaining demo auth behavior <!-- a1c9f07 -->
 - [ ] Design proper demo-mode architecture later
 
 ### SmartMatch
