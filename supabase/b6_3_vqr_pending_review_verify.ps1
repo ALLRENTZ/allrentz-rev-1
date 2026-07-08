@@ -161,7 +161,7 @@ function New-AuthUser($id, $email) {
     try {
         Invoke-RestMethod -Method Post `
             -Uri "$API_URL/auth/v1/admin/users" `
-            -Headers @{ apikey = $ADMIN_KEY; "Content-Type" = "application/json" } `
+            -Headers @{ apikey = $ADMIN_KEY; Authorization = "Bearer $ADMIN_KEY"; "Content-Type" = "application/json" } `
             -Body $body | Out-Null
     } catch { }
 }
@@ -170,7 +170,7 @@ function Remove-AuthUser($id) {
     try {
         Invoke-RestMethod -Method Delete `
             -Uri "$API_URL/auth/v1/admin/users/$id" `
-            -Headers @{ apikey = $ADMIN_KEY } | Out-Null
+            -Headers @{ apikey = $ADMIN_KEY; Authorization = "Bearer $ADMIN_KEY" } | Out-Null
     } catch { }
 }
 
