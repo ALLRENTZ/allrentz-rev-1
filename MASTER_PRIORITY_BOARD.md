@@ -144,6 +144,7 @@ Reduce:
 - [x] B6-1 Add rfq_vendor_pending_select RLS policy — vendor SELECT on pending_vendor_review RFQs <!-- f010bf3 -->
 - [x] B6-1c Drop pre-org-model "Vendors view requests for own equipment" RLS policy on rental_requests <!-- 7925568 -->
 - [x] B6-2 Wire VQR submission → Edge Function transition in VendorDashboard (pending_vendor_review → vendor_quote_received) <!-- verified locally 9/9, no code patch required -->
+- [x] B6-4 — RFQ vendor invitation authority object and runtime RLS verification <!-- 04a7f73 -->
 
 ## Quote Workflow
 - [x] Fix quote request error handling <!-- bda5769 -->
