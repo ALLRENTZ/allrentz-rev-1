@@ -188,6 +188,25 @@ Deno.serve(async (req: Request) => {
     return jsonError(404, 'RFQ not found')
   }
 
+  // ── Step 3b: Demo actor boundary — hard backend gate, independent of the ──
+  // frontend and enforced again inside transition_rfq_status() itself, since
+  // that RPC executes via service_role and would otherwise bypass this check.
+
+  const { data: actorProfile, error: profileFetchError } = await svc
+    .from('profiles')
+    .select('is_demo')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (profileFetchError) {
+    console.error('profile fetch error:', profileFetchError)
+    return jsonError(500, 'Internal error')
+  }
+
+  if (actorProfile?.is_demo && !rfq.is_simulated) {
+    return jsonError(403, 'Demo actor cannot transition a non-simulated RFQ')
+  }
+
   // ── Step 4: Early allowlist check (optimization — DB is authoritative) ─────
 
   const transitionKey = `${rfq.operational_status}:${newStatus}`
