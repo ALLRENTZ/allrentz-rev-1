@@ -8,6 +8,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
+    "test:rainforrent": "node --experimental-strip-types --test src/adapters/rainForRentAdapter.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {
