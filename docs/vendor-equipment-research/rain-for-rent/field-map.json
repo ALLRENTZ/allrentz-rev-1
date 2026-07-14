@@ -1,0 +1,48 @@
+{
+  "vendor": "Rain for Rent",
+  "source_area": "Tank and Box equipment listing",
+  "research_status": "MAPPED",
+  "production_approved": false,
+  "card_selector": "div.e-loop-item",
+  "fields": {
+    "supplier_name": {
+      "source": "constant",
+      "value": "Rain for Rent"
+    },
+    "equipment_name": {
+      "source": "h3 a text",
+      "required_for_comparison": true
+    },
+    "capacity": {
+      "source": "value paired with the Capacity label",
+      "raw_format_examples": [
+        "21,000 Gallons",
+        "8,594 Gallons"
+      ],
+      "comparison_normalization": "remove commas and units while retaining the raw value separately in future research"
+    },
+    "equipment_type": {
+      "source": "value paired with the Type label",
+      "required_for_comparison": true
+    },
+    "product_detail_url": {
+      "source": "h3 a[href]",
+      "required_for_comparison": true
+    },
+    "image_url": {
+      "source": "img[data-src], falling back to img[src] when it is not a data URI",
+      "required_for_comparison": true
+    }
+  },
+  "not_present_on_listing_card": [
+    "price",
+    "rental_rate",
+    "branch_availability",
+    "delivery_timing",
+    "live_inventory",
+    "technical_documents",
+    "accessories",
+    "detailed_specifications"
+  ],
+  "implementation_note": "This mapping supports research and fixture testing only. Live ingestion is not connected."
+}
