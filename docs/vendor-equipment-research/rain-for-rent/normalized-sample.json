@@ -1,0 +1,15 @@
+{
+  "research_status": "MAPPED",
+  "production_approved": false,
+  "records": [
+    {
+      "supplier_name": "Rain for Rent",
+      "equipment_name": "Flat Top Smooth Wall Tank",
+      "capacity": "21000",
+      "equipment_type": "Flat Top",
+      "product_detail_url": "https://www.rainforrent.com/equipment/flat-top-smooth-wall-tank/",
+      "image_url": "https://www.rainforrent.com/wp-content/uploads/2018/08/TANKFLATTOPSMOOTHWAL.jpg"
+    }
+  ],
+  "note": "Representative comparison sample only. This is not live inventory or an approved final ALLRENTZ equipment record."
+}
