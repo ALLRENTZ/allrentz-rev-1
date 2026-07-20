@@ -1,227 +1,295 @@
-
-import { useState } from 'react';
-import { FileText, Upload, Download, Eye, AlertTriangle, CheckCircle, Calendar, Shield } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import {
+  Shield,
+  AlertTriangle,
+  FileText,
+  CheckCircle,
+  Eye,
+  Download,
+  Upload,
+  X,
+} from 'lucide-react';
+import { useToast }  from '@/components/ui/use-toast';
 
 interface Document {
   id: number;
   name: string;
-  type: 'certificate' | 'msds' | 'spec' | 'insurance' | 'inspection';
-  equipmentId: number;
-  equipmentName: string;
-  uploadDate: string;
-  expiryDate?: string;
+  equipment: string;
+  type: 'certificate' | 'msds' | 'specification' | 'insurance' | 'inspection';
   status: 'valid' | 'expiring' | 'expired';
+  uploadedDate: string;
+  expiryDate?: string;
   fileSize: string;
 }
 
-const DigitalBinder = () => {
-  const [activeFilter, setActiveFilter] = useState<string>('all');
-  
-  const documents: Document[] = [
-    {
-      id: 1,
-      name: 'Safety Compliance Certificate',
-      type: 'certificate',
-      equipmentId: 1,
-      equipmentName: 'Steam Boiler - 150 HP',
-      uploadDate: '2024-06-15',
-      expiryDate: '2024-12-15',
-      status: 'valid',
-      fileSize: '2.3 MB'
-    },
-    {
-      id: 2,
-      name: 'Material Safety Data Sheet',
-      type: 'msds',
-      equipmentId: 1,
-      equipmentName: 'Steam Boiler - 150 HP',
-      uploadDate: '2024-06-15',
-      expiryDate: '2024-07-01',
-      status: 'expiring',
-      fileSize: '1.8 MB'
-    },
-    {
-      id: 3,
-      name: 'Insurance Certificate',
-      type: 'insurance',
-      equipmentId: 2,
-      equipmentName: 'Frac Tank - 21,000 Gal',
-      uploadDate: '2024-06-20',
-      expiryDate: '2025-01-20',
-      status: 'valid',
-      fileSize: '1.2 MB'
-    },
-    {
-      id: 4,
-      name: 'Equipment Specifications',
-      type: 'spec',
-      equipmentId: 3,
-      equipmentName: 'Confined Space Ventilation',
-      uploadDate: '2024-06-18',
-      status: 'valid',
-      fileSize: '3.1 MB'
-    },
-    {
-      id: 5,
-      name: 'Annual Inspection Report',
-      type: 'inspection',
-      equipmentId: 1,
-      equipmentName: 'Steam Boiler - 150 HP',
-      uploadDate: '2024-05-15',
-      expiryDate: '2024-06-30',
-      status: 'expired',
-      fileSize: '4.2 MB'
-    }
-  ];
+const documentsData: Document[] = [
+  {
+    id: 1,
+    name: 'Safety Compliance Certificate',
+    equipment: 'Steam Boiler 150 HP',
+    type: 'certificate',
+    status: 'valid',
+    uploadedDate: '2024-01-15',
+    expiryDate: '2024-12-15',
+    fileSize: '2.4 MB',
+  },
+  {
+    id: 2,
+    name: 'Material Safety Data Sheet',
+    equipment: 'Steam Boiler 150 HP',
+    type: 'msds',
+    status: 'expiring',
+    uploadedDate: '2023-07-01',
+    expiryDate: '2024-07-01',
+    fileSize: '1.1 MB',
+  },
+  {
+    id: 3,
+    name: 'Insurance Certificate',
+    equipment: 'Frac Tank 21,000 Gal',
+    type: 'insurance',
+    status: 'valid',
+    uploadedDate: '2024-01-20',
+    expiryDate: '2025-01-20',
+    fileSize: '3.2 MB',
+  },
+  {
+    id: 4,
+    name: 'Equipment Specifications',
+    equipment: 'Confined Space Vent',
+    type: 'specification',
+    status: 'valid',
+    uploadedDate: '2023-05-10',
+    fileSize: '850 KB',
+  },
+  {
+    id: 5,
+    name: 'Annual Inspection Report',
+    equipment: 'Steam Boiler 150 HP',
+    type: 'inspection',
+    status: 'expired',
+    uploadedDate: '2023-06-30',
+    expiryDate: '2024-06-30',
+    fileSize: '1.8 MB',
+  },
+];
 
-  const getDocumentIcon = (type: string) => {
-    switch (type) {
-      case 'certificate': return <Shield className="h-5 w-5 text-green-600" />;
-      case 'msds': return <AlertTriangle className="h-5 w-5 text-yellow-600" />;
-      case 'spec': return <FileText className="h-5 w-5 text-blue-600" />;
-      case 'insurance': return <Shield className="h-5 w-5 text-purple-600" />;
-      case 'inspection': return <CheckCircle className="h-5 w-5 text-indigo-600" />;
-      default: return <FileText className="h-5 w-5 text-gray-600" />;
+const filterTabs = [
+  'All Documents',
+  'Certificates',
+  'MSDS',
+  'Specifications',
+  'Insurance',
+  'Inspections',
+  'Expiring Soon',
+] as const;
+
+type FilterTab = (typeof filterTabs)[number];
+
+const getDocIcon = (type: Document['type']) => {
+  switch (type) {
+    case 'certificate':
+    case 'insurance':
+      return <Shield className="h-5 w-5 text-blue-500" />;
+    case 'msds':
+      return <AlertTriangle className="h-5 w-5 text-orange-500" />;
+    case 'specification':
+      return <FileText className="h-5 w-5 text-purple-500" />;
+    case 'inspection':
+      return <CheckCircle className="h-5 w-5 text-green-500" />;
+    default:
+      return <FileText className="h-5 w-5 text-gray-500" />;
+  }
+};
+
+const getStatusBadge = (status: Document['status']) => {
+  switch (status) {
+    case 'valid':
+      return 'bg-green-100 text-green-800 border border-green-200';
+    case 'expiring':
+      return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+    case 'expired':
+      return 'bg-red-100 text-red-800 border border-red-200';
+    default:
+      return 'bg-gray-100 text-gray-800 border border-gray-200';
+  }
+};
+
+const getStatusLabel = (status: Document['status']) => {
+  switch (status) {
+    case 'valid':
+      return 'Valid';
+    case 'expiring':
+      return 'Expiring Soon';
+    case 'expired':
+      return 'Expired';
+    default:
+      return status;
+  }
+};
+
+const DigitalBinder: React.FC = () => {
+  const [activeFilter, setActiveFilter] = useState<FilterTab>('All Documents');
+  const { toast } = useToast();
+
+  const filteredDocuments = useMemo(() => {
+    switch (activeFilter) {
+      case 'All Documents':
+        return documentsData;
+      case 'Certificates':
+        return documentsData.filter((d) => d.type === 'certificate');
+      case 'MSDS':
+        return documentsData.filter((d) => d.type === 'msds');
+      case 'Specifications':
+        return documentsData.filter((d) => d.type === 'specification');
+      case 'Insurance':
+        return documentsData.filter((d) => d.type === 'insurance');
+      case 'Inspections':
+        return documentsData.filter((d) => d.type === 'inspection');
+      case 'Expiring Soon':
+        return documentsData.filter((d) => d.status === 'expiring');
+      default:
+        return documentsData;
     }
+  }, [activeFilter]);
+
+  const stats = useMemo(() => {
+    const valid = documentsData.filter((d) => d.status === 'valid').length;
+    const expiring = documentsData.filter((d) => d.status === 'expiring').length;
+    const expired = documentsData.filter((d) => d.status === 'expired').length;
+    const total = documentsData.length;
+    return { valid, expiring, expired, total };
+  }, []);
+
+  const handleView = (docName: string) => {
+    toast({
+      title: 'Feature coming soon',
+      description: `Viewing "${docName}" will be available soon.`,
+    });
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'valid': return 'industrial-badge-approved';
-      case 'expiring': return 'industrial-badge-pending';
-      case 'expired': return 'industrial-badge-rejected';
-      default: return 'industrial-badge';
-    }
+  const handleDownload = (docName: string) => {
+    toast({
+      title: 'Feature coming soon',
+      description: `Downloading "${docName}" will be available soon.`,
+    });
   };
 
-  const filteredDocuments = documents.filter(doc => 
-    activeFilter === 'all' || doc.type === activeFilter || doc.status === activeFilter
-  );
-
-  const documentTypeLabels = {
-    certificate: 'Certificates',
-    msds: 'MSDS',
-    spec: 'Specifications',
-    insurance: 'Insurance',
-    inspection: 'Inspections'
+  const handleUpload = () => {
+    toast({
+      title: 'Feature coming soon',
+      description: 'Document upload will be available soon.',
+    });
   };
 
   return (
-    <div className="industrial-card p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-bold text-allrentz-gray">Digital Equipment Binder</h2>
-          <p className="text-gray-600 text-sm">Manage compliance documents and specifications</p>
-        </div>
-        <button className="industrial-button inline-flex items-center space-x-2">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-allrentz-gray">Digital Equipment Binder</h2>
+        <button
+          onClick={handleUpload}
+          className="industrial-button inline-flex items-center space-x-2"
+        >
           <Upload className="h-4 w-4" />
           <span>Upload Document</span>
         </button>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex space-x-2 mb-6 overflow-x-auto">
-        <button
-          onClick={() => setActiveFilter('all')}
-          className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
-            activeFilter === 'all' 
-              ? 'bg-allrentz-red text-white' 
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          All Documents
-        </button>
-        {Object.entries(documentTypeLabels).map(([key, label]) => (
+      <div className="flex flex-wrap gap-2">
+        {filterTabs.map((tab) => (
           <button
-            key={key}
-            onClick={() => setActiveFilter(key)}
-            className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
-              activeFilter === key 
-                ? 'bg-allrentz-red text-white' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+            key={tab}
+            onClick={() => setActiveFilter(tab)}
+            className={
+              activeFilter === tab
+                ? 'px-4 py-2 rounded-md text-sm font-medium bg-allrentz-red text-white transition-colors'
+                : 'px-4 py-2 rounded-md text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors'
+            }
           >
-            {label}
+            {tab}
           </button>
         ))}
-        <button
-          onClick={() => setActiveFilter('expiring')}
-          className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
-            activeFilter === 'expiring' 
-              ? 'bg-allrentz-red text-white' 
-              : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-          }`}
-        >
-          Expiring Soon
-        </button>
       </div>
 
       {/* Document List */}
       <div className="space-y-3">
+        {filteredDocuments.length === 1 && (
+          <div className="text-sm text-gray-500">
+            1 document found
+          </div>
+        )}
+        {filteredDocuments.length > 1 && (
+          <div className="text-sm text-gray-500">
+            {filteredDocuments.length} documents found
+          </div>
+        )}
         {filteredDocuments.map((doc) => (
-          <div key={doc.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                {getDocumentIcon(doc.type)}
+          <div
+            key={doc.id}
+            className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+          >
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-start space-x-4">
+                <div className="mt-1">{getDocIcon(doc.type)}</div>
                 <div>
                   <h3 className="font-semibold text-allrentz-gray">{doc.name}</h3>
-                  <p className="text-sm text-gray-600">{doc.equipmentName}</p>
-                  <div className="flex items-center space-x-4 text-xs text-gray-500 mt-1">
-                    <span>Uploaded: {new Date(doc.uploadDate).toLocaleDateString()}</span>
-                    {doc.expiryDate && (
-                      <span className="flex items-center space-x-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>Expires: {new Date(doc.expiryDate).toLocaleDateString()}</span>
-                      </span>
+                  <p className="text-sm text-gray-600">{doc.equipment}</p>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
+                    <span>Uploaded: {doc.uploadedDate}</span>
+                    {doc.expiryDate ? (
+                      <span>Expires: {doc.expiryDate}</span>
+                    ) : (
+                      <span className="text-gray-400">No expiry</span>
                     )}
                     <span>{doc.fileSize}</span>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center space-x-3">
-                <span className={`${getStatusBadge(doc.status)}`}>
-                  {doc.status === 'valid' ? 'Valid' : doc.status === 'expiring' ? 'Expiring Soon' : 'Expired'}
+              <div className="flex items-center space-x-3 md:ml-4">
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(doc.status)}`}
+                >
+                  {getStatusLabel(doc.status)}
                 </span>
-                <div className="flex space-x-1">
-                  <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                    <Download className="h-4 w-4" />
-                  </button>
-                </div>
+                <button
+                  onClick={() => handleView(doc.name)}
+                  className="p-1.5 text-gray-500 hover:text-allrentz-red transition-colors"
+                  title="View"
+                >
+                  <Eye className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => handleDownload(doc.name)}
+                  className="p-1.5 text-gray-500 hover:text-allrentz-red transition-colors"
+                  title="Download"
+                >
+                  <Download className="h-4 w-4" />
+                </button>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {filteredDocuments.length === 0 && (
-        <div className="text-center py-8">
-          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-500">No documents found for the selected filter.</p>
+      {/* Bottom Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
+        <div className="text-center p-4 bg-green-50 rounded-lg">
+          <p className="text-2xl font-bold text-green-700">{stats.valid}</p>
+          <p className="text-sm text-green-600 font-medium">Valid</p>
         </div>
-      )}
-
-      {/* Quick Stats */}
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <div className="grid grid-cols-4 gap-4 text-center">
-          <div>
-            <div className="text-2xl font-bold text-green-600">{documents.filter(d => d.status === 'valid').length}</div>
-            <div className="text-xs text-gray-600">Valid</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-yellow-600">{documents.filter(d => d.status === 'expiring').length}</div>
-            <div className="text-xs text-gray-600">Expiring</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-red-600">{documents.filter(d => d.status === 'expired').length}</div>
-            <div className="text-xs text-gray-600">Expired</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-allrentz-gray">{documents.length}</div>
-            <div className="text-xs text-gray-600">Total</div>
-          </div>
+        <div className="text-center p-4 bg-yellow-50 rounded-lg">
+          <p className="text-2xl font-bold text-yellow-700">{stats.expiring}</p>
+          <p className="text-sm text-yellow-600 font-medium">Expiring</p>
+        </div>
+        <div className="text-center p-4 bg-red-50 rounded-lg">
+          <p className="text-2xl font-bold text-red-700">{stats.expired}</p>
+          <p className="text-sm text-red-600 font-medium">Expired</p>
+        </div>
+        <div className="text-center p-4 bg-gray-50 rounded-lg">
+          <p className="text-2xl font-bold text-gray-700">{stats.total}</p>
+          <p className="text-sm text-gray-600 font-medium">Total</p>
         </div>
       </div>
     </div>

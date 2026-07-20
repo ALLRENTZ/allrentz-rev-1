@@ -21,9 +21,10 @@ import SmartMatchDemo from "./pages/SmartMatchDemo";
 import SmartDraft from "./pages/SmartDraft";
 import OperationsCenter from "./pages/OperationsCenter";
 import SecurityCenter from "./pages/SecurityCenter";
-import DeliveryTracking from "./pages/DeliveryTracking";
-import DocumentsManagement from "./pages/DocumentsManagement";
-import TurnaroundManagement from "./pages/TurnaroundManagement";
+import { SecurityProvider } from "@/components/SecurityProvider";
+import DeliveryTracking from "./pages/management/DeliveryTracking";
+import DocumentsManagement from "./pages/management/DocumentsManagement";
+import TurnaroundManagement from "./pages/management/TurnaroundManagement";
 import NotFound from "./pages/NotFound";
 import Navigation from "./components/Navigation";
 import Footer from "./components/Footer";
@@ -58,7 +59,7 @@ function App() {
                     <Route path="/smartmatch-demo" element={<SmartMatchDemo />} />
                     <Route path="/smart-draft" element={<SmartDraft />} />
                     <Route path="/operations-center" element={<OperationsCenter />} />
-                    <Route path="/security-center" element={<SecurityCenter />} />
+                    <Route path="/security-center" element={<SecurityProvider><SecurityCenter /></SecurityProvider>} />
                     <Route path="/delivery-tracking" element={<DeliveryTracking />} />
                     <Route path="/documents-management" element={<DocumentsManagement />} />
                     <Route path="/turnaround-management" element={<TurnaroundManagement />} />
