@@ -57,6 +57,37 @@ function Get-JWT($email) {
     return $resp.access_token
 }
 
+function Get-ErrorResult($errorRecord) {
+    $httpResp = $null
+    if ($errorRecord.Exception.PSObject.Properties.Name -contains "Response") { $httpResp = $errorRecord.Exception.Response }
+
+    $code = 0
+    if ($httpResp) { try { $code = [int]$httpResp.StatusCode } catch { $code = 0 } }
+
+    # ErrorDetails.Message is populated by Invoke-RestMethod from the response
+    # body before the underlying stream is disposed; prefer it over re-reading
+    # the (possibly already-consumed) stream directly.
+    $text = $null
+    if ($errorRecord.ErrorDetails -and $errorRecord.ErrorDetails.Message) {
+        $text = $errorRecord.ErrorDetails.Message
+    } elseif ($httpResp) {
+        try {
+            $stream = $httpResp.GetResponseStream()
+            $reader = New-Object System.IO.StreamReader($stream)
+            $text   = $reader.ReadToEnd(); $reader.Close()
+        } catch { $text = $null }
+    }
+    if (-not $text) { $text = "" }
+
+    $parsed = $null
+    if ($text) { try { $parsed = $text | ConvertFrom-Json } catch { $parsed = @{ error = $text } } }
+
+    if (-not $httpResp) {
+        return @{ status = 0; body = $null; error = $errorRecord.Exception.Message }
+    }
+    return @{ status = $code; body = $parsed }
+}
+
 function Invoke-RF($jwt, $rfq_id, $new_status) {
     $hdrs = @{ apikey = $ANON_KEY; "Content-Type" = "application/json" }
     if ($jwt) { $hdrs["Authorization"] = "Bearer $jwt" }
@@ -64,19 +95,8 @@ function Invoke-RF($jwt, $rfq_id, $new_status) {
     try {
         $resp = Invoke-RestMethod -Method Post -Uri $FN_URL -Headers $hdrs -Body $body
         return @{ status = 200; body = $resp }
-    } catch [System.Net.WebException] {
-        $httpResp = $_.Exception.Response
-        if ($httpResp) {
-            $code   = [int]$httpResp.StatusCode
-            $stream = $httpResp.GetResponseStream()
-            $reader = New-Object System.IO.StreamReader($stream)
-            $text   = $reader.ReadToEnd(); $reader.Close()
-            try { $parsed = $text | ConvertFrom-Json } catch { $parsed = @{ error = $text } }
-            return @{ status = $code; body = $parsed }
-        }
-        return @{ status = 0; body = $null; error = $_.Exception.Message }
     } catch {
-        return @{ status = 0; body = $null; error = $_.Exception.Message }
+        return Get-ErrorResult $_
     }
 }
 
@@ -91,19 +111,8 @@ function Invoke-REST($method, $path, $jwt, $bodyObj, $query) {
         if ($bodyJson) { $params["Body"] = $bodyJson }
         $resp = Invoke-RestMethod @params
         return @{ status = 200; body = $resp }
-    } catch [System.Net.WebException] {
-        $httpResp = $_.Exception.Response
-        if ($httpResp) {
-            $code   = [int]$httpResp.StatusCode
-            $stream = $httpResp.GetResponseStream()
-            $reader = New-Object System.IO.StreamReader($stream)
-            $text   = $reader.ReadToEnd(); $reader.Close()
-            try { $parsed = $text | ConvertFrom-Json } catch { $parsed = @{ error = $text } }
-            return @{ status = $code; body = $parsed }
-        }
-        return @{ status = 0; body = $null; error = $_.Exception.Message }
     } catch {
-        return @{ status = 0; body = $null; error = $_.Exception.Message }
+        return Get-ErrorResult $_
     }
 }
 
