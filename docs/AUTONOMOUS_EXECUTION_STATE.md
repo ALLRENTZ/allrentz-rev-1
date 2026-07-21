@@ -6,7 +6,7 @@ Last updated: 2026-07-20
 
 - Root: `C:\Users\prmcg\allrentz-main`
 - Branch: `reconcile/main-into-stabilization-2026-07-10`
-- HEAD: `3a15979`
+- HEAD: `ddd82cd`
 - Status: local only, no upstream, not pushed
 
 ## Current Phase
@@ -15,7 +15,7 @@ Phase 1 is in progress.
 
 Current work item:
 
-Complete and verify the Supabase publishable and secret API-key migration for the `rfq-transition` Edge Function.
+The Supabase publishable and secret API-key migration for the `rfq-transition` Edge Function is complete, locally verified, and committed. The next bounded item is production dependency-advisory remediation.
 
 ## Completed and Committed
 
@@ -24,25 +24,17 @@ Complete and verify the Supabase publishable and secret API-key migration for th
 - Supabase generated types repaired: `09e2dc8`
 - PowerShell verification handling repaired: `37f9e0f`
 - Auth, RLS, membership, vendor authority, and RFQ transition verification recorded as 144/144 PASS: `3a15979`
+- Supabase API-key migration, Vitest coverage, local key bridge, verification hardening, and Phase 1 CI workflow committed after full local verification: `ddd82cd`
 
 ## Current Uncommitted Work
 
-- Vitest framework and test script
-- Nineteen passing unit tests
-- Edge Function key-selection module
-- `rfq-transition` API-key migration
-- Local key bridge
-- API-key end-to-end verification script
-- Three PowerShell verification scripts changed to read credentials from environment variables
-- Lint configuration aligned with the existing TypeScript/Shadcn codebase
-- Toast callback type correction required by repository-wide typecheck
-- Phase 1 CI workflow
+No Phase 1 migration changes remain uncommitted. The remaining dirty-tree files are intentionally excluded handoff documentation, local-only Gate 2 fixtures, and the pre-existing `CLAUDE.md` working-tree entry.
 
 ## Current Verification
 
 - Unit tests: PASS, 19/19
 - Typecheck: PASS
-- Production build: PASS through equivalent inline Vite production configuration; the standard config loader is sandbox-blocked while traversing the repository parent
+- Production build: PASS via standard `npm run build`; 2,661 modules transformed in 6.54 seconds with only non-blocking Browserslist-age and chunk-size warnings
 - Lint: PASS, 0 errors and 17 warnings
 - API-key fallback selection: PASS by unit test
 - Local key bridge: PASS with synthetic local-only values; emitted only the three `ALLRENTZ_LOCAL_*` function variables and set the two legacy session variables
@@ -61,7 +53,7 @@ Complete and verify the Supabase publishable and secret API-key migration for th
 
 The `SUPABASE_*`/`ALLRENTZ_LOCAL_*` fallback defect and UTF-8 BOM defect are corrected. The user-started local function server allowed the full runtime verification to complete successfully despite this Codex sandbox remaining unable to access `//./pipe/docker_engine` directly.
 
-The remaining blocker is Git metadata access. This sandbox denied creation of `.git/index.lock` after explicit repository and `.git` write permissions were granted, and its elevated execution path is disabled by policy. Exact-path staging and the authorized local commit therefore cannot be completed in this session; no files are staged.
+There is no remaining local blocker for the API-key migration. Hosted CI execution remains intentionally blocked until remote execution is authorized.
 
 Production variables remain primary:
 
@@ -79,11 +71,10 @@ The Edge Function now prefers the production variables and uses the local variab
 
 ## Exact Next Action
 
-From an unrestricted local PowerShell session, stage the exact reviewed Phase 1 file set, continue excluding unrelated handoff documents and Gate 2 fixtures, and create the authorized local commit.
+Treat the 11 high-severity production dependency advisories as a separate bounded remediation item. Do not run a broad automatic audit fix or take a breaking major-version upgrade without an independently reviewed plan.
 
 ## Remaining Phase 1 Work
 
-- Commit the verified Phase 1 work locally
 - Treat the 11 high-severity production dependency advisories as a separate bounded dependency-remediation item; do not run a broad automatic audit fix
 - Run the CI workflow after remote execution is authorized
 
@@ -103,6 +94,6 @@ From an unrestricted local PowerShell session, stage the exact reviewed Phase 1 
 
 The working tree is not clean.
 
-The API-key migration, Vitest, lint/type correction, verification-script hardening, and CI workflow are fully locally verified but remain unstaged and uncommitted because this session cannot create `.git/index.lock`.
+The API-key migration, Vitest, lint/type correction, verification-script hardening, and CI workflow are fully locally verified and committed in `ddd82cd`.
 
 Unrelated handoff documents and local-only Gate 2 fixtures remain untouched.
