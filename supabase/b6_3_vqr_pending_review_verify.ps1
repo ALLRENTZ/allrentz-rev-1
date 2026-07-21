@@ -1,24 +1,19 @@
 # B6-3 / B6-4 VQR Pending-Review + Invitation Authority Runtime Verification  -  LOCAL ONLY
 #
-# Proves the runtime behavior of policy vqr_insert_vendor after
-# migration 20260701000000_b6_3_vqr_insert_pending_review_check.sql and
-# migration 20260708000000_b6_4_rfq_vendor_invitations.sql:
+# Proves invitation and VQR authority after backend-controlled quote submission:
 #
 #   Case A: vendor JWT with an active rfq_vendor_invitations row -> RFQ A
-#           becomes visible via rental_requests, and VQR INSERT succeeds.
-#   Case B: vendor JWT -> VQR INSERT fails (403) when the target
-#           rental_requests row has operational_status = 'vendor_quote_received'.
-#   Case C: vendor JWT -> VQR INSERT fails (403) when the target
-#           rental_requests row has operational_status = 'pending_vendor_review'
-#           but NO rfq_vendor_invitations row exists, and that RFQ is not
-#           visible to the uninvited vendor.
+#           becomes visible and submit_vendor_quote succeeds atomically.
+#   Case B: vendor JWT -> direct VQR INSERT fails (403); authenticated table
+#           INSERT authority has been revoked.
+#   Case C: an uninvited RFQ remains hidden and direct VQR INSERT fails (403).
 #   Case D: customer JWT cannot invite a customer-only organization, cannot
 #           submit a VQR through that organization, and cannot use a seeded
 #           legacy customer-org VQR to perform a vendor-owned transition.
 #
-# The tested INSERT uses only the vendor JWT + anon key via PostgREST.
+# The tested RPC and blocked direct writes use only the vendor JWT + anon key.
 # The admin/service key is used only for auth-user setup, scalar
-# verification via docker/psql, and cleanup -- never for the tested INSERT.
+# verification via docker/psql, and cleanup -- never for the tested actions.
 #
 # Run from repo root: powershell -ExecutionPolicy Bypass -File supabase/b6_3_vqr_pending_review_verify.ps1
 # Requires: Docker running, local Supabase running (supabase start)
@@ -343,32 +338,30 @@ Check "RFQ A visible status=pending_vendor_review" $rfqARead_status "pending_ven
 Write-Host ""
 
 # =============================================================================
-# CASE A: VQR INSERT via vendor JWT against rfq_id in pending_vendor_review
-# Expected: HTTP 200/201, row persists.
+# CASE A: backend-authoritative quote submission against an invited RFQ.
+# Expected: RPC succeeds; quote, RFQ transition, and audit row all persist.
 # =============================================================================
 
-Write-Host "CASE A: VQR INSERT  -  rfq operational_status = pending_vendor_review"
-Write-Host "  POST /rest/v1/vendor_quote_responses  (vendor JWT, RLS applies)"
+Write-Host "CASE A: submit_vendor_quote  -  invited pending_vendor_review RFQ"
+Write-Host "  POST /rest/v1/rpc/submit_vendor_quote  (vendor JWT)"
 
 $vqrBodyA = @{
-    rfq_id                 = $B63_RFQ_A
-    vendor_organization_id = $B63_ORG_VEND
-    submitted_by           = $B63_USER_VEND
-    status                 = "submitted"
-    daily_rate             = 1500.00
-    compliance_confirmed   = $true
-    submitted_at           = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+    p_rfq_id                 = $B63_RFQ_A
+    p_vendor_organization_id = $B63_ORG_VEND
+    p_daily_rate             = 1500.00
+    p_compliance_confirmed   = $true
 }
-$r_vqrA = Invoke-REST "Post" "vendor_quote_responses" $jwt_vend $vqrBodyA $null
+$r_vqrA = Invoke-REST "Post" "rpc/submit_vendor_quote" $jwt_vend $vqrBodyA $null
 
 $caseA_ok = $false
+$caseA_correlation = $null
 if ($r_vqrA.status -eq 0) {
     $script:FAIL++
     Write-Host "  FAIL  CASE A: connection error  -  $($r_vqrA.error)"
     Write-Host "        DIAGNOSIS: Is local Supabase running?"
 } elseif ($r_vqrA.status -eq 403) {
     $script:FAIL++
-    Write-Host "  FAIL  CASE A: 403  -  RLS vqr_insert_vendor blocked the insert."
+    Write-Host "  FAIL  CASE A: 403  -  backend authority rejected the valid fixture."
     Write-Host "        --- CASE A FAILURE EVIDENCE ---"
     Write-Host "        HTTP Status:       $($r_vqrA.status)"
     Write-Host "        Raw Response Body: $($r_vqrA.rawBody)"
@@ -381,11 +374,10 @@ if ($r_vqrA.status -eq 0) {
         Write-Host "        Response Headers: (not captured)"
     }
     Write-Host "        Payload Sent:   $($vqrBodyA | ConvertTo-Json -Compress)"
-    Write-Host "        submitted_by:            $($vqrBodyA.submitted_by)"
+    Write-Host "        submitted_by is backend-derived; JWT sub: $jwt_vend_sub"
     Write-Host "        JWT sub:                 $jwt_vend_sub"
-    Write-Host "        rfq_id:                  $($vqrBodyA.rfq_id)"
-    Write-Host "        vendor_organization_id:  $($vqrBodyA.vendor_organization_id)"
-    Write-Host "        status:                  $($vqrBodyA.status)"
+    Write-Host "        rfq_id:                  $($vqrBodyA.p_rfq_id)"
+    Write-Host "        vendor_organization_id:  $($vqrBodyA.p_vendor_organization_id)"
     Write-Host "        --- END CASE A FAILURE EVIDENCE ---"
 } elseif ($r_vqrA.status -ne 200) {
     $script:FAIL++
@@ -393,17 +385,27 @@ if ($r_vqrA.status -eq 0) {
     Write-Host "  FAIL  CASE A: unexpected status $($r_vqrA.status)  -  $errMsg"
 } else {
     $script:PASS++
-    Write-Host "  PASS  CASE A INSERT succeeded (vendor JWT, pending_vendor_review)"
+    $caseA_rpcRow = if ($r_vqrA.body -is [System.Array]) { $r_vqrA.body[0] } else { $r_vqrA.body }
+    $caseA_correlation = $caseA_rpcRow.correlation_id
+    Write-Host "  PASS  CASE A atomic submission succeeded"
     $caseA_ok = $true
 }
 
 $vqrA_count = "0"
+$rfqA_after = "(not checked)"
+$caseA_audit_count = "0"
 if ($caseA_ok) {
     $vqrA_count = Psql-Scalar "SELECT COUNT(*) FROM public.vendor_quote_responses WHERE rfq_id = '$B63_RFQ_A'::uuid AND vendor_organization_id = '$B63_ORG_VEND'::uuid AND status = 'submitted'"
     Check "CASE A: VQR row in DB for RFQ A" $vqrA_count "1"
+    $rfqA_after = Psql-Scalar "SELECT operational_status FROM public.rental_requests WHERE id = '$B63_RFQ_A'::uuid"
+    Check "CASE A: RFQ transitioned atomically" $rfqA_after "vendor_quote_received"
+    if ($caseA_correlation) {
+        $caseA_audit_count = Psql-Scalar "SELECT COUNT(*) FROM public.audit_events WHERE correlation_id = '$caseA_correlation'::uuid AND source = 'vendor_action' AND actor_id = '$B63_USER_VEND'::uuid"
+    }
+    Check "CASE A: correlated vendor audit event exists" $caseA_audit_count "1"
 }
 
-$caseA_result = if ($caseA_ok -and $vqrA_count -eq "1") { "PASS" } else { "FAIL" }
+$caseA_result = if ($caseA_ok -and $vqrA_count -eq "1" -and $rfqA_after -eq "vendor_quote_received" -and $caseA_audit_count -eq "1") { "PASS" } else { "FAIL" }
 Write-Host "  CASE A RESULT: $caseA_result"
 
 # =============================================================================
@@ -432,11 +434,11 @@ if ($r_vqrB.status -eq 0) {
     Write-Host "        DIAGNOSIS: Is local Supabase running?"
 } elseif ($r_vqrB.status -eq 403) {
     $script:PASS++
-    Write-Host "  PASS  CASE B correctly blocked (403)  -  RLS enforced pending_vendor_review requirement"
+    Write-Host "  PASS  CASE B correctly blocked (403)  -  direct authenticated INSERT is revoked"
 } elseif ($r_vqrB.status -eq 200) {
     $script:FAIL++
-    Write-Host "  FAIL  CASE B: 200  -  INSERT incorrectly succeeded against a non-pending RFQ."
-    Write-Host "        DIAGNOSIS (CRITICAL): pending_vendor_review check is not enforced at runtime."
+    Write-Host "  FAIL  CASE B: 200  -  direct authenticated INSERT incorrectly succeeded."
+    Write-Host "        DIAGNOSIS (CRITICAL): VQR table INSERT privilege remains exposed."
 } else {
     $script:FAIL++
     $errMsg = if ($r_vqrB.body) { $r_vqrB.body | ConvertTo-Json -Compress } else { "(no body)" }
@@ -486,7 +488,7 @@ if ($r_vqrC.status -eq 0) {
     Write-Host "        DIAGNOSIS: Is local Supabase running?"
 } elseif ($r_vqrC.status -eq 403) {
     $script:PASS++
-    Write-Host "  PASS  CASE C correctly blocked (403)  -  RLS enforced invitation requirement"
+    Write-Host "  PASS  CASE C correctly blocked (403)  -  direct authenticated INSERT is revoked"
 } elseif ($r_vqrC.status -eq 200) {
     $script:FAIL++
     Write-Host "  FAIL  CASE C: 200  -  INSERT incorrectly succeeded against a pending RFQ with no invitation."
@@ -669,9 +671,9 @@ if ($script:FAIL -gt 0) {
     Write-Host ""
     Write-Host "Diagnostics:"
     Write-Host "  All steps failed:      Check Docker and local Supabase are running."
-    Write-Host "  CASE A 403:            invitation or pending_vendor_review check misfiring on a compliant RFQ."
-    Write-Host "  CASE B 200:            pending_vendor_review check not enforced (CRITICAL)."
-    Write-Host "  CASE C 200:            rfq_vendor_invitations check not enforced (CRITICAL)."
+Write-Host "  CASE A 403:            backend membership, invitation, or simulation authority misfired."
+Write-Host "  CASE B 200:            direct authenticated VQR INSERT remains available (CRITICAL)."
+Write-Host "  CASE C 200:            direct authenticated VQR INSERT remains available (CRITICAL)."
     Write-Host "  CASE D failure:        customer-only organization crossed the vendor authority boundary."
     Write-Host "  CASE E failure:        authenticated VQR UPDATE protection is not enforced."
 }

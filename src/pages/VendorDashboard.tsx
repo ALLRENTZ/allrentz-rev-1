@@ -177,7 +177,8 @@ const VendorDashboard = () => {
     if (!requireOperationalProfile({ user, authLoading, profile, toast: showBlockedToast })) {
       return;
     }
-    if (!realQuoteForm.daily_rate) {
+    const dailyRate = Number.parseFloat(realQuoteForm.daily_rate);
+    if (!Number.isFinite(dailyRate) || dailyRate <= 0) {
       toast.warning('Enter a daily rate to proceed.');
       return;
     }
@@ -186,26 +187,16 @@ const VendorDashboard = () => {
       return;
     }
     setSubmittingId(rfqId);
-    const { error } = await supabase.from('vendor_quote_responses').insert({
-      rfq_id: rfqId,
-      vendor_organization_id: vendorOrgId,
-      submitted_by: user.id,
-      status: 'submitted',
-      daily_rate: parseFloat(realQuoteForm.daily_rate),
-      vendor_notes: realQuoteForm.vendor_notes || null,
-      compliance_confirmed: realQuoteForm.compliance_confirmed,
-      submitted_at: new Date().toISOString(),
+    const { error } = await supabase.rpc('submit_vendor_quote', {
+      p_rfq_id: rfqId,
+      p_vendor_organization_id: vendorOrgId,
+      p_daily_rate: dailyRate,
+      p_vendor_notes: realQuoteForm.vendor_notes || undefined,
+      p_compliance_confirmed: realQuoteForm.compliance_confirmed,
     });
     setSubmittingId(null);
     if (error) {
       toast.error('Failed to submit quote: ' + (error.message || 'Unknown error'));
-      return;
-    }
-    const { error: transitionError } = await supabase.functions.invoke('rfq-transition', {
-      body: { rfq_id: rfqId, new_status: 'vendor_quote_received' },
-    });
-    if (transitionError) {
-      toast.error('Quote saved but RFQ status update failed. Contact support.');
       return;
     }
     toast.success('Quote submitted successfully.');

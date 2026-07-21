@@ -1,8 +1,8 @@
 # B6-2 Vendor Authority Verification  -  LOCAL ONLY
 #
-# Verifies the real B6-2 vendor path:
-#   vendor JWT -> VQR INSERT (status='submitted') -> rfq-transition (vendor_quote_received)
-#   -> Edge Function vendor authority check -> transition_rfq_status()
+# Verifies the backend-authoritative vendor path:
+#   vendor JWT -> submit_vendor_quote() RPC
+#   -> VQR INSERT + transition_rfq_status() in one database transaction
 #   -> rental_requests.operational_status = 'vendor_quote_received'
 #   -> audit_events (source='vendor_action') -> rfq_operational_status
 #
@@ -12,7 +12,6 @@
 # ---- Configuration ----------------------------------------------------------
 
 $API_URL   = "http://127.0.0.1:54321"
-$FN_URL    = "$API_URL/functions/v1/rfq-transition"
 $REST_URL  = "$API_URL/rest/v1"
 $PASSWORD  = "TestPass123!"
 $ANON_KEY  = $env:SUPABASE_ANON_KEY
@@ -89,18 +88,6 @@ function Get-ErrorResult($errorRecord) {
         return @{ status = 0; body = $null; error = $errorRecord.Exception.Message }
     }
     return @{ status = $code; body = $parsed }
-}
-
-function Invoke-RF($jwt, $rfq_id, $new_status) {
-    $hdrs = @{ apikey = $ANON_KEY; "Content-Type" = "application/json" }
-    if ($jwt) { $hdrs["Authorization"] = "Bearer $jwt" }
-    $body = @{ rfq_id = $rfq_id; new_status = $new_status } | ConvertTo-Json
-    try {
-        $resp = Invoke-RestMethod -Method Post -Uri $FN_URL -Headers $hdrs -Body $body
-        return @{ status = 200; body = $resp }
-    } catch {
-        return Get-ErrorResult $_
-    }
 }
 
 function Invoke-REST($method, $path, $jwt, $bodyObj, $query) {
@@ -257,51 +244,44 @@ Write-Host "  Vendor JWT acquired."
 Write-Host ""
 
 # =============================================================================
-# STEP 1: VQR INSERT via vendor JWT
-# Authority: vendor JWT -> PostgREST -> RLS vqr_insert_vendor
-# Admin/service key is NOT used here. This proves RLS allows the vendor user.
+# STEP 1: Atomic quote submission RPC via vendor JWT
+# Admin/service key is NOT used for the tested action.
 # =============================================================================
 
-Write-Host "STEP 1: VQR INSERT via vendor JWT"
-Write-Host "  POST /rest/v1/vendor_quote_responses  (vendor JWT, RLS applies)"
+Write-Host "STEP 1: submit_vendor_quote RPC via vendor JWT"
+Write-Host "  POST /rest/v1/rpc/submit_vendor_quote"
 
 $vqrBody = @{
-    rfq_id                 = $B6_RFQ
-    vendor_organization_id = $B6_ORG_VEND
-    submitted_by           = $B6_USER_VEND
-    status                 = "submitted"
-    daily_rate             = 1500.00
-    compliance_confirmed   = $true
-    submitted_at           = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+    p_rfq_id                 = $B6_RFQ
+    p_vendor_organization_id = $B6_ORG_VEND
+    p_daily_rate             = 1500.00
+    p_compliance_confirmed   = $true
 }
-$r_vqr = Invoke-REST "Post" "vendor_quote_responses" $jwt_vend $vqrBody $null
+$r_vqr = Invoke-REST "Post" "rpc/submit_vendor_quote" $jwt_vend $vqrBody $null
 
 $vqr_ok = $false
+$correlation_id = $null
 if ($r_vqr.status -eq 0) {
     $script:FAIL++
-    Write-Host "  FAIL  VQR INSERT: connection error  -  $($r_vqr.error)"
+    Write-Host "  FAIL  submit_vendor_quote: connection error  -  $($r_vqr.error)"
     Write-Host "        DIAGNOSIS: Is local Supabase running?"
 } elseif ($r_vqr.status -eq 403) {
     $script:FAIL++
-    Write-Host "  FAIL  VQR INSERT: 403  -  RLS vqr_insert_vendor blocked the insert."
-    Write-Host "        DIAGNOSIS (Failure Mode A): Vendor user $B6_USER_VEND may have no"
-    Write-Host "        active organization_memberships row for org $B6_ORG_VEND."
-    Write-Host "        Check: role IN (owner,admin,member), archived_at IS NULL, correct org_id."
-    Write-Host "        Also check: submitted_by = auth.uid() (must match the calling user)."
-    Write-Host "        DIAGNOSIS (Failure Mode D): No 'invited' rfq_vendor_invitations row for"
-    Write-Host "        rfq_id=$B6_RFQ and vendor_organization_id=$B6_ORG_VEND."
+    Write-Host "  FAIL  submit_vendor_quote: 403  -  backend authority rejected valid fixture."
 } elseif ($r_vqr.status -eq 409) {
     $script:FAIL++
-    Write-Host "  FAIL  VQR INSERT: 409  -  unique constraint (rfq_id, vendor_org_id, version=1)."
+    Write-Host "  FAIL  submit_vendor_quote: 409  -  quote already exists."
     Write-Host "        DIAGNOSIS (Failure Mode C): Orphan VQR row exists from a prior run."
     Write-Host "        Pre-run cleanup should have removed it. Check for stale data."
 } elseif ($r_vqr.status -ne 200) {
     $script:FAIL++
     $errMsg = if ($r_vqr.body) { $r_vqr.body | ConvertTo-Json -Compress } else { "(no body)" }
-    Write-Host "  FAIL  VQR INSERT: unexpected status $($r_vqr.status)  -  $errMsg"
+    Write-Host "  FAIL  submit_vendor_quote: unexpected status $($r_vqr.status)  -  $errMsg"
 } else {
     $script:PASS++
-    Write-Host "  PASS  VQR INSERT succeeded (vendor JWT)"
+    $rpcRow = if ($r_vqr.body -is [System.Array]) { $r_vqr.body[0] } else { $r_vqr.body }
+    $correlation_id = $rpcRow.correlation_id
+    Write-Host "  PASS  submit_vendor_quote succeeded (vendor JWT)"
     $vqr_ok = $true
 }
 
@@ -311,76 +291,21 @@ if ($vqr_ok) {
 
     $vqr_sub = Psql-Scalar "SELECT submitted_by FROM public.vendor_quote_responses WHERE rfq_id = '$B6_RFQ'::uuid AND vendor_organization_id = '$B6_ORG_VEND'::uuid"
     Check "VQR.submitted_by = vendor user ID" $vqr_sub $B6_USER_VEND
+
+    $vqr_lifecycle = Psql-Scalar "SELECT COUNT(*) FROM public.vendor_quote_responses WHERE rfq_id = '$B6_RFQ'::uuid AND vendor_organization_id = '$B6_ORG_VEND'::uuid AND status = 'submitted' AND version = 1 AND is_simulated = false AND submitted_at IS NOT NULL AND accepted_by IS NULL AND rejected_by IS NULL AND withdrawn_by IS NULL"
+    Check "VQR lifecycle fields are backend-derived" $vqr_lifecycle "1"
 }
 
 # =============================================================================
-# STEP 2: rfq-transition via vendor JWT
-# Authority: vendor JWT only -> Edge Function -> transition_rfq_status()
-# Admin/service key is NOT used for the transition call.
-# This proves the Edge Function vendor authority check (index.ts lines 240-259).
-# =============================================================================
-
-Write-Host ""
-Write-Host "STEP 2: rfq-transition via vendor JWT"
-Write-Host "  POST /functions/v1/rfq-transition  { rfq_id, new_status: vendor_quote_received }"
-Write-Host "  Authority: vendor JWT only (not admin)"
-
-$tr_ok = $false
-$correlation_id = $null
-
-if ($vqr_ok) {
-    $r_tr = Invoke-RF $jwt_vend $B6_RFQ "vendor_quote_received"
-
-    if ($r_tr.status -eq 0) {
-        $script:FAIL++
-        Write-Host "  FAIL  rfq-transition: connection error  -  $($r_tr.error)"
-        Write-Host "        DIAGNOSIS: Is supabase functions serve running?"
-    } elseif ($r_tr.status -eq 403) {
-        $script:FAIL++
-        Write-Host "  FAIL  rfq-transition: 403  -  Edge Function denied vendor authority."
-        Write-Host "        DIAGNOSIS: Edge Function (index.ts lines 240-259) could not find a"
-        Write-Host "        submitted or revised VQR for rfq $B6_RFQ from vendor's org IDs."
-        Write-Host "        Either VQR INSERT did not persist, or the vendor user has no"
-        Write-Host "        organization_memberships row visible to the service_role query."
-    } elseif ($r_tr.status -eq 422) {
-        $script:FAIL++
-        Write-Host "  FAIL  rfq-transition: 422  -  invalid transition."
-        Write-Host "        DIAGNOSIS: RFQ $B6_RFQ is not in pending_vendor_review."
-        Write-Host "        Check fixture seeding  -  starting status must be pending_vendor_review."
-    } elseif ($r_tr.status -eq 500) {
-        $script:FAIL++
-        Write-Host "  FAIL  rfq-transition: 500  -  DB function error."
-        Write-Host "        DIAGNOSIS: transition_rfq_status() likely rejected the call."
-        Write-Host "        Check supabase functions serve logs and B5-1 migration allowlist."
-    } elseif ($r_tr.status -ne 200) {
-        $script:FAIL++
-        $errMsg = if ($r_tr.body) { $r_tr.body | ConvertTo-Json -Compress } else { "(no body)" }
-        Write-Host "  FAIL  rfq-transition: unexpected status $($r_tr.status)  -  $errMsg"
-    } else {
-        $script:PASS++
-        $correlation_id = $r_tr.body.correlation_id
-        Write-Host "  PASS  rfq-transition succeeded (vendor JWT)"
-        if ($correlation_id) {
-            Write-Host "        correlation_id: $correlation_id"
-        } else {
-            Write-Host "        WARNING: correlation_id missing from response body"
-        }
-        $tr_ok = $true
-    }
-} else {
-    Write-Host "  SKIP  rfq-transition skipped  -  VQR INSERT failed in STEP 1"
-}
-
-# =============================================================================
-# STEP 3: DB assertions
-# Verify transition_rfq_status() wrote the correct rows.
+# STEP 2: Atomic DB assertions
+# Verify the same RPC transaction wrote the quote, transition, and audit rows.
 # audit_events.source must be vendor_action, not admin_action.
 # =============================================================================
 
 Write-Host ""
-Write-Host "STEP 3: DB assertions"
+Write-Host "STEP 2: Atomic DB assertions"
 
-if ($tr_ok) {
+if ($vqr_ok) {
     $rfq_status = Psql-Scalar "SELECT operational_status FROM public.rental_requests WHERE id = '$B6_RFQ'::uuid"
     Check "rental_requests.operational_status = vendor_quote_received" $rfq_status "vendor_quote_received"
 
@@ -409,7 +334,7 @@ if ($tr_ok) {
         Write-Host "        DIAGNOSIS: transition_rfq_status() may not have returned correctly."
     }
 } else {
-    Write-Host "  SKIP  DB assertions skipped  -  STEP 1 or STEP 2 failed"
+    Write-Host "  SKIP  DB assertions skipped  -  STEP 1 failed"
     Write-Host "        Resolve upstream failures before DB assertions can be verified."
 }
 
@@ -444,12 +369,8 @@ if ($script:FAIL -gt 0) {
     Write-Host ""
     Write-Host "Diagnostics:"
     Write-Host "  All steps failed:      Check Docker and local Supabase are running."
-    Write-Host "  STEP 1 403:            Failure Mode A  -  vendor org membership missing or invalid."
-    Write-Host "  STEP 1 403:            Failure Mode D  -  no 'invited' rfq_vendor_invitations row."
-    Write-Host "  STEP 1 409:            Failure Mode C  -  orphan VQR from prior run."
-    Write-Host "  STEP 2 403:            Edge Function vendor authority check failed."
-    Write-Host "  STEP 2 422:            RFQ not in pending_vendor_review (fixture error)."
-    Write-Host "  STEP 2 500:            DB function error in transition_rfq_status()."
+    Write-Host "  STEP 1 403:            vendor membership, organization, invitation, or simulation authority failed."
+    Write-Host "  STEP 1 409:            orphan or duplicate VQR exists from a prior run."
     Write-Host "  source=admin_action:   Test invalid  -  vendor JWT resolved as admin."
 }
 Write-Host "========================================"

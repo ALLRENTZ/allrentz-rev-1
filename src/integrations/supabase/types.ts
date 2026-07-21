@@ -1031,8 +1031,14 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_demo_actor: { Args: { p_user_id: string }; Returns: boolean }
-      is_rfq_customer: { Args: { p_rfq_id: string }; Returns: boolean }
+      is_demo_actor: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
+      is_rfq_customer: {
+        Args: { p_rfq_id: string }
+        Returns: boolean
+      }
       log_audit_event: {
         Args: {
           p_actor_id: string
@@ -1060,6 +1066,26 @@ export type Database = {
       rfq_vendor_has_accepted_quote: {
         Args: { p_rfq_id: string }
         Returns: boolean
+      }
+      submit_vendor_quote: {
+        Args: {
+          p_available_start_date?: string
+          p_compliance_confirmed?: boolean
+          p_compliance_notes?: string[]
+          p_daily_rate: number
+          p_delivery_fee?: number
+          p_equipment_substitution?: boolean
+          p_minimum_rental_days?: number
+          p_mobilization_fee?: number
+          p_rfq_id: string
+          p_substitution_notes?: string
+          p_vendor_notes?: string
+          p_vendor_organization_id: string
+        }
+        Returns: {
+          correlation_id: string
+          quote_id: string
+        }[]
       }
       transition_rfq_status: {
         Args: {
@@ -1248,4 +1274,3 @@ export const Constants = {
     },
   },
 } as const
-
