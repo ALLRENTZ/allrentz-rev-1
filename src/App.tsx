@@ -61,7 +61,7 @@ function App() {
                     <Route
                       path="/operations-center"
                       element={
-                        <ProtectedRoute requiredRoles={['admin', 'manager']}>
+                        <ProtectedRoute requiredRoles={['admin', 'manager'] as const}>
                           <SecurityProvider>
                             <OperationsCenter />
                           </SecurityProvider>
