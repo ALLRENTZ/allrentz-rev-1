@@ -574,6 +574,53 @@ $caseD_result = if (
 Write-Host "  CASE D RESULT: $caseD_result"
 
 # =============================================================================
+# CASE E: Authenticated vendors cannot rewrite VQR authority fields.
+# Every PATCH must fail, and the original quote identity must remain unchanged.
+# =============================================================================
+
+Write-Host ""
+Write-Host "CASE E: authenticated vendor cannot rewrite VQR authority fields"
+
+$vqrPatchQuery = "?rfq_id=eq.$B63_RFQ_A&vendor_organization_id=eq.$B63_ORG_VEND"
+
+$r_patchRfq = Invoke-REST "Patch" "vendor_quote_responses" $jwt_vend @{
+    rfq_id = $B63_RFQ_C
+} $vqrPatchQuery
+Check "CASE E: rfq_id PATCH blocked (403)" $r_patchRfq.status 403
+
+$r_patchVendorOrg = Invoke-REST "Patch" "vendor_quote_responses" $jwt_vend @{
+    vendor_organization_id = $B63_ORG_CUST
+} $vqrPatchQuery
+Check "CASE E: vendor_organization_id PATCH blocked (403)" $r_patchVendorOrg.status 403
+
+$r_patchSubmittedBy = Invoke-REST "Patch" "vendor_quote_responses" $jwt_vend @{
+    submitted_by = $B63_USER_CUST
+} $vqrPatchQuery
+Check "CASE E: submitted_by PATCH blocked (403)" $r_patchSubmittedBy.status 403
+
+$r_patchSimulated = Invoke-REST "Patch" "vendor_quote_responses" $jwt_vend @{
+    is_simulated = $true
+} $vqrPatchQuery
+Check "CASE E: is_simulated PATCH blocked (403)" $r_patchSimulated.status 403
+
+$caseE_originalCount = Psql-Scalar "SELECT COUNT(*) FROM public.vendor_quote_responses WHERE rfq_id = '$B63_RFQ_A'::uuid AND vendor_organization_id = '$B63_ORG_VEND'::uuid AND submitted_by = '$B63_USER_VEND'::uuid AND is_simulated = false"
+Check "CASE E: original VQR identity remains unchanged" $caseE_originalCount "1"
+
+$caseE_movedCount = Psql-Scalar "SELECT COUNT(*) FROM public.vendor_quote_responses WHERE rfq_id = '$B63_RFQ_C'::uuid"
+Check "CASE E: no VQR moved to uninvited RFQ" $caseE_movedCount "0"
+
+$caseE_result = if (
+    $r_patchRfq.status -eq 403 -and
+    $r_patchVendorOrg.status -eq 403 -and
+    $r_patchSubmittedBy.status -eq 403 -and
+    $r_patchSimulated.status -eq 403 -and
+    $caseE_originalCount -eq "1" -and
+    $caseE_movedCount -eq "0"
+) { "PASS" } else { "FAIL" }
+
+Write-Host "  CASE E RESULT: $caseE_result"
+
+# =============================================================================
 # Post-run cleanup
 # =============================================================================
 
@@ -593,7 +640,7 @@ Write-Host "  CLEANUP RESULT: $cleanup_result"
 # =============================================================================
 
 $total = $script:PASS + $script:FAIL
-$overall_result = if ($caseA_result -eq "PASS" -and $caseB_result -eq "PASS" -and $caseC_result -eq "PASS" -and $caseD_result -eq "PASS" -and $cleanup_result -eq "PASS") { "PASS" } else { "FAIL" }
+$overall_result = if ($caseA_result -eq "PASS" -and $caseB_result -eq "PASS" -and $caseC_result -eq "PASS" -and $caseD_result -eq "PASS" -and $caseE_result -eq "PASS" -and $cleanup_result -eq "PASS") { "PASS" } else { "FAIL" }
 
 Write-Host ""
 Write-Host "========================================"
@@ -612,6 +659,7 @@ Write-Host "Case A result: $caseA_result"
 Write-Host "Case B result: $caseB_result"
 Write-Host "Case C result: $caseC_result"
 Write-Host "Case D result: $caseD_result"
+Write-Host "Case E result: $caseE_result"
 Write-Host "Cleanup result: $cleanup_result"
 Write-Host "Overall result: $overall_result"
 Write-Host ""
@@ -625,5 +673,6 @@ if ($script:FAIL -gt 0) {
     Write-Host "  CASE B 200:            pending_vendor_review check not enforced (CRITICAL)."
     Write-Host "  CASE C 200:            rfq_vendor_invitations check not enforced (CRITICAL)."
     Write-Host "  CASE D failure:        customer-only organization crossed the vendor authority boundary."
+    Write-Host "  CASE E failure:        authenticated VQR UPDATE protection is not enforced."
 }
 Write-Host "========================================"
