@@ -18,7 +18,7 @@ export interface OperationalAuthorityState {
 export type OperationalToastCallback = (args: {
   title: string;
   description: string;
-  variant?: string;
+  variant?: 'default' | 'destructive';
 }) => void;
 
 export interface RequireOperationalProfileOptions extends OperationalAuthorityInput {

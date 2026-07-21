@@ -4,11 +4,14 @@
 # Run from repo root: powershell -File supabase/membership_verify.ps1
 # Requires: all P1 migrations applied, supabase functions serve running
 
-$ANON_KEY    = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
 $API_URL     = "http://127.0.0.1:54321"
 $FN_URL      = "$API_URL/functions/v1/rfq-transition"
 $REST_URL    = "$API_URL/rest/v1"
 $PASSWORD    = "TestPass123!"
+$ANON_KEY    = $env:SUPABASE_ANON_KEY
+if ([string]::IsNullOrWhiteSpace($ANON_KEY)) {
+    throw "SUPABASE_ANON_KEY environment variable is required. Do not hardcode anon keys in this script."
+}
 $ADMIN_KEY   = $env:SUPABASE_SERVICE_ROLE_KEY
 if ([string]::IsNullOrWhiteSpace($ADMIN_KEY)) {
     throw "SUPABASE_SERVICE_ROLE_KEY environment variable is required. Do not hardcode service-role keys in this script."

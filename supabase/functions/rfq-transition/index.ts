@@ -1,4 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import {
+  BACKEND_SECRET_KEY_NAME,
+  KeyConfigError,
+  preferProductionValue,
+  selectPublishableKey,
+  selectSecretKey,
+} from './keys.ts'
 
 // ── Transition allowlists ──────────────────────────────────────────────────────
 //
@@ -128,12 +135,46 @@ Deno.serve(async (req: Request) => {
     return jsonError(401, 'Authorization header required')
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  let supabaseUrl: string
+  let publishableKey: string
+  let secretKey: string
+  try {
+    const selectedUrl = preferProductionValue(
+      Deno.env.get('SUPABASE_URL'),
+      Deno.env.get('ALLRENTZ_LOCAL_SUPABASE_URL'),
+    )
+    if (!selectedUrl) {
+      throw new KeyConfigError(
+        'SUPABASE_URL and ALLRENTZ_LOCAL_SUPABASE_URL are not configured',
+      )
+    }
+    supabaseUrl = selectedUrl
 
-  // Validate the JWT by calling getUser() — Supabase verifies signature + expiry
-  const userClient = createClient(supabaseUrl, anonKey, {
+    publishableKey = selectPublishableKey(
+      preferProductionValue(
+        Deno.env.get('SUPABASE_PUBLISHABLE_KEYS'),
+        Deno.env.get('ALLRENTZ_LOCAL_SUPABASE_PUBLISHABLE_KEYS'),
+      ),
+      Deno.env.get('SUPABASE_PUBLISHABLE_KEY_NAME'),
+    )
+    secretKey = selectSecretKey(
+      preferProductionValue(
+        Deno.env.get('SUPABASE_SECRET_KEYS'),
+        Deno.env.get('ALLRENTZ_LOCAL_SUPABASE_SECRET_KEYS'),
+      ),
+      BACKEND_SECRET_KEY_NAME,
+    )
+  } catch (err) {
+    // Log the sanitized reason only — never the raw env var contents.
+    console.error('rfq-transition key configuration error:', err instanceof Error ? err.message : 'unknown')
+    return jsonError(500, 'Service configuration error')
+  }
+
+  // Validate the JWT by calling getUser() — Supabase verifies signature + expiry.
+  // The publishable key here only sets the apikey header; caller identity comes
+  // entirely from the Authorization header, which is a GoTrue-issued user JWT
+  // and is unaffected by the publishable/secret key migration.
+  const userClient = createClient(supabaseUrl, publishableKey, {
     global: { headers: { Authorization: authHeader } },
   })
 
@@ -142,9 +183,9 @@ Deno.serve(async (req: Request) => {
     return jsonError(401, 'Invalid or expired token')
   }
 
-  // Service-role client for all DB reads and the RPC call.
+  // Secret-key client for all DB reads and the RPC call.
   // Never exposed to the caller — all authority is derived server-side.
-  const svc = createClient(supabaseUrl, serviceRoleKey, {
+  const svc = createClient(supabaseUrl, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
