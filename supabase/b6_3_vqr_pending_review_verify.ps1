@@ -10,8 +10,11 @@
 #           rental_requests row has operational_status = 'vendor_quote_received'.
 #   Case C: vendor JWT -> VQR INSERT fails (403) when the target
 #           rental_requests row has operational_status = 'pending_vendor_review'
-#           but NO rfq_vendor_invitations row exists. Proves invitation
-#           authority is load-bearing, not merely a visibility helper.
+#           but NO rfq_vendor_invitations row exists, and that RFQ is not
+#           visible to the uninvited vendor.
+#   Case D: customer JWT cannot invite a customer-only organization, cannot
+#           submit a VQR through that organization, and cannot use a seeded
+#           legacy customer-org VQR to perform a vendor-owned transition.
 #
 # The tested INSERT uses only the vendor JWT + anon key via PostgREST.
 # The admin/service key is used only for auth-user setup, scalar
@@ -24,6 +27,7 @@
 
 $API_URL   = "http://127.0.0.1:54321"
 $REST_URL  = "$API_URL/rest/v1"
+$FN_URL    = "$API_URL/functions/v1/rfq-transition"
 $PASSWORD  = "TestPass123!"
 $ANON_KEY = $env:SUPABASE_ANON_KEY
 if ([string]::IsNullOrWhiteSpace($ANON_KEY)) {
@@ -56,6 +60,8 @@ $B63_ORG_VEND  = "b6b60003-0000-0000-0000-000000000012"
 $B63_RFQ_A     = "b6b60003-0000-0000-0000-000000000021"
 $B63_RFQ_B     = "b6b60003-0000-0000-0000-000000000022"
 $B63_RFQ_C     = "b6b60003-0000-0000-0000-000000000023"
+$B63_RFQ_D     = "b6b60003-0000-0000-0000-000000000024"
+$B63_VQR_D     = "b6b60003-0000-0000-0000-000000000034"
 
 # ---- Counters ---------------------------------------------------------------
 
@@ -122,6 +128,29 @@ function Invoke-REST($method, $path, $jwt, $bodyObj, $query) {
     }
 }
 
+function Invoke-RFQTransition($jwt, $rfqId, $newStatus) {
+    $hdrs = @{
+        apikey = $ANON_KEY
+        Authorization = "Bearer $jwt"
+        "Content-Type" = "application/json"
+    }
+    $body = @{ rfq_id = $rfqId; new_status = $newStatus } | ConvertTo-Json
+    try {
+        $resp = Invoke-RestMethod -Method Post -Uri $FN_URL -Headers $hdrs -Body $body
+        return @{ status = 200; body = $resp }
+    } catch {
+        $httpResp = $null
+        if ($_.Exception.PSObject.Properties.Name -contains "Response") {
+            $httpResp = $_.Exception.Response
+        }
+        $code = 0
+        if ($httpResp) {
+            try { $code = [int]$httpResp.StatusCode } catch { $code = 0 }
+        }
+        return @{ status = $code; body = $null; error = $_.Exception.Message }
+    }
+}
+
 function Get-JwtSubject($jwt) {
     try {
         $parts = $jwt.Split(".")
@@ -180,9 +209,11 @@ function Remove-AuthUser($id) {
 
 function Invoke-Cleanup {
     $cleanupSql = @(
-        "DELETE FROM public.vendor_quote_responses WHERE rfq_id IN ('$B63_RFQ_A'::uuid, '$B63_RFQ_B'::uuid, '$B63_RFQ_C'::uuid);"
-        "DELETE FROM public.rfq_vendor_invitations WHERE rfq_id IN ('$B63_RFQ_A'::uuid, '$B63_RFQ_B'::uuid, '$B63_RFQ_C'::uuid);"
-        "DELETE FROM public.rental_requests WHERE id IN ('$B63_RFQ_A'::uuid, '$B63_RFQ_B'::uuid, '$B63_RFQ_C'::uuid);"
+        "DELETE FROM public.rfq_operational_status WHERE rfq_id IN ('$B63_RFQ_A'::uuid, '$B63_RFQ_B'::uuid, '$B63_RFQ_C'::uuid, '$B63_RFQ_D'::uuid);"
+        "DELETE FROM public.audit_events WHERE related_rfq_id IN ('$B63_RFQ_A'::uuid, '$B63_RFQ_B'::uuid, '$B63_RFQ_C'::uuid, '$B63_RFQ_D'::uuid);"
+        "DELETE FROM public.vendor_quote_responses WHERE rfq_id IN ('$B63_RFQ_A'::uuid, '$B63_RFQ_B'::uuid, '$B63_RFQ_C'::uuid, '$B63_RFQ_D'::uuid);"
+        "DELETE FROM public.rfq_vendor_invitations WHERE rfq_id IN ('$B63_RFQ_A'::uuid, '$B63_RFQ_B'::uuid, '$B63_RFQ_C'::uuid, '$B63_RFQ_D'::uuid);"
+        "DELETE FROM public.rental_requests WHERE id IN ('$B63_RFQ_A'::uuid, '$B63_RFQ_B'::uuid, '$B63_RFQ_C'::uuid, '$B63_RFQ_D'::uuid);"
         "DELETE FROM public.organization_memberships WHERE user_id IN ('$B63_USER_CUST'::uuid, '$B63_USER_VEND'::uuid);"
         "DELETE FROM public.organizations WHERE id IN ('$B63_ORG_CUST'::uuid, '$B63_ORG_VEND'::uuid);"
     ) -join "`n"
@@ -236,12 +267,13 @@ INSERT INTO public.rental_requests
 VALUES
   ('$B63_RFQ_A', '$B63_USER_CUST', '$B63_ORG_CUST', 'pending_vendor_review', false),
   ('$B63_RFQ_B', '$B63_USER_CUST', '$B63_ORG_CUST', 'vendor_quote_received', false),
-  ('$B63_RFQ_C', '$B63_USER_CUST', '$B63_ORG_CUST', 'pending_vendor_review', false)
+  ('$B63_RFQ_C', '$B63_USER_CUST', '$B63_ORG_CUST', 'pending_vendor_review', false),
+  ('$B63_RFQ_D', '$B63_USER_CUST', '$B63_ORG_CUST', 'pending_vendor_review', false)
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.rfq_vendor_invitations
   (rfq_id, vendor_organization_id, invited_by, invitation_status, is_simulated)
 VALUES
-  ('$B63_RFQ_A', '$B63_ORG_VEND', '$B63_USER_CUST', 'invited', true)
+  ('$B63_RFQ_A', '$B63_ORG_VEND', '$B63_USER_CUST', 'invited', false)
 ON CONFLICT DO NOTHING;
 "@
 Psql-File $fixtureSql
@@ -249,6 +281,7 @@ Write-Host "  Fixture seeded."
 Write-Host "  RFQ A: $B63_RFQ_A  operational_status: pending_vendor_review  (invitation seeded)"
 Write-Host "  RFQ B: $B63_RFQ_B  operational_status: vendor_quote_received"
 Write-Host "  RFQ C: $B63_RFQ_C  operational_status: pending_vendor_review  (no invitation)"
+Write-Host "  RFQ D: $B63_RFQ_D  operational_status: pending_vendor_review  (customer-org negative case)"
 Write-Host "  Vendor org: $B63_ORG_VEND"
 
 $invitationA_count  = Psql-Scalar "SELECT COUNT(*) FROM public.rfq_vendor_invitations WHERE rfq_id = '$B63_RFQ_A'::uuid AND vendor_organization_id = '$B63_ORG_VEND'::uuid AND invitation_status = 'invited'"
@@ -258,22 +291,25 @@ Write-Host "  RFQ A invitation seeded: $invitationA_seeded"
 # ---- Acquire vendor JWT -----------------------------------------------------
 
 Write-Host ""
-Write-Host "Acquiring vendor JWT..."
+Write-Host "Acquiring customer and vendor JWTs..."
 try {
+    $jwt_cust = Get-JWT "b63-customer@test.local"
     $jwt_vend = Get-JWT "b63-vendor@test.local"
 } catch {
-    Write-Host "FATAL: Could not acquire vendor JWT: $($_.Exception.Message)"
-    Write-Host "  Check that local Supabase is running and auth user was created."
+    Write-Host "FATAL: Could not acquire test JWTs: $($_.Exception.Message)"
+    Write-Host "  Check that local Supabase is running and auth users were created."
     Invoke-Cleanup
     exit 1
 }
-if (-not $jwt_vend) {
-    Write-Host "FATAL: Vendor JWT is null. Auth user may not have been created."
+if (-not $jwt_cust -or -not $jwt_vend) {
+    Write-Host "FATAL: A test JWT is null. Auth users may not have been created."
     Invoke-Cleanup
     exit 1
 }
-Write-Host "  Vendor JWT acquired."
+Write-Host "  Customer and vendor JWTs acquired."
+$jwt_cust_sub = Get-JwtSubject $jwt_cust
 $jwt_vend_sub = Get-JwtSubject $jwt_vend
+Write-Host "  Customer JWT sub: $jwt_cust_sub"
 Write-Host "  Vendor JWT sub: $jwt_vend_sub"
 Write-Host ""
 
@@ -301,6 +337,9 @@ $parsedReadDump = if ($r_rfqARead.body -ne $null) { $r_rfqARead.body | ConvertTo
 Write-Host "  Parsed Response:    $parsedReadDump"
 Write-Host "  RFQ A visible to vendor JWT: $rfqARead_visible"
 Write-Host "  RFQ A status:                $rfqARead_status"
+Check "RFQ A read status=200" $r_rfqARead.status 200
+Check "RFQ A is visible to invited vendor" $rfqARead_visible $true
+Check "RFQ A visible status=pending_vendor_review" $rfqARead_status "pending_vendor_review"
 Write-Host ""
 
 # =============================================================================
@@ -421,6 +460,13 @@ Write-Host "  CASE B RESULT: $caseB_result"
 
 Write-Host ""
 Write-Host "CASE C: VQR INSERT  -  rfq operational_status = pending_vendor_review, no invitation"
+Write-Host "  GET /rest/v1/rental_requests  (vendor JWT, RLS applies)"
+
+$r_rfqCRead = Invoke-REST "Get" "rental_requests" $jwt_vend $null "?id=eq.$B63_RFQ_C&select=id,operational_status"
+$rfqCRead_visible = ($r_rfqCRead.status -eq 200 -and $r_rfqCRead.body -and $r_rfqCRead.body.Count -gt 0)
+Check "CASE C: uninvited RFQ read status=200" $r_rfqCRead.status 200
+Check "CASE C: RFQ is hidden from uninvited vendor" $rfqCRead_visible $false
+
 Write-Host "  POST /rest/v1/vendor_quote_responses  (vendor JWT, RLS applies)"
 
 $vqrBodyC = @{
@@ -455,8 +501,77 @@ $vqrC_count = Psql-Scalar "SELECT COUNT(*) FROM public.vendor_quote_responses WH
 Check "CASE C: no VQR row in DB for RFQ C" $vqrC_count "0"
 
 $caseC_blocked = ($r_vqrC.status -eq 403)
-$caseC_result  = if ($caseC_blocked -and $vqrC_count -eq "0") { "PASS" } else { "FAIL" }
+$caseC_result  = if (-not $rfqCRead_visible -and $caseC_blocked -and $vqrC_count -eq "0") { "PASS" } else { "FAIL" }
 Write-Host "  CASE C RESULT: $caseC_result"
+
+# =============================================================================
+# CASE D: A customer-only organization cannot satisfy vendor authority.
+# The client invitation and VQR writes must fail. A service-seeded legacy row
+# must still fail the Edge Function's independent vendor-owned transition gate.
+# =============================================================================
+
+Write-Host ""
+Write-Host "CASE D: customer-only organization cannot act as a vendor"
+
+$invalidInvitationBody = @{
+    rfq_id                 = $B63_RFQ_D
+    vendor_organization_id = $B63_ORG_CUST
+    invited_by             = $B63_USER_CUST
+    invitation_status      = "invited"
+    is_simulated           = $false
+}
+$r_invalidInvitation = Invoke-REST "Post" "rfq_vendor_invitations" $jwt_cust $invalidInvitationBody $null
+Check "CASE D: customer-org invitation blocked (403)" $r_invalidInvitation.status 403
+
+$invalidInvitationCount = Psql-Scalar "SELECT COUNT(*) FROM public.rfq_vendor_invitations WHERE rfq_id = '$B63_RFQ_D'::uuid AND vendor_organization_id = '$B63_ORG_CUST'::uuid"
+Check "CASE D: blocked invitation did not persist" $invalidInvitationCount "0"
+
+$invalidVqrBody = @{
+    rfq_id                 = $B63_RFQ_D
+    vendor_organization_id = $B63_ORG_CUST
+    submitted_by           = $B63_USER_CUST
+    status                 = "submitted"
+    daily_rate             = 1700.00
+    compliance_confirmed   = $true
+    is_simulated           = $false
+    submitted_at           = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+}
+$r_invalidVqr = Invoke-REST "Post" "vendor_quote_responses" $jwt_cust $invalidVqrBody $null
+Check "CASE D: customer-org VQR blocked (403)" $r_invalidVqr.status 403
+
+$invalidVqrCount = Psql-Scalar "SELECT COUNT(*) FROM public.vendor_quote_responses WHERE rfq_id = '$B63_RFQ_D'::uuid AND vendor_organization_id = '$B63_ORG_CUST'::uuid"
+Check "CASE D: blocked customer-org VQR did not persist" $invalidVqrCount "0"
+
+# Seed legacy-invalid rows through local postgres only. The Edge Function must
+# still reject the customer actor because vendor authority is independently
+# restricted to active vendor/both organizations.
+Psql-File @"
+INSERT INTO public.rfq_vendor_invitations
+  (rfq_id, vendor_organization_id, invited_by, invitation_status, is_simulated)
+VALUES
+  ('$B63_RFQ_D', '$B63_ORG_CUST', '$B63_USER_CUST', 'invited', false);
+
+INSERT INTO public.vendor_quote_responses
+  (id, rfq_id, vendor_organization_id, submitted_by, status, daily_rate, compliance_confirmed, is_simulated)
+VALUES
+  ('$B63_VQR_D', '$B63_RFQ_D', '$B63_ORG_CUST', '$B63_USER_CUST', 'submitted', 1700.00, true, false);
+"@ | Out-Null
+
+$r_customerVendorTransition = Invoke-RFQTransition $jwt_cust $B63_RFQ_D "vendor_quote_received"
+Check "CASE D: customer-org vendor transition blocked (403)" $r_customerVendorTransition.status 403
+
+$rfqDStatus = Psql-Scalar "SELECT operational_status FROM public.rental_requests WHERE id = '$B63_RFQ_D'::uuid"
+Check "CASE D: blocked transition left RFQ pending" $rfqDStatus "pending_vendor_review"
+
+$caseD_result = if (
+    $r_invalidInvitation.status -eq 403 -and
+    $invalidInvitationCount -eq "0" -and
+    $r_invalidVqr.status -eq 403 -and
+    $invalidVqrCount -eq "0" -and
+    $r_customerVendorTransition.status -eq 403 -and
+    $rfqDStatus -eq "pending_vendor_review"
+) { "PASS" } else { "FAIL" }
+Write-Host "  CASE D RESULT: $caseD_result"
 
 # =============================================================================
 # Post-run cleanup
@@ -465,9 +580,9 @@ Write-Host "  CASE C RESULT: $caseC_result"
 Write-Host ""
 Write-Host "Post-run cleanup..."
 Invoke-Cleanup
-$cleanup_vqr_count = Psql-Scalar "SELECT COUNT(*) FROM public.vendor_quote_responses WHERE rfq_id IN ('$B63_RFQ_A'::uuid, '$B63_RFQ_B'::uuid, '$B63_RFQ_C'::uuid)"
-$cleanup_inv_count = Psql-Scalar "SELECT COUNT(*) FROM public.rfq_vendor_invitations WHERE rfq_id IN ('$B63_RFQ_A'::uuid, '$B63_RFQ_B'::uuid, '$B63_RFQ_C'::uuid)"
-$cleanup_rfq_count = Psql-Scalar "SELECT COUNT(*) FROM public.rental_requests WHERE id IN ('$B63_RFQ_A'::uuid, '$B63_RFQ_B'::uuid, '$B63_RFQ_C'::uuid)"
+$cleanup_vqr_count = Psql-Scalar "SELECT COUNT(*) FROM public.vendor_quote_responses WHERE rfq_id IN ('$B63_RFQ_A'::uuid, '$B63_RFQ_B'::uuid, '$B63_RFQ_C'::uuid, '$B63_RFQ_D'::uuid)"
+$cleanup_inv_count = Psql-Scalar "SELECT COUNT(*) FROM public.rfq_vendor_invitations WHERE rfq_id IN ('$B63_RFQ_A'::uuid, '$B63_RFQ_B'::uuid, '$B63_RFQ_C'::uuid, '$B63_RFQ_D'::uuid)"
+$cleanup_rfq_count = Psql-Scalar "SELECT COUNT(*) FROM public.rental_requests WHERE id IN ('$B63_RFQ_A'::uuid, '$B63_RFQ_B'::uuid, '$B63_RFQ_C'::uuid, '$B63_RFQ_D'::uuid)"
 $cleanup_result    = if ($cleanup_vqr_count -eq "0" -and $cleanup_inv_count -eq "0" -and $cleanup_rfq_count -eq "0") { "PASS" } else { "FAIL" }
 Write-Host "  Cleanup done."
 Write-Host "  Cleanup verification -- vendor_quote_responses: $cleanup_vqr_count  rfq_vendor_invitations: $cleanup_inv_count  rental_requests: $cleanup_rfq_count"
@@ -478,7 +593,7 @@ Write-Host "  CLEANUP RESULT: $cleanup_result"
 # =============================================================================
 
 $total = $script:PASS + $script:FAIL
-$overall_result = if ($caseA_result -eq "PASS" -and $caseB_result -eq "PASS" -and $caseC_result -eq "PASS" -and $cleanup_result -eq "PASS") { "PASS" } else { "FAIL" }
+$overall_result = if ($caseA_result -eq "PASS" -and $caseB_result -eq "PASS" -and $caseC_result -eq "PASS" -and $caseD_result -eq "PASS" -and $cleanup_result -eq "PASS") { "PASS" } else { "FAIL" }
 
 Write-Host ""
 Write-Host "========================================"
@@ -487,6 +602,7 @@ Write-Host "LOCAL ONLY  -  $API_URL"
 Write-Host "RFQ A (pending_vendor_review, invited):      $B63_RFQ_A"
 Write-Host "RFQ B (vendor_quote_received):                $B63_RFQ_B"
 Write-Host "RFQ C (pending_vendor_review, not invited):   $B63_RFQ_C"
+Write-Host "RFQ D (customer-org authority negative):      $B63_RFQ_D"
 Write-Host "Vendor user: $B63_USER_VEND"
 Write-Host "Vendor org:  $B63_ORG_VEND"
 Write-Host ""
@@ -495,6 +611,7 @@ Write-Host "RFQ A visible to vendor JWT: $rfqARead_visible"
 Write-Host "Case A result: $caseA_result"
 Write-Host "Case B result: $caseB_result"
 Write-Host "Case C result: $caseC_result"
+Write-Host "Case D result: $caseD_result"
 Write-Host "Cleanup result: $cleanup_result"
 Write-Host "Overall result: $overall_result"
 Write-Host ""
@@ -507,5 +624,6 @@ if ($script:FAIL -gt 0) {
     Write-Host "  CASE A 403:            invitation or pending_vendor_review check misfiring on a compliant RFQ."
     Write-Host "  CASE B 200:            pending_vendor_review check not enforced (CRITICAL)."
     Write-Host "  CASE C 200:            rfq_vendor_invitations check not enforced (CRITICAL)."
+    Write-Host "  CASE D failure:        customer-only organization crossed the vendor authority boundary."
 }
 Write-Host "========================================"

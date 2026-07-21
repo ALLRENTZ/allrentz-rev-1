@@ -136,15 +136,41 @@ const VendorDashboard = () => {
   };
 
   const fetchVendorOrg = async () => {
-    const { data } = await supabase
+    const { data: memberships, error: membershipsError } = await supabase
       .from('organization_memberships')
       .select('organization_id')
       .eq('user_id', user!.id)
       .is('archived_at', null)
-      .in('role', ['owner', 'admin', 'member'])
+      .in('role', ['owner', 'admin', 'member']);
+
+    if (membershipsError) {
+      setVendorOrgId(null);
+      toast.error('Failed to resolve vendor organization: ' + membershipsError.message);
+      return;
+    }
+
+    const memberOrgIds = (memberships || []).map((membership) => membership.organization_id);
+    if (memberOrgIds.length === 0) {
+      setVendorOrgId(null);
+      return;
+    }
+
+    const { data: vendorOrg, error: vendorOrgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .in('id', memberOrgIds)
+      .in('org_type', ['vendor', 'both'])
+      .is('archived_at', null)
       .limit(1)
       .maybeSingle();
-    if (data) setVendorOrgId(data.organization_id);
+
+    if (vendorOrgError) {
+      setVendorOrgId(null);
+      toast.error('Failed to resolve vendor organization: ' + vendorOrgError.message);
+      return;
+    }
+
+    setVendorOrgId(vendorOrg?.id || null);
   };
 
   const handleSubmitRealQuote = async (rfqId: string) => {

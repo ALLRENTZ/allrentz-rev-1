@@ -297,17 +297,42 @@ Deno.serve(async (req: Request) => {
     // occurs atomically inside transition_rfq_status() on the quote_accepted
     // transition (B5-1). All other vendor transitions require an accepted VQR.
     let hasVendorAuth = false
-    const { data: vendorMemberships } = await svc
+    const { data: vendorMemberships, error: vendorMembershipsError } = await svc
       .from('organization_memberships')
       .select('organization_id')
       .eq('user_id', user.id)
       .is('archived_at', null)
       .in('role', ['owner', 'admin', 'member'])
 
-    if (vendorMemberships && vendorMemberships.length > 0) {
-      const vendorOrgIds = vendorMemberships.map(
-        (m: { organization_id: string }) => m.organization_id,
+    if (vendorMembershipsError) {
+      console.error('vendor membership fetch error:', vendorMembershipsError)
+      return jsonError(500, 'Internal error')
+    }
+
+    const memberOrgIds = (vendorMemberships ?? []).map(
+      (m: { organization_id: string }) => m.organization_id,
+    )
+    let vendorOrgIds: string[] = []
+
+    if (memberOrgIds.length > 0) {
+      const { data: vendorOrganizations, error: vendorOrganizationsError } = await svc
+        .from('organizations')
+        .select('id')
+        .in('id', memberOrgIds)
+        .in('org_type', ['vendor', 'both'])
+        .is('archived_at', null)
+
+      if (vendorOrganizationsError) {
+        console.error('vendor organization fetch error:', vendorOrganizationsError)
+        return jsonError(500, 'Internal error')
+      }
+
+      vendorOrgIds = (vendorOrganizations ?? []).map(
+        (org: { id: string }) => org.id,
       )
+    }
+
+    if (vendorOrgIds.length > 0) {
       if (transitionKey === 'pending_vendor_review:vendor_quote_received') {
         const { data: submittedQuote } = await svc
           .from('vendor_quote_responses')
