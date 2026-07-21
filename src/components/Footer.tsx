@@ -66,12 +66,8 @@ const Footer = () => {
                 <Mail className="h-4 w-4" />
                 <span>support@allrentz.com</span>
               </div>
-              <Link to="/terms" className="block text-gray-300 hover:text-white transition-colors">
-                Terms of Service
-              </Link>
-              <Link to="/privacy" className="block text-gray-300 hover:text-white transition-colors">
-                Privacy Policy
-              </Link>
+              <span className="block text-gray-500 text-sm">Terms of Service</span>
+              <span className="block text-gray-500 text-sm">Privacy Policy</span>
             </div>
           </div>
         </div>

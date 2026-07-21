@@ -20,7 +20,7 @@ const SmartDraft = () => {
             </Link>
             <div>
               <h1 className="text-3xl font-bold text-allrentz-gray">Smart Draft</h1>
-              <p className="text-gray-600">AI-powered quote generation for industrial rentals</p>
+              <p className="text-gray-600">Quote request drafting for industrial rentals</p>
             </div>
           </div>
         </div>

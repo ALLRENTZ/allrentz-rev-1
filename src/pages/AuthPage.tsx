@@ -15,12 +15,17 @@ const AuthPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { user, signIn, signUp, loginAsDemo } = useAuth();
+  const { user, profile, loading: authLoading, signIn, signUp, loginAsDemo } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Redirect if already authenticated
+  if (authLoading) return null;
+
   if (user) {
+    if (!profile) return null;
+    if (profile.role_type === 'vendor') {
+      return <Navigate to="/vendor-dashboard" replace />;
+    }
     return <Navigate to="/customer-dashboard" replace />;
   }
 

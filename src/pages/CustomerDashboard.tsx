@@ -8,23 +8,33 @@ import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import DemoTour from '@/components/DemoTour';
-import RentalStatusTimeline from '@/components/RentalStatusTimeline';
+import { demoCustomerRentalRequests, demoCustomerNotifications } from '@/data/demoDashboardData';
+import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
 
 const CustomerDashboard = () => {
-  const { user, profile, showDemoTour, setShowDemoTour } = useAuth();
+  const { user, profile, showDemoTour, setShowDemoTour, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [rentalRequests, setRentalRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [acceptingVqrId, setAcceptingVqrId] = useState<string | null>(null);
+  const [rejectingRfqId, setRejectingRfqId] = useState<string | null>(null);
+  const [cancellingRfqId, setCancellingRfqId] = useState<string | null>(null);
 
-  const isDemoUser = user?.email === 'demo.customer@allrentz.com';
+  const authority = getOperationalAuthority({ user, authLoading, profile });
+  const isDemoUser = profile?.is_demo === true;
 
   useEffect(() => {
-    if (user) {
+    if (!user || authLoading || !profile) return;
+    if (profile.is_demo) {
+      setNotifications(demoCustomerNotifications);
+      setRentalRequests(demoCustomerRentalRequests);
+      setLoading(false);
+    } else {
       fetchNotifications();
       fetchRentalRequests();
     }
-  }, [user]);
+  }, [user, authLoading, profile]);
 
   const fetchNotifications = async () => {
     try {
@@ -39,6 +49,11 @@ const CustomerDashboard = () => {
       setNotifications(data || []);
     } catch (error) {
       console.error('Error fetching notifications:', error);
+      toast({
+        title: 'Unable to load dashboard notifications',
+        description: 'Please refresh the page or try again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -53,6 +68,16 @@ const CustomerDashboard = () => {
             daily_rate,
             category,
             image_url
+          ),
+          vendor_quote_responses (
+            id,
+            status,
+            daily_rate,
+            delivery_fee,
+            mobilization_fee,
+            vendor_notes,
+            compliance_confirmed,
+            available_start_date
           )
         `)
         .eq('customer_id', user?.id)
@@ -62,15 +87,102 @@ const CustomerDashboard = () => {
       setRentalRequests(data || []);
     } catch (error) {
       console.error('Error fetching rental requests:', error);
+      toast({
+        title: 'Unable to load your dashboard',
+        description: 'Please refresh the page or try again.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  const handleAcceptQuote = async (rfqId: string, vqrId: string) => {
+    if (!requireOperationalProfile({ user, authLoading, profile, toast })) {
+      return;
+    }
+    setAcceptingVqrId(vqrId);
+    try {
+      const { error } = await supabase.functions.invoke('rfq-transition', {
+        body: { rfq_id: rfqId, new_status: 'quote_accepted', vqr_id: vqrId },
+      });
+      if (error) throw error;
+      toast({ title: 'Quote accepted', description: 'The vendor will be notified to confirm.' });
+      await fetchRentalRequests();
+    } catch (err: any) {
+      toast({
+        title: 'Accept failed',
+        description: err?.message || 'Unable to accept quote. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setAcceptingVqrId(null);
+    }
+  };
+
+  const handleRejectQuote = async (rfqId: string) => {
+    if (!requireOperationalProfile({ user, authLoading, profile, toast })) {
+      return;
+    }
+    setRejectingRfqId(rfqId);
+    try {
+      const { error } = await supabase.functions.invoke('rfq-transition', {
+        body: { rfq_id: rfqId, new_status: 'rejected' },
+      });
+      if (error) throw error;
+      toast({ title: 'Quote rejected', description: 'The RFQ has been closed.' });
+      await fetchRentalRequests();
+    } catch (err: any) {
+      toast({
+        title: 'Reject failed',
+        description: err?.message || 'Unable to reject quote. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setRejectingRfqId(null);
+    }
+  };
+
+  const handleCancelRfq = async (rfqId: string) => {
+    if (!requireOperationalProfile({ user, authLoading, profile, toast })) {
+      return;
+    }
+    setCancellingRfqId(rfqId);
+    try {
+      const { error } = await supabase.functions.invoke('rfq-transition', {
+        body: { rfq_id: rfqId, new_status: 'cancelled' },
+      });
+      if (error) throw error;
+      toast({ title: 'RFQ cancelled', description: 'The rental request has been cancelled.' });
+      await fetchRentalRequests();
+    } catch (err: any) {
+      toast({
+        title: 'Cancel failed',
+        description: err?.message || 'Unable to cancel RFQ. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCancellingRfqId(null);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'draft': return 'bg-gray-100 text-gray-700';
+      case 'submitted': return 'bg-yellow-100 text-yellow-800';
+      case 'pending_vendor_review': return 'bg-yellow-100 text-yellow-800';
+      case 'vendor_quote_received': return 'bg-teal-100 text-teal-800';
+      case 'quote_accepted': return 'bg-green-100 text-green-800';
+      case 'vendor_confirmed': return 'bg-green-100 text-green-800';
+      case 'mobilizing': return 'bg-blue-100 text-blue-800';
+      case 'in_transit': return 'bg-blue-100 text-blue-800';
+      case 'on_rent': return 'bg-blue-100 text-blue-800';
+      case 'rental_extended': return 'bg-blue-100 text-blue-800';
+      case 'off_rent_requested': return 'bg-yellow-100 text-yellow-800';
+      case 'demobilizing': return 'bg-yellow-100 text-yellow-800';
+      case 'off_rent': return 'bg-gray-100 text-gray-600';
+      case 'completed': return 'bg-gray-100 text-gray-600';
+      case 'cancelled': return 'bg-gray-100 text-gray-600';
       case 'rejected': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -78,8 +190,21 @@ const CustomerDashboard = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'approved': return <CheckCircle className="h-4 w-4" />;
-      case 'pending': return <Clock className="h-4 w-4" />;
+      case 'draft': return <Clock className="h-4 w-4" />;
+      case 'submitted': return <Clock className="h-4 w-4" />;
+      case 'pending_vendor_review': return <Clock className="h-4 w-4" />;
+      case 'vendor_quote_received': return <DollarSign className="h-4 w-4" />;
+      case 'quote_accepted': return <CheckCircle className="h-4 w-4" />;
+      case 'vendor_confirmed': return <CheckCircle className="h-4 w-4" />;
+      case 'mobilizing': return <Truck className="h-4 w-4" />;
+      case 'in_transit': return <Truck className="h-4 w-4" />;
+      case 'on_rent': return <CheckCircle className="h-4 w-4" />;
+      case 'rental_extended': return <Truck className="h-4 w-4" />;
+      case 'off_rent_requested': return <Clock className="h-4 w-4" />;
+      case 'demobilizing': return <Truck className="h-4 w-4" />;
+      case 'off_rent': return <CheckCircle className="h-4 w-4" />;
+      case 'completed': return <CheckCircle className="h-4 w-4" />;
+      case 'cancelled': return <AlertCircle className="h-4 w-4" />;
       case 'rejected': return <AlertCircle className="h-4 w-4" />;
       default: return <FileText className="h-4 w-4" />;
     }
@@ -134,7 +259,7 @@ const CustomerDashboard = () => {
               <Zap className="h-8 w-8 text-blue-600" />
               <div>
                 <h3 className="font-semibold text-gray-900">SmartMatch</h3>
-                <p className="text-sm text-gray-600">AI-powered matching</p>
+                <p className="text-sm text-gray-600">Find equipment matches</p>
               </div>
             </div>
           </Link>
@@ -144,7 +269,7 @@ const CustomerDashboard = () => {
               <Edit className="h-8 w-8 text-teal-600" />
               <div>
                 <h3 className="font-semibold text-gray-900">Smart Draft</h3>
-                <p className="text-sm text-gray-600">AI quote generation</p>
+                <p className="text-sm text-gray-600">Draft a quote request</p>
               </div>
             </div>
           </Link>
@@ -163,8 +288,8 @@ const CustomerDashboard = () => {
             <div className="flex items-center space-x-3">
               <Calendar className="h-8 w-8 text-green-600" />
               <div>
-                <h3 className="font-semibold text-gray-900">Schedule Delivery</h3>
-                <p className="text-sm text-gray-600">Plan your rentals</p>
+                <h3 className="font-semibold text-gray-900">Track Delivery</h3>
+                <p className="text-sm text-gray-600">Track equipment deliveries</p>
               </div>
             </div>
           </Link>
@@ -209,9 +334,9 @@ const CustomerDashboard = () => {
                               <p className="text-sm text-gray-600">{request.equipment?.category}</p>
                             </div>
                           </div>
-                          <Badge className={getStatusColor(request.status)}>
-                            {getStatusIcon(request.status)}
-                            <span className="ml-1 capitalize">{request.status}</span>
+                          <Badge className={getStatusColor(request.operational_status)}>
+                            {getStatusIcon(request.operational_status)}
+                            <span className="ml-1 capitalize">{request.operational_status?.replace(/_/g, ' ')}</span>
                           </Badge>
                         </div>
                         
@@ -230,7 +355,7 @@ const CustomerDashboard = () => {
                           </div>
                           <div>
                             <p className="text-gray-500">Total</p>
-                            <p className="font-medium">${request.total_amount}</p>
+                            <p className="font-medium">{request.total_amount != null ? `$${request.total_amount.toLocaleString()}` : 'Quote pending'}</p>
                           </div>
                         </div>
                         
@@ -240,6 +365,69 @@ const CustomerDashboard = () => {
                             <span>{request.delivery_address}</span>
                           </div>
                         )}
+                        {request.operational_status === 'vendor_quote_received' && isDemoUser && request.vendor_name && (
+                          <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
+                            <p className="text-sm font-semibold text-teal-900">
+                              Quote received — {request.vendor_name}
+                            </p>
+                            {request.quote_notes && (
+                              <p className="text-xs text-teal-700 mt-1">{request.quote_notes}</p>
+                            )}
+                          </div>
+                        )}
+                        {request.operational_status === 'vendor_quote_received' && authority.canUseOperationalData &&
+                          (request.vendor_quote_responses || [])
+                            .filter((v: any) => v.status === 'submitted' || v.status === 'revised')
+                            .slice(0, 1)
+                            .map((vqr: any) => (
+                              <div key={vqr.id} className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg space-y-2">
+                                <p className="text-sm font-semibold text-teal-900">Quote received</p>
+                                <div className="grid grid-cols-2 gap-2 text-xs text-teal-800">
+                                  {vqr.daily_rate != null && (
+                                    <div><span className="text-teal-600">Daily Rate: </span>${vqr.daily_rate.toFixed(2)}/day</div>
+                                  )}
+                                  {vqr.delivery_fee != null && (
+                                    <div><span className="text-teal-600">Delivery Fee: </span>${vqr.delivery_fee.toFixed(2)}</div>
+                                  )}
+                                  {vqr.mobilization_fee != null && (
+                                    <div><span className="text-teal-600">Mobilization: </span>${vqr.mobilization_fee.toFixed(2)}</div>
+                                  )}
+                                  {vqr.available_start_date && (
+                                    <div><span className="text-teal-600">Available: </span>{new Date(vqr.available_start_date).toLocaleDateString()}</div>
+                                  )}
+                                  <div><span className="text-teal-600">Compliance: </span>{vqr.compliance_confirmed ? 'Confirmed' : 'Pending'}</div>
+                                </div>
+                                {vqr.vendor_notes && (
+                                  <p className="text-xs text-teal-700 mt-1">{vqr.vendor_notes}</p>
+                                )}
+                                <div className="flex justify-end gap-2 pt-1">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleCancelRfq(request.id)}
+                                    disabled={cancellingRfqId === request.id || rejectingRfqId === request.id || acceptingVqrId === vqr.id}
+                                  >
+                                    {cancellingRfqId === request.id ? 'Cancelling...' : 'Cancel RFQ'}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleRejectQuote(request.id)}
+                                    disabled={rejectingRfqId === request.id || cancellingRfqId === request.id || acceptingVqrId === vqr.id}
+                                  >
+                                    {rejectingRfqId === request.id ? 'Rejecting...' : 'Reject Quote'}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleAcceptQuote(request.id, vqr.id)}
+                                    disabled={acceptingVqrId === vqr.id || rejectingRfqId === request.id || cancellingRfqId === request.id}
+                                  >
+                                    {acceptingVqrId === vqr.id ? 'Accepting...' : 'Accept Quote'}
+                                  </Button>
+                                </div>
+                              </div>
+                            ))
+                        }
                       </div>
                     ))}
                   </div>
@@ -294,18 +482,6 @@ const CustomerDashboard = () => {
                     <p className="text-gray-600">No notifications yet</p>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-
-            <Card className="mt-6">
-              <CardContent className="p-0">
-                <RentalStatusTimeline
-                  currentStatus="en_route"
-                  rentalData={{
-                    scheduledDate: 'Jun 18',
-                    dispatchDate: 'Jun 20',
-                  }}
-                />
               </CardContent>
             </Card>
           </div>

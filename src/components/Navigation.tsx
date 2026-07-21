@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, HardHat, Shield, User, LogOut } from 'lucide-react';
+import { Menu, X, HardHat, User, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import LoginModal from './LoginModal';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -50,35 +50,26 @@ const Navigation = () => {
               >
                 Browse Equipment
               </Link>
-              {user && (
-                <>
-                  <Link 
-                    to="/customer-dashboard" 
-                    className={`text-sm font-medium transition-colors ${
-                      isActive('/customer-dashboard') ? 'text-allrentz-red' : 'text-gray-700 hover:text-allrentz-red'
-                    }`}
-                  >
-                    Customer Portal
-                  </Link>
-                  <Link 
-                    to="/vendor-dashboard" 
-                    className={`text-sm font-medium transition-colors ${
-                      isActive('/vendor-dashboard') ? 'text-allrentz-red' : 'text-gray-700 hover:text-allrentz-red'
-                    }`}
-                  >
-                    Vendor Portal
-                  </Link>
-                </>
+              {user && profile?.role_type === 'customer' && (
+                <Link
+                  to="/customer-dashboard"
+                  className={`text-sm font-medium transition-colors ${
+                    isActive('/customer-dashboard') ? 'text-allrentz-red' : 'text-gray-700 hover:text-allrentz-red'
+                  }`}
+                >
+                  Customer Portal
+                </Link>
               )}
-              <Link 
-                to="/security-center" 
-                className={`text-sm font-medium transition-colors flex items-center space-x-1 ${
-                  isActive('/security-center') ? 'text-allrentz-red' : 'text-gray-700 hover:text-allrentz-red'
-                }`}
-              >
-                <Shield className="h-4 w-4" />
-                <span>Security</span>
-              </Link>
+              {user && profile?.role_type === 'vendor' && (
+                <Link
+                  to="/vendor-dashboard"
+                  className={`text-sm font-medium transition-colors ${
+                    isActive('/vendor-dashboard') ? 'text-allrentz-red' : 'text-gray-700 hover:text-allrentz-red'
+                  }`}
+                >
+                  Vendor Portal
+                </Link>
+              )}
             </div>
 
             {/* CTA Buttons */}
@@ -93,7 +84,7 @@ const Navigation = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem asChild>
-                      <Link to="/customer-dashboard">Dashboard</Link>
+                      <Link to={profile?.role_type === 'vendor' ? '/vendor-dashboard' : '/customer-dashboard'}>Dashboard</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link to="/customer-onboarding">Request Quote</Link>
@@ -157,32 +148,24 @@ const Navigation = () => {
                 >
                   Browse Equipment
                 </Link>
-                {user && (
-                  <>
-                    <Link 
-                      to="/customer-dashboard" 
-                      className="text-sm font-medium text-gray-700 hover:text-allrentz-red px-4 py-2"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      Customer Portal
-                    </Link>
-                    <Link 
-                      to="/vendor-dashboard" 
-                      className="text-sm font-medium text-gray-700 hover:text-allrentz-red px-4 py-2"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      Vendor Portal
-                    </Link>
-                  </>
+                {user && profile?.role_type === 'customer' && (
+                  <Link
+                    to="/customer-dashboard"
+                    className="text-sm font-medium text-gray-700 hover:text-allrentz-red px-4 py-2"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    Customer Portal
+                  </Link>
                 )}
-                <Link 
-                  to="/security-center" 
-                  className="text-sm font-medium text-gray-700 hover:text-allrentz-red px-4 py-2 flex items-center space-x-2"
-                  onClick={() => setIsOpen(false)}
-                >
-                  <Shield className="h-4 w-4" />
-                  <span>Security Center</span>
-                </Link>
+                {user && profile?.role_type === 'vendor' && (
+                  <Link
+                    to="/vendor-dashboard"
+                    className="text-sm font-medium text-gray-700 hover:text-allrentz-red px-4 py-2"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    Vendor Portal
+                  </Link>
+                )}
                 <div className="px-4 py-2 space-y-2">
                   {user ? (
                     <Button 

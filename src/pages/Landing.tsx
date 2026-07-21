@@ -141,9 +141,9 @@ const Landing = () => {
                 Vetted vendors with proven track records in refineries, terminals, and heavy industry.
               </p>
               <div className="flex flex-wrap gap-2 justify-center">
-                <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">500+ Vendors</span>
-                <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">98% On-Time</span>
-                <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">24/7 Support</span>
+                <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">Verified Vendors</span>
+                <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">Compliance Tracked</span>
+                <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">Dedicated Support</span>
               </div>
             </div>
             
@@ -179,61 +179,61 @@ const Landing = () => {
             <div className="industrial-card p-6 hover:shadow-lg transition-all hover:border-allrentz-red/30">
               <div className="flex items-center justify-between mb-4">
                 <Gauge className="h-10 w-10 text-allrentz-red" />
-                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">SmartMatch Available</span>
+                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">SmartMatch</span>
               </div>
               <h3 className="font-bold text-allrentz-gray mb-2">Steam Boilers</h3>
               <p className="text-sm text-gray-600 mb-3">High-pressure, low-pressure, and specialty boiler systems</p>
-              <div className="text-sm text-gray-500">Starting at $850/day</div>
+              <div className="text-sm text-gray-500">Request a Quote</div>
             </div>
             
             <div className="industrial-card p-6 hover:shadow-lg transition-all hover:border-allrentz-red/30">
               <div className="flex items-center justify-between mb-4">
                 <MapPin className="h-10 w-10 text-allrentz-red" />
-                <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Hot Swap Available</span>
+                <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Tanks &amp; Containment</span>
               </div>
               <h3 className="font-bold text-allrentz-gray mb-2">Frac Tanks</h3>
               <p className="text-sm text-gray-600 mb-3">Storage tanks for wastewater, chemicals, and fluids</p>
-              <div className="text-sm text-gray-500">Starting at $125/day</div>
+              <div className="text-sm text-gray-500">Request a Quote</div>
             </div>
             
             <div className="industrial-card p-6 hover:shadow-lg transition-all hover:border-allrentz-red/30">
               <div className="flex items-center justify-between mb-4">
                 <HardHat className="h-10 w-10 text-allrentz-red" />
-                <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded">15 min away</span>
+                <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded">Safety &amp; Compliance</span>
               </div>
               <h3 className="font-bold text-allrentz-gray mb-2">Safety Equipment</h3>
               <p className="text-sm text-gray-600 mb-3">Confined space gear, gas monitors, safety systems</p>
-              <div className="text-sm text-gray-500">Starting at $95/day</div>
+              <div className="text-sm text-gray-500">Request a Quote</div>
             </div>
             
             <div className="industrial-card p-6 hover:shadow-lg transition-all hover:border-allrentz-red/30">
               <div className="flex items-center justify-between mb-4">
                 <Settings className="h-10 w-10 text-allrentz-red" />
-                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">SmartMatch Available</span>
+                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">SmartMatch</span>
               </div>
               <h3 className="font-bold text-allrentz-gray mb-2">Pressure Vessels</h3>
               <p className="text-sm text-gray-600 mb-3">ASME certified vessels for turnaround projects</p>
-              <div className="text-sm text-gray-500">Starting at $450/day</div>
+              <div className="text-sm text-gray-500">Request a Quote</div>
             </div>
             
             <div className="industrial-card p-6 hover:shadow-lg transition-all hover:border-allrentz-red/30">
               <div className="flex items-center justify-between mb-4">
                 <Truck className="h-10 w-10 text-allrentz-red" />
-                <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Recently Returned</span>
+                <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Heavy Machinery</span>
               </div>
               <h3 className="font-bold text-allrentz-gray mb-2">Heavy Machinery</h3>
               <p className="text-sm text-gray-600 mb-3">Cranes, excavators, generators, and construction equipment</p>
-              <div className="text-sm text-gray-500">Starting at $1,200/day</div>
+              <div className="text-sm text-gray-500">Request a Quote</div>
             </div>
             
             <div className="industrial-card p-6 hover:shadow-lg transition-all hover:border-allrentz-red/30">
               <div className="flex items-center justify-between mb-4">
                 <Zap className="h-10 w-10 text-allrentz-red" />
-                <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">Nearby</span>
+                <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">Power Generation</span>
               </div>
               <h3 className="font-bold text-allrentz-gray mb-2">Power Generation</h3>
               <p className="text-sm text-gray-600 mb-3">Generators, UPS systems, and temporary power solutions</p>
-              <div className="text-sm text-gray-500">Starting at $650/day</div>
+              <div className="text-sm text-gray-500">Request a Quote</div>
             </div>
           </div>
           
@@ -256,13 +256,13 @@ const Landing = () => {
             <div className="text-center mb-8">
               <div className="inline-flex items-center space-x-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium mb-4">
                 <Zap className="h-4 w-4" />
-                <span>AI-Powered SmartMatch</span>
+                <span>SmartMatch</span>
               </div>
               <h2 className="text-3xl lg:text-4xl font-bold text-allrentz-gray mb-4">
                 See SmartMatch in Action
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Watch how our AI instantly connects you with the right equipment and vendors based on your exact needs.
+                See how SmartMatch connects you with the right equipment and vendors based on your requirements.
               </p>
             </div>
             
@@ -270,17 +270,17 @@ const Landing = () => {
               <div className="bg-white rounded-lg p-6 shadow-sm">
                 <Clock className="h-8 w-8 text-blue-600 mb-3" />
                 <h3 className="font-bold text-gray-900 mb-2">Instant Matching</h3>
-                <p className="text-sm text-gray-600">AI analyzes 50+ factors to find perfect equipment matches in seconds</p>
+                <p className="text-sm text-gray-600">Matches equipment and vendors based on your type, location, urgency, and compliance requirements</p>
               </div>
               <div className="bg-white rounded-lg p-6 shadow-sm">
                 <Award className="h-8 w-8 text-blue-600 mb-3" />
                 <h3 className="font-bold text-gray-900 mb-2">Vendor Scoring</h3>
-                <p className="text-sm text-gray-600">Real-time performance ratings based on compliance, delivery, and quality</p>
+                <p className="text-sm text-gray-600">Vendor scoring based on compliance, delivery, and quality</p>
               </div>
               <div className="bg-white rounded-lg p-6 shadow-sm">
                 <Bell className="h-8 w-8 text-blue-600 mb-3" />
                 <h3 className="font-bold text-gray-900 mb-2">Live Notifications</h3>
-                <p className="text-sm text-gray-600">Instant alerts to vendors with immediate response tracking</p>
+                <p className="text-sm text-gray-600">Vendor notifications with response tracking</p>
               </div>
             </div>
             

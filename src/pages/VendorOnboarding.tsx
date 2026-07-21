@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, ChevronLeft, CheckCircle, Building2, FileText, CreditCard, Package, Upload, Shield, Users } from 'lucide-react';
+import { toast } from 'sonner';
 
 const VendorOnboarding = () => {
   const [currentStep, setCurrentStep] = useState(0); // Start with selection step
@@ -74,7 +75,7 @@ const VendorOnboarding = () => {
   };
 
   const completeOnboarding = () => {
-    // In a real app, this would save the data and redirect
+    toast.success('Registration submitted. Your vendor account is under review.');
     window.location.href = '/vendor-dashboard';
   };
 

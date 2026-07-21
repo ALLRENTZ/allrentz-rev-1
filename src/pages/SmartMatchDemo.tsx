@@ -12,15 +12,15 @@ const SmartMatchDemo = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
-            <Link to="/">
+            <Link to="/customer-dashboard">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Home
+                Back to Dashboard
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-allrentz-gray">SmartMatch AI Demo</h1>
-              <p className="text-gray-600">AI-powered equipment matching for industrial rentals</p>
+              <h1 className="text-3xl font-bold text-allrentz-gray">SmartMatch</h1>
+              <p className="text-gray-600">Equipment matching based on type, location, and compliance requirements</p>
             </div>
           </div>
         </div>

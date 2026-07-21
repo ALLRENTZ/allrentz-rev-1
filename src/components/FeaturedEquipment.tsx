@@ -87,7 +87,7 @@ const FeaturedEquipment: React.FC = () => {
           <p className="text-gray-600">
             {activeQuery
               ? `${data.length} match${data.length === 1 ? '' : 'es'}`
-              : 'Hand-picked equipment from our most trusted vendors'}
+              : 'Example equipment listings'}
           </p>
         </div>
 

@@ -32,13 +32,18 @@ const OperationsCenterDashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Operations Center</h1>
-              <p className="text-gray-600 mt-2">ALLRENTZ Strategic Command Center - Real-time Operations Intelligence</p>
+              <p className="text-gray-600 mt-2">ALLRENTZ Operations Overview</p>
             </div>
             <div className="px-4 py-2 rounded-full bg-green-100 text-green-800 flex items-center space-x-2">
               <Activity className="h-5 w-5" />
               <span className="font-medium">All Systems Operational</span>
             </div>
           </div>
+        </div>
+
+        {/* Internal access notice */}
+        <div className="mb-6 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          Internal access only — sample scenario data.
         </div>
 
         {/* Operations Metrics Grid */}
@@ -99,7 +104,7 @@ const OperationsCenterDashboard = () => {
           <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
             <div className="flex items-center mb-4">
               <Users className="h-6 w-6 text-green-600 mr-3" />
-              <h3 className="text-lg font-semibold text-gray-900">Real-time Vendor Coordination</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Vendor Coordination</h3>
             </div>
             <div className="space-y-4">
               <div className="flex items-center justify-between">

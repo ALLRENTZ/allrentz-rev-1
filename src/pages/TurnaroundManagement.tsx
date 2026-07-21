@@ -1,14 +1,15 @@
 
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Settings, Calendar, MapPin, Users, DollarSign, AlertCircle, 
+import {
+  Settings, Calendar, MapPin, Users, DollarSign, AlertCircle,
   CheckCircle, Clock, Target, Wrench, TrendingUp, Building,
-  Truck, Package, Shield, Activity
+  Truck, Package, Shield, Activity, ArrowLeft
 } from 'lucide-react';
 
 interface TurnaroundEvent {
@@ -155,11 +156,24 @@ const TurnaroundManagement = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
+          <div className="flex items-center space-x-4 mb-4">
+            <Link to="/customer-dashboard">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dashboard
+              </Button>
+            </Link>
+          </div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center space-x-3">
             <Settings className="h-8 w-8 text-orange-600" />
             <span>Turnaround Management</span>
           </h1>
           <p className="text-gray-600 mt-2">Plan, coordinate, and optimize refinery turnaround operations</p>
+        </div>
+
+        {/* Demo data notice */}
+        <div className="mb-6 text-sm text-gray-500 bg-gray-100 border border-gray-200 rounded-lg px-4 py-3">
+          Sample scenario data — all figures and turnaround events shown are representative examples only.
         </div>
 
         {/* Key Metrics */}

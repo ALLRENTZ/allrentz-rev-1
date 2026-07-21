@@ -48,7 +48,7 @@ export class ImageCompressor {
   }
   
   private static calculateDimensions(originalWidth: number, originalHeight: number) {
-    let { MAX_WIDTH, MAX_HEIGHT } = this;
+    const { MAX_WIDTH, MAX_HEIGHT } = this;
     
     if (originalWidth <= MAX_WIDTH && originalHeight <= MAX_HEIGHT) {
       return { width: originalWidth, height: originalHeight };
@@ -129,7 +129,7 @@ export class StorageManager {
   
   private static getStorageSize(): number {
     let total = 0;
-    for (let key in localStorage) {
+    for (const key in localStorage) {
       if (key.startsWith(this.STORAGE_KEY_PREFIX)) {
         total += localStorage[key].length;
       }
@@ -141,7 +141,7 @@ export class StorageManager {
     const items: Array<{ key: string; timestamp: number; size: number }> = [];
     
     // Collect all our items with timestamps and sizes
-    for (let key in localStorage) {
+    for (const key in localStorage) {
       if (key.startsWith(this.STORAGE_KEY_PREFIX) && !key.includes('_timestamp')) {
         const timestampKey = key + '_timestamp';
         const timestamp = parseInt(localStorage.getItem(timestampKey) || '0');
@@ -173,7 +173,7 @@ export class StorageManager {
     
     // Count items
     let itemCount = 0;
-    for (let key in localStorage) {
+    for (const key in localStorage) {
       if (key.startsWith(this.STORAGE_KEY_PREFIX) && !key.includes('_timestamp')) {
         itemCount++;
       }
@@ -189,7 +189,7 @@ export class StorageManager {
   
   static clearAllStoredImages(): void {
     const keys = [];
-    for (let key in localStorage) {
+    for (const key in localStorage) {
       if (key.startsWith(this.STORAGE_KEY_PREFIX)) {
         keys.push(key);
       }

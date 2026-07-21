@@ -1,69 +1,239 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Plus, MapPin, Calendar, FileText, Bell, Settings, DollarSign, CheckCircle, AlertTriangle, TrendingUp, Package } from 'lucide-react';
-import RentalStatusTimeline from '@/components/RentalStatusTimeline';
-import DigitalBinder from '@/components/DigitalBinder';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
 
 const VendorDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [quotingId, setQuotingId] = useState<number | null>(null);
+  const [quoteForm, setQuoteForm] = useState({ amount: '', notes: '' });
 
-  // Mock data for vendor
+  const { user, profile, loading: authLoading } = useAuth();
+  const authority = getOperationalAuthority({ user, authLoading, profile });
+  const isDemoUser = profile?.is_demo === true;
+  const showBlockedToast = ({ title, description }: { title: string; description: string }) => {
+    toast.error(title, { description });
+  };
+  const [pendingRfqs, setPendingRfqs] = useState<any[]>([]);
+  const [acceptedRfqs, setAcceptedRfqs] = useState<any[]>([]);
+  const [vendorOrgId, setVendorOrgId] = useState<string | null>(null);
+  const [quotingRealId, setQuotingRealId] = useState<string | null>(null);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [realQuoteForm, setRealQuoteForm] = useState({ daily_rate: '', vendor_notes: '', compliance_confirmed: false });
+  const [pendingRfqsError, setPendingRfqsError] = useState(false);
+  const [acceptedRfqsError, setAcceptedRfqsError] = useState(false);
+
   const equipmentInventory = [
     {
       id: 1,
-      name: 'Steam Boiler - 150 HP',
-      category: 'Boilers',
+      name: '600 CFM Diesel Air Compressor',
+      category: 'Air Compressors',
       status: 'Rented',
-      dailyRate: 850,
-      location: 'Gulf Coast Refinery',
-      rentedUntil: '2024-07-15',
+      dailyRate: 365,
+      location: 'Gulf Coast Refinery — Port Arthur, TX',
+      rentedUntil: '2026-06-12',
       image: 'https://images.unsplash.com/photo-1487887235947-a955ef187fcc?w=300&h=200&fit=crop'
     },
     {
       id: 2,
-      name: 'Frac Tank - 21,000 Gal',
-      category: 'Storage',
+      name: 'Zone 2 Explosion-Proof Light Tower',
+      category: 'Lighting Equipment',
       status: 'Available',
-      dailyRate: 125,
-      location: 'Warehouse A',
+      dailyRate: 210,
+      location: 'Yard — Beaumont, TX',
       rentedUntil: null,
       image: 'https://images.unsplash.com/photo-1493962853295-0fd70327578a?w=300&h=200&fit=crop'
     },
     {
       id: 3,
-      name: 'Industrial Generator - 500kW',
-      category: 'Power',
+      name: '40K PSI UHP Water Blasting Pump',
+      category: 'Pressure Equipment',
       status: 'Maintenance',
-      dailyRate: 450,
-      location: 'Service Bay 2',
+      dailyRate: 800,
+      location: 'Service Bay 1 — Beaumont, TX',
       rentedUntil: null,
       image: 'https://images.unsplash.com/photo-1469041797191-50ace28483c3?w=300&h=200&fit=crop'
     }
   ];
 
-  const quoteRequests = [
+  const [quoteRequests, setQuoteRequests] = useState([
     {
       id: 1,
-      customer: 'Gulf Coast Refinery',
-      equipment: 'Industrial Crane - 50 Ton',
-      requestDate: '2024-06-18',
-      location: 'Offshore Platform C-14',
-      duration: '30 days',
+      customer: 'Bayou Bend Petroleum',
+      equipment: 'Confined Space Ventilation Fan (x2)',
+      requestDate: '2026-05-22',
+      location: 'Texas City Refinery — Texas City, TX',
+      duration: '21 days',
       status: 'New',
       urgency: 'High'
     },
     {
       id: 2,
-      customer: 'Texas Tank Terminal',
-      equipment: 'Frac Tank - 15,000 Gal',
-      requestDate: '2024-06-17',
-      location: 'Terminal B Complex',
-      duration: '60 days',
+      customer: 'Flint Hills Resources',
+      equipment: 'Diesel Rollback Generator — 250kW',
+      requestDate: '2026-05-21',
+      location: 'Corpus Christi Refinery — Corpus Christi, TX',
+      duration: '45 days',
       status: 'Quoted',
       urgency: 'Medium'
+    },
+    {
+      id: 3,
+      customer: 'LyondellBasell',
+      equipment: 'Vacuum Box System',
+      requestDate: '2026-05-20',
+      location: 'Houston Refinery — Channelview, TX',
+      duration: '14 days',
+      status: 'New',
+      urgency: 'Medium'
     }
-  ];
+  ]);
+
+  const handleSendQuote = (id: number) => {
+    if (!quoteForm.amount) {
+      toast.info('Enter a quote amount to proceed.');
+      return;
+    }
+    setQuoteRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'Quoted' } : r));
+    setQuotingId(null);
+    setQuoteForm({ amount: '', notes: '' });
+    toast.success('Quote sent to customer.');
+  };
+
+  const fetchPendingRfqs = async () => {
+    const { data, error } = await supabase
+      .from('rental_requests')
+      .select('id, operational_status, created_at, start_date, end_date, delivery_address, special_requirements, equipment(title, category)')
+      .eq('operational_status', 'pending_vendor_review')
+      .order('created_at', { ascending: false });
+    if (error) {
+      setPendingRfqsError(true);
+      toast.error('Failed to load pending quote requests: ' + (error.message || 'Unknown error'));
+      return;
+    }
+    setPendingRfqsError(false);
+    setPendingRfqs(data || []);
+  };
+
+  const fetchAcceptedRfqs = async () => {
+    const { data, error } = await supabase
+      .from('rental_requests')
+      .select('id, operational_status, start_date, end_date, delivery_address, special_requirements, equipment(title, category)')
+      .eq('operational_status', 'quote_accepted')
+      .order('created_at', { ascending: false });
+    if (error) {
+      setAcceptedRfqsError(true);
+      toast.error('Failed to load accepted quotes: ' + (error.message || 'Unknown error'));
+      return;
+    }
+    setAcceptedRfqsError(false);
+    setAcceptedRfqs(data || []);
+  };
+
+  const fetchVendorOrg = async () => {
+    const { data: memberships, error: membershipsError } = await supabase
+      .from('organization_memberships')
+      .select('organization_id')
+      .eq('user_id', user!.id)
+      .is('archived_at', null)
+      .in('role', ['owner', 'admin', 'member']);
+
+    if (membershipsError) {
+      setVendorOrgId(null);
+      toast.error('Failed to resolve vendor organization: ' + membershipsError.message);
+      return;
+    }
+
+    const memberOrgIds = (memberships || []).map((membership) => membership.organization_id);
+    if (memberOrgIds.length === 0) {
+      setVendorOrgId(null);
+      return;
+    }
+
+    const { data: vendorOrg, error: vendorOrgError } = await supabase
+      .from('organizations')
+      .select('id')
+      .in('id', memberOrgIds)
+      .in('org_type', ['vendor', 'both'])
+      .is('archived_at', null)
+      .limit(1)
+      .maybeSingle();
+
+    if (vendorOrgError) {
+      setVendorOrgId(null);
+      toast.error('Failed to resolve vendor organization: ' + vendorOrgError.message);
+      return;
+    }
+
+    setVendorOrgId(vendorOrg?.id || null);
+  };
+
+  const handleSubmitRealQuote = async (rfqId: string) => {
+    if (!requireOperationalProfile({ user, authLoading, profile, toast: showBlockedToast })) {
+      return;
+    }
+    const dailyRate = Number.parseFloat(realQuoteForm.daily_rate);
+    if (!Number.isFinite(dailyRate) || dailyRate <= 0) {
+      toast.warning('Enter a daily rate to proceed.');
+      return;
+    }
+    if (!vendorOrgId || !user) {
+      toast.error('Vendor organization not found. Contact support.');
+      return;
+    }
+    setSubmittingId(rfqId);
+    const { error } = await supabase.rpc('submit_vendor_quote', {
+      p_rfq_id: rfqId,
+      p_vendor_organization_id: vendorOrgId,
+      p_daily_rate: dailyRate,
+      p_vendor_notes: realQuoteForm.vendor_notes || undefined,
+      p_compliance_confirmed: realQuoteForm.compliance_confirmed,
+    });
+    setSubmittingId(null);
+    if (error) {
+      toast.error('Failed to submit quote: ' + (error.message || 'Unknown error'));
+      return;
+    }
+    toast.success('Quote submitted successfully.');
+    setQuotingRealId(null);
+    setRealQuoteForm({ daily_rate: '', vendor_notes: '', compliance_confirmed: false });
+    fetchPendingRfqs();
+    fetchAcceptedRfqs();
+  };
+
+  const handleConfirmRfq = async (rfqId: string) => {
+    if (!requireOperationalProfile({ user, authLoading, profile, toast: showBlockedToast })) {
+      return;
+    }
+    setConfirmingId(rfqId);
+    try {
+      const { error } = await supabase.functions.invoke('rfq-transition', {
+        body: { rfq_id: rfqId, new_status: 'vendor_confirmed' },
+      });
+      if (error) {
+        toast.error('Confirmation failed: ' + (error.message || 'Unknown error'));
+        return;
+      }
+      toast.success('Deployment confirmed.');
+      fetchAcceptedRfqs();
+      fetchPendingRfqs();
+    } finally {
+      setConfirmingId(null);
+    }
+  };
+
+  useEffect(() => {
+    if (authority.canUseOperationalData) {
+      fetchPendingRfqs();
+      fetchAcceptedRfqs();
+      fetchVendorOrg();
+    }
+  }, [authority.canUseOperationalData]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -106,11 +276,11 @@ const VendorDashboard = () => {
               <p className="text-gray-600 mt-1">Gulf Coast Equipment Rentals</p>
             </div>
             <div className="mt-4 md:mt-0 flex space-x-3">
-              <button className="industrial-button inline-flex items-center space-x-2">
+              <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="industrial-button inline-flex items-center space-x-2">
                 <Plus className="h-4 w-4" />
                 <span>Add Equipment</span>
               </button>
-              <button className="industrial-button-secondary inline-flex items-center space-x-2">
+              <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="industrial-button-secondary inline-flex items-center space-x-2">
                 <Bell className="h-4 w-4" />
                 <span>Notifications</span>
               </button>
@@ -173,10 +343,6 @@ const VendorDashboard = () => {
                 <Settings className="h-5 w-5" />
                 <span>Settings</span>
               </button>
-              <Link to="/turnaround-management" className="nav-link w-full">
-                <Settings className="h-5 w-5" />
-                <span>Turnaround Management</span>
-              </Link>
             </nav>
           </div>
 
@@ -184,13 +350,15 @@ const VendorDashboard = () => {
           <div className="lg:col-span-3">
             {activeTab === 'overview' && (
               <div className="space-y-6">
+                {isDemoUser ? (
+                <>
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="dashboard-stat">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-gray-600">Total Equipment</p>
-                        <p className="text-2xl font-bold text-allrentz-gray">24</p>
+                        <p className="text-2xl font-bold text-allrentz-gray">14</p>
                       </div>
                       <Package className="h-8 w-8 text-blue-500" />
                     </div>
@@ -199,7 +367,7 @@ const VendorDashboard = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-gray-600">Currently Rented</p>
-                        <p className="text-2xl font-bold text-allrentz-gray">8</p>
+                        <p className="text-2xl font-bold text-allrentz-gray">5</p>
                       </div>
                       <CheckCircle className="h-8 w-8 text-green-500" />
                     </div>
@@ -208,7 +376,7 @@ const VendorDashboard = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-gray-600">This Month</p>
-                        <p className="text-2xl font-bold text-allrentz-gray">$45,320</p>
+                        <p className="text-2xl font-bold text-allrentz-gray">$38,640</p>
                       </div>
                       <DollarSign className="h-8 w-8 text-allrentz-red" />
                     </div>
@@ -228,7 +396,7 @@ const VendorDashboard = () => {
                 <div className="industrial-card p-6">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-allrentz-gray">Recent Quote Requests</h2>
-                    <button className="text-allrentz-red hover:text-allrentz-red-dark font-medium">
+                    <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="text-allrentz-red hover:text-allrentz-red-dark font-medium">
                       View All
                     </button>
                   </div>
@@ -260,29 +428,59 @@ const VendorDashboard = () => {
                               {request.status}
                             </span>
                             <div className="flex space-x-2">
-                              <button className="industrial-button text-sm py-1 px-3">
+                              <button
+                                onClick={() => request.status === 'New' ? setQuotingId(request.id) : toast.info("Feature scheduled for upcoming release")}
+                                className="industrial-button text-sm py-1 px-3"
+                              >
                                 {request.status === 'New' ? 'Send Quote' : 'View Quote'}
                               </button>
-                              <button className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-1 px-3 rounded-md text-sm">
+                              <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-1 px-3 rounded-md text-sm">
                                 Details
                               </button>
                             </div>
                           </div>
                         </div>
+                        {quotingId === request.id && (
+                          <div className="mt-3 pt-3 border-t border-gray-200 space-y-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Quote Amount ($)</label>
+                              <input
+                                type="number"
+                                value={quoteForm.amount}
+                                onChange={e => setQuoteForm(prev => ({ ...prev, amount: e.target.value }))}
+                                className="industrial-input w-full"
+                                placeholder="e.g. 12600"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Response Note</label>
+                              <textarea
+                                value={quoteForm.notes}
+                                onChange={e => setQuoteForm(prev => ({ ...prev, notes: e.target.value }))}
+                                className="industrial-input w-full"
+                                rows={2}
+                                placeholder="Availability, delivery window, certifications..."
+                              />
+                            </div>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleSendQuote(request.id)}
+                                className="industrial-button text-sm py-1 px-4"
+                              >
+                                Confirm Quote
+                              </button>
+                              <button
+                                onClick={() => { setQuotingId(null); setQuoteForm({ amount: '', notes: '' }); }}
+                                className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-1 px-4 rounded-md text-sm"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
-                </div>
-
-                {/* Active Rental Status */}
-                <div className="industrial-card p-6">
-                  <RentalStatusTimeline
-                    currentStatus="en_route"
-                    rentalData={{
-                      scheduledDate: 'Jun 18',
-                      dispatchDate: 'Jun 20',
-                    }}
-                  />
                 </div>
 
                 {/* Equipment Overview */}
@@ -325,15 +523,22 @@ const VendorDashboard = () => {
                     ))}
                   </div>
                 </div>
+                </>
+                ) : (
+                  <div className="industrial-card p-6">
+                    <p className="text-gray-600">Live equipment and quote metrics are not yet available.</p>
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === 'inventory' && (
               <div className="space-y-6">
+                {isDemoUser ? (
                 <div className="industrial-card p-6">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-allrentz-gray">Equipment Inventory</h2>
-                    <button className="industrial-button inline-flex items-center space-x-2">
+                    <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="industrial-button inline-flex items-center space-x-2">
                       <Plus className="h-4 w-4" />
                       <span>Add Equipment</span>
                     </button>
@@ -362,10 +567,10 @@ const VendorDashboard = () => {
                             <span>{item.location}</span>
                           </div>
                           <div className="flex space-x-2">
-                            <button className="flex-1 industrial-button-secondary text-sm py-2">
+                            <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="flex-1 industrial-button-secondary text-sm py-2">
                               Edit
                             </button>
-                            <button className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-4 rounded-md text-sm">
+                            <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-4 rounded-md text-sm">
                               Track
                             </button>
                           </div>
@@ -374,12 +579,137 @@ const VendorDashboard = () => {
                     ))}
                   </div>
                 </div>
+                ) : (
+                  <div className="industrial-card p-6">
+                    <p className="text-gray-600">Equipment inventory management is not yet available.</p>
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === 'requests' && (
               <div className="industrial-card p-6">
                 <h2 className="text-xl font-bold text-allrentz-gray mb-6">Quote Requests</h2>
+                {authority.canUseOperationalData && acceptedRfqs.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="font-semibold text-allrentz-gray mb-3">Accepted Quotes — Awaiting Confirmation</h3>
+                    <div className="space-y-3">
+                      {acceptedRfqs.map((rfq) => (
+                        <div key={rfq.id} className="border border-green-200 bg-green-50 rounded-lg p-4">
+                          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-allrentz-gray">{rfq.equipment?.title || 'Equipment Request'}</h4>
+                              {rfq.equipment?.category && <p className="text-sm text-gray-500">{rfq.equipment.category}</p>}
+                              <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mt-2">
+                                {rfq.delivery_address && <div><span className="font-medium">Location: </span>{rfq.delivery_address}</div>}
+                                {rfq.start_date && <div><span className="font-medium">Start: </span>{new Date(rfq.start_date).toLocaleDateString()}</div>}
+                                {rfq.end_date && <div><span className="font-medium">End: </span>{new Date(rfq.end_date).toLocaleDateString()}</div>}
+                              </div>
+                              {rfq.special_requirements && <p className="text-sm text-gray-600 mt-1">{rfq.special_requirements}</p>}
+                            </div>
+                            <div className="mt-3 lg:mt-0">
+                              <button
+                                onClick={() => handleConfirmRfq(rfq.id)}
+                                disabled={confirmingId === rfq.id}
+                                className="industrial-button text-sm py-1 px-4 disabled:opacity-50"
+                              >
+                                {confirmingId === rfq.id ? 'Confirming...' : 'Confirm Deployment'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {authority.canUseOperationalData && (
+                  <div className="mb-6">
+                    <h3 className="font-semibold text-allrentz-gray mb-3">Pending from Platform</h3>
+                    {pendingRfqsError ? (
+                      <p className="text-sm text-red-600 py-2">Unable to load pending quote requests. Please refresh or contact support.</p>
+                    ) : pendingRfqs.length === 0 ? (
+                      <p className="text-sm text-gray-500 py-2">No pending quote requests from the platform.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {pendingRfqs.map((rfq) => (
+                          <div key={rfq.id} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-allrentz-gray">{rfq.equipment?.title || 'Equipment Request'}</h4>
+                                {rfq.equipment?.category && <p className="text-sm text-gray-500">{rfq.equipment.category}</p>}
+                                <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mt-2">
+                                  {rfq.delivery_address && <div><span className="font-medium">Location: </span>{rfq.delivery_address}</div>}
+                                  {rfq.start_date && <div><span className="font-medium">Start: </span>{new Date(rfq.start_date).toLocaleDateString()}</div>}
+                                  {rfq.end_date && <div><span className="font-medium">End: </span>{new Date(rfq.end_date).toLocaleDateString()}</div>}
+                                </div>
+                                {rfq.special_requirements && <p className="text-sm text-gray-600 mt-1">{rfq.special_requirements}</p>}
+                              </div>
+                              <div className="mt-3 lg:mt-0">
+                                <button
+                                  onClick={() => setQuotingRealId(quotingRealId === rfq.id ? null : rfq.id)}
+                                  className="industrial-button text-sm py-1 px-4"
+                                >
+                                  {quotingRealId === rfq.id ? 'Cancel' : 'Submit Quote'}
+                                </button>
+                              </div>
+                            </div>
+                            {quotingRealId === rfq.id && (
+                              <div className="mt-3 pt-3 border-t border-gray-200 space-y-3">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Daily Rate ($) *</label>
+                                    <input
+                                      type="number"
+                                      value={realQuoteForm.daily_rate}
+                                      onChange={e => setRealQuoteForm(prev => ({ ...prev, daily_rate: e.target.value }))}
+                                      className="industrial-input w-full"
+                                      placeholder="e.g. 850"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Vendor Notes</label>
+                                    <textarea
+                                      value={realQuoteForm.vendor_notes}
+                                      onChange={e => setRealQuoteForm(prev => ({ ...prev, vendor_notes: e.target.value }))}
+                                      className="industrial-input w-full"
+                                      rows={2}
+                                      placeholder="Availability, delivery window, certifications..."
+                                    />
+                                  </div>
+                                </div>
+                                <label className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={realQuoteForm.compliance_confirmed}
+                                    onChange={e => setRealQuoteForm(prev => ({ ...prev, compliance_confirmed: e.target.checked }))}
+                                    className="rounded"
+                                  />
+                                  <span>Compliance confirmed for this request</span>
+                                </label>
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() => handleSubmitRealQuote(rfq.id)}
+                                    disabled={submittingId === rfq.id}
+                                    className="industrial-button text-sm py-1 px-4"
+                                  >
+                                    {submittingId === rfq.id ? 'Submitting...' : 'Confirm Quote'}
+                                  </button>
+                                  <button
+                                    onClick={() => { setQuotingRealId(null); setRealQuoteForm({ daily_rate: '', vendor_notes: '', compliance_confirmed: false }); }}
+                                    className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-1 px-4 rounded-md text-sm"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {isDemoUser && (
                 <div className="space-y-4">
                   {quoteRequests.map((request) => (
                     <div key={request.id} className="border border-gray-200 rounded-lg p-6">
@@ -406,47 +736,93 @@ const VendorDashboard = () => {
                           </div>
                         </div>
                         <div className="mt-4 lg:mt-0 flex flex-col space-y-2">
-                          <button className="industrial-button text-sm py-2 px-6">
+                          <button
+                            onClick={() => request.status === 'New' ? setQuotingId(request.id) : toast.info("Feature scheduled for upcoming release")}
+                            className="industrial-button text-sm py-2 px-6"
+                          >
                             {request.status === 'New' ? 'Send Quote' : 'View Quote'}
                           </button>
-                          <button className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-6 rounded-md text-sm">
+                          <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-6 rounded-md text-sm">
                             View Details
                           </button>
                           {request.status === 'New' && (
-                            <button className="text-red-600 hover:text-red-700 font-medium py-2 px-6 text-sm">
+                            <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="text-red-600 hover:text-red-700 font-medium py-2 px-6 text-sm">
                               Decline
                             </button>
                           )}
                         </div>
                       </div>
+                      {quotingId === request.id && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Quote Amount ($)</label>
+                              <input
+                                type="number"
+                                value={quoteForm.amount}
+                                onChange={e => setQuoteForm(prev => ({ ...prev, amount: e.target.value }))}
+                                className="industrial-input w-full"
+                                placeholder="e.g. 12600"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Response Note</label>
+                              <textarea
+                                value={quoteForm.notes}
+                                onChange={e => setQuoteForm(prev => ({ ...prev, notes: e.target.value }))}
+                                className="industrial-input w-full"
+                                rows={2}
+                                placeholder="Availability, delivery window, certifications..."
+                              />
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleSendQuote(request.id)}
+                              className="industrial-button text-sm py-2 px-6"
+                            >
+                              Confirm Quote
+                            </button>
+                            <button
+                              onClick={() => { setQuotingId(null); setQuoteForm({ amount: '', notes: '' }); }}
+                              className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-6 rounded-md text-sm"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
+                )}
               </div>
             )}
 
             {activeTab === 'earnings' && (
               <div className="space-y-6">
+                {isDemoUser ? (
+                <>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="dashboard-stat">
                     <div className="text-center">
                       <p className="text-sm text-gray-600">This Month</p>
-                      <p className="text-3xl font-bold text-allrentz-gray">$45,320</p>
-                      <p className="text-sm text-green-600">+12% from last month</p>
+                      <p className="text-3xl font-bold text-allrentz-gray">$38,640</p>
+                      <p className="text-sm text-green-600">+14% from last month</p>
                     </div>
                   </div>
                   <div className="dashboard-stat">
                     <div className="text-center">
                       <p className="text-sm text-gray-600">This Year</p>
-                      <p className="text-3xl font-bold text-allrentz-gray">$425,680</p>
-                      <p className="text-sm text-green-600">+28% from last year</p>
+                      <p className="text-3xl font-bold text-allrentz-gray">$187,320</p>
+                      <p className="text-sm text-green-600">+22% from last year</p>
                     </div>
                   </div>
                   <div className="dashboard-stat">
                     <div className="text-center">
                       <p className="text-sm text-gray-600">Next Payout</p>
-                      <p className="text-3xl font-bold text-allrentz-gray">$12,450</p>
-                      <p className="text-sm text-gray-600">June 30, 2024</p>
+                      <p className="text-3xl font-bold text-allrentz-gray">$14,210</p>
+                      <p className="text-sm text-gray-600">June 30, 2026</p>
                     </div>
                   </div>
                 </div>
@@ -456,31 +832,39 @@ const VendorDashboard = () => {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between py-3 border-b border-gray-200">
                       <div>
-                        <p className="font-medium text-allrentz-gray">Steam Boiler - 150 HP</p>
-                        <p className="text-sm text-gray-600">Gulf Coast Refinery • 30 days</p>
+                        <p className="font-medium text-allrentz-gray">600 CFM Diesel Air Compressor</p>
+                        <p className="text-sm text-gray-600">Gulf Coast Refinery — Port Arthur, TX • 21 days</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-allrentz-gray">$25,500</p>
-                        <p className="text-sm text-gray-600">Completed</p>
+                        <p className="font-semibold text-allrentz-gray">$7,665</p>
+                        <p className="text-sm text-green-600">Active</p>
                       </div>
                     </div>
                     <div className="flex items-center justify-between py-3 border-b border-gray-200">
                       <div>
-                        <p className="font-medium text-allrentz-gray">Frac Tank - 21,000 Gal</p>
-                        <p className="text-sm text-gray-600">Texas Tank Terminal • 60 days</p>
+                        <p className="font-medium text-allrentz-gray">40K PSI UHP Water Blasting Pump</p>
+                        <p className="text-sm text-gray-600">Flint Hills Resources — Corpus Christi, TX • 16 days</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-allrentz-gray">$7,500</p>
-                        <p className="text-sm text-green-600">Active</p>
+                        <p className="font-semibold text-allrentz-gray">$12,800</p>
+                        <p className="text-sm text-gray-600">Completed</p>
                       </div>
                     </div>
                   </div>
                 </div>
+                </>
+                ) : (
+                  <div className="industrial-card p-6">
+                    <p className="text-gray-600">Earnings reporting is not yet available.</p>
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === 'tracking' && (
               <div className="industrial-card p-6">
+                {isDemoUser ? (
+                <>
                 <h2 className="text-xl font-bold text-allrentz-gray mb-6">Asset Tracking</h2>
                 <div className="bg-gray-100 rounded-lg h-96 flex items-center justify-center mb-6">
                   <div className="text-center">
@@ -500,23 +884,73 @@ const VendorDashboard = () => {
                           <p className="text-sm text-gray-600">{item.location}</p>
                         </div>
                       </div>
-                      <button className="text-allrentz-red hover:text-allrentz-red-dark font-medium text-sm">
+                      <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="text-allrentz-red hover:text-allrentz-red-dark font-medium text-sm">
                         View on Map
                       </button>
                     </div>
                   ))}
                 </div>
+                </>
+                ) : (
+                  <p className="text-gray-600">Asset tracking is not yet available.</p>
+                )}
               </div>
             )}
 
             {activeTab === 'documents' && (
               <div className="industrial-card p-6">
-                <DigitalBinder />
+                {isDemoUser ? (
+                <>
+                <h2 className="text-xl font-bold text-allrentz-gray mb-6">Compliance Documents</h2>
+                <div className="space-y-4">
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <FileText className="h-6 w-6 text-allrentz-red" />
+                        <div>
+                          <h3 className="font-semibold text-allrentz-gray">General Liability Insurance</h3>
+                          <p className="text-sm text-gray-600">Expires: December 31, 2026</p>
+                        </div>
+                      </div>
+                      <span className="industrial-badge-approved">Valid</span>
+                    </div>
+                  </div>
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <FileText className="h-6 w-6 text-allrentz-red" />
+                        <div>
+                          <h3 className="font-semibold text-allrentz-gray">Equipment Safety Certificates</h3>
+                          <p className="text-sm text-gray-600">Last updated: May 1, 2026</p>
+                        </div>
+                      </div>
+                      <span className="industrial-badge-approved">Current</span>
+                    </div>
+                  </div>
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <FileText className="h-6 w-6 text-yellow-500" />
+                        <div>
+                          <h3 className="font-semibold text-allrentz-gray">OSHA Compliance Certificate</h3>
+                          <p className="text-sm text-gray-600">Expires: July 31, 2026</p>
+                        </div>
+                      </div>
+                      <span className="industrial-badge-pending">Renewal Due</span>
+                    </div>
+                  </div>
+                </div>
+                </>
+                ) : (
+                  <p className="text-gray-600">Compliance document tracking is not yet available.</p>
+                )}
               </div>
             )}
 
             {activeTab === 'settings' && (
               <div className="industrial-card p-6">
+                {isDemoUser ? (
+                <>
                 <h2 className="text-xl font-bold text-allrentz-gray mb-6">Vendor Settings</h2>
                 <div className="space-y-6">
                   <div>
@@ -546,13 +980,17 @@ const VendorDashboard = () => {
                       <p className="text-sm text-gray-600 mb-2">Connected to Stripe for secure payments</p>
                       <div className="flex items-center space-x-4">
                         <span className="text-sm text-gray-700">Account: ****1234</span>
-                        <button className="text-allrentz-red hover:text-allrentz-red-dark font-medium text-sm">
+                        <button onClick={() => toast.info("Feature scheduled for upcoming release")} className="text-allrentz-red hover:text-allrentz-red-dark font-medium text-sm">
                           Update
                         </button>
                       </div>
                     </div>
                   </div>
                 </div>
+                </>
+                ) : (
+                  <p className="text-gray-600">Vendor account settings are not yet available.</p>
+                )}
               </div>
             )}
           </div>

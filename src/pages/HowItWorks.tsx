@@ -63,7 +63,7 @@ const HowItWorks = () => {
               <FileText className="h-12 w-12 text-allrentz-red mx-auto mb-4" />
               <h3 className="text-lg font-bold text-allrentz-gray mb-3">Submit Requests</h3>
               <p className="text-gray-600 text-sm mb-4">
-                Request individual equipment OR complete turnaround packages with AI-powered matching.
+                Request individual equipment or complete turnaround packages with vendor matching.
               </p>
               <div className="space-y-2 text-xs text-gray-500">
                 <div className="flex items-center space-x-2">
@@ -270,7 +270,7 @@ const HowItWorks = () => {
               <DollarSign className="h-12 w-12 text-allrentz-red mx-auto mb-4" />
               <h3 className="text-lg font-bold text-allrentz-gray mb-3">Accept & Get Paid</h3>
               <p className="text-gray-600 text-sm mb-4">
-                Review requests, send quotes, accept bookings, and receive payments via Stripe.
+                Review requests, send quotes, accept bookings, and receive payments securely.
               </p>
               <div className="space-y-2 text-xs text-gray-500">
                 <div className="flex items-center space-x-2">
@@ -341,7 +341,7 @@ const HowItWorks = () => {
               <Clock className="h-12 w-12 text-allrentz-red mx-auto mb-4" />
               <h3 className="text-xl font-bold text-allrentz-gray mb-3">Built for Speed</h3>
               <p className="text-gray-600">
-                AI-powered matching, instant notifications, and real-time tracking eliminate delays and phone tag.
+                SmartMatch, instant notifications, and real-time tracking eliminate delays and phone tag.
               </p>
             </div>
 

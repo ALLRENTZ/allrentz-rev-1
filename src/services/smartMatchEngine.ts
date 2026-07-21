@@ -147,68 +147,61 @@ class SmartMatchEngine {
     });
   }
 
-  async processMatch(request: SmartMatchRequest, customer_id: string): Promise<SmartMatchResult> {
+  async processMatch(request: SmartMatchRequest, customer_id: string, is_demo: boolean): Promise<SmartMatchResult> {
     const startTime = Date.now();
-    const isDemoUser = customer_id === 'demo-customer';
-    
+
     try {
-      // Skip database operations for demo users
-      if (!isDemoUser) {
-        // Store the match request for authenticated users
-        const { data: matchRequest, error: requestError } = await supabase
-          .from('smart_match_requests')
-          .insert({
-            customer_id,
-            equipment_type: request.equipment_type,
-            location: request.location,
-            urgency: request.urgency,
-            additional_requirements: request.additional_requirements || {},
-            status: 'processing'
-          })
-          .select()
-          .single();
-
-        if (requestError) {
-          console.log('Database insert failed, using demo mode:', requestError);
-        }
-
-        // Update request status (if database is available)
-        if (matchRequest) {
-          const matches = this.getMockMatches(request);
-          await supabase
-            .from('smart_match_requests')
-            .update({
-              status: 'completed',
-              matched_vendors: matches as any
-            })
-            .eq('id', matchRequest.id);
-        }
+      if (is_demo) {
+        const matches = this.getMockMatches(request);
+        return {
+          request_id: 'demo-request',
+          total_matches: matches.length,
+          matches: matches.slice(0, 4),
+          processing_time_ms: Date.now() - startTime,
+          location_center: this.getLocationCoordinates(request.location)
+        };
       }
 
-      // Get mock matches (same for demo and authenticated users for now)
-      const matches = this.getMockMatches(request);
-      const processingTime = Date.now() - startTime;
+      // Authenticated production user: store the request, return no mock results
+      const { data: matchRequest, error: requestError } = await supabase
+        .from('smart_match_requests')
+        .insert({
+          customer_id,
+          equipment_type: request.equipment_type,
+          location: request.location,
+          urgency: request.urgency,
+          additional_requirements: request.additional_requirements || {},
+          status: 'processing'
+        })
+        .select()
+        .single();
+
+      if (requestError) {
+        console.error('SmartMatch: failed to store request', requestError);
+      }
+
+      if (matchRequest) {
+        await supabase
+          .from('smart_match_requests')
+          .update({ status: 'completed', matched_vendors: [] })
+          .eq('id', matchRequest.id);
+      }
 
       return {
-        request_id: isDemoUser ? 'demo-request' : 'request-' + Date.now(),
-        total_matches: matches.length + 15, // Simulate more matches in the system
-        matches: matches.slice(0, 4), // Show top 4 matches
-        processing_time_ms: processingTime,
+        request_id: 'request-' + Date.now(),
+        total_matches: 0,
+        matches: [],
+        processing_time_ms: Date.now() - startTime,
         location_center: this.getLocationCoordinates(request.location)
       };
 
     } catch (error) {
       console.error('SmartMatch processing error:', error);
-      
-      // Fallback to demo mode
-      const matches = this.getMockMatches(request);
-      const processingTime = Date.now() - startTime;
-
       return {
-        request_id: 'demo-request',
-        total_matches: matches.length + 15,
-        matches: matches.slice(0, 4),
-        processing_time_ms: processingTime,
+        request_id: 'request-' + Date.now(),
+        total_matches: 0,
+        matches: [],
+        processing_time_ms: Date.now() - startTime,
         location_center: this.getLocationCoordinates(request.location)
       };
     }

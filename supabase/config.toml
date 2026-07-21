@@ -1,1 +1,4 @@
-project_id = "hwiuwggkduwoklvrjish"
+project_id = "encqbibzgoarvtcivgra"
+
+[functions.rfq-transition]
+verify_jwt = false

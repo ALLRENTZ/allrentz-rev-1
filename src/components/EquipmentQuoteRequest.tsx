@@ -8,11 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent } from '@/components/ui/card';
-import { CalendarIcon, MapPin, Clock, DollarSign, CheckCircle } from 'lucide-react';
+import { CalendarIcon, MapPin, DollarSign, CheckCircle } from 'lucide-react';
 import { format, addDays, differenceInDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { requireOperationalProfile } from '@/lib/operationalAuthority';
 
 interface Equipment {
   id: string;
@@ -40,119 +41,101 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
   const [specialRequirements, setSpecialRequirements] = useState('');
   const [loading, setLoading] = useState(false);
   const [quoteGenerated, setQuoteGenerated] = useState(false);
-  const { user } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   if (!equipment) return null;
 
   const totalDays = startDate && endDate ? differenceInDays(endDate, startDate) + 1 : 0;
   const subtotal = totalDays * equipment.daily_rate;
-  const deliveryFee = 150;
-  const taxes = subtotal * 0.08;
-  const totalAmount = subtotal + deliveryFee + taxes;
 
   const handleRequestQuote = async () => {
     if (!user || !startDate || !endDate) return;
 
+    if (!requireOperationalProfile({ user, authLoading, profile, toast })) {
+      return;
+    }
+
     setLoading(true);
-    
+
     try {
-      // Use type assertion temporarily until types are properly generated
-      const { error } = await (supabase as any)
+      // Step 1: INSERT draft rental_request and capture row ID
+      const { data: insertData, error: insertError } = await (supabase as any)
         .from('rental_requests')
         .insert({
           customer_id: user.id,
           equipment_id: equipment.id,
           start_date: format(startDate, 'yyyy-MM-dd'),
           end_date: format(endDate, 'yyyy-MM-dd'),
-          total_amount: totalAmount,
           delivery_address: deliveryAddress,
-          special_requirements: specialRequirements,
-          status: 'quoted',
-          quote_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-        });
+          special_requirements: specialRequirements
+        })
+        .select('id')
+        .single();
 
-      if (error) throw error;
+      if (insertError) throw insertError;
+
+      // Step 2: Transition draft → submitted via Edge Function gate
+      const { error: transitionError } = await supabase.functions.invoke('rfq-transition', {
+        body: { rfq_id: insertData.id, new_status: 'submitted' }
+      });
+
+      if (transitionError) {
+        console.error('Transition failed:', transitionError);
+        toast({
+          title: "Request saved as draft",
+          description: "Request saved as draft but submission failed. Please try again from your dashboard.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       setQuoteGenerated(true);
-      
+
       toast({
-        title: "Quote Generated!",
-        description: "Your quote is ready. Valid for 24 hours.",
+        title: "Request Submitted",
+        description: "Your rental request has been received. A vendor will follow up with a quote.",
       });
     } catch (error) {
-      console.error('Error generating quote:', error);
+      console.error('Error submitting request:', error);
       toast({
-        title: "Quote Generated!",
-        description: "Your quote is ready. Valid for 24 hours.",
+        title: "Request failed",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
       });
-      setQuoteGenerated(true);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
-  };
-
-  const handleAcceptQuote = () => {
-    toast({
-      title: "Quote Accepted!",
-      description: "Your rental is being processed. You'll receive updates via email.",
-    });
-    onOpenChange(false);
-    setQuoteGenerated(false);
   };
 
   if (quoteGenerated) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={(open) => { if (!open) setQuoteGenerated(false); onOpenChange(open); }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
-              <span>Quote Ready</span>
+              <span>Request Submitted</span>
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Equipment Rental</span>
-                    <span className="font-medium">${subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Delivery & Pickup</span>
-                    <span className="font-medium">${deliveryFee.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Taxes & Fees</span>
-                    <span className="font-medium">${taxes.toFixed(2)}</span>
-                  </div>
-                  <div className="border-t pt-2">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold">Total Amount</span>
-                      <span className="font-bold text-lg text-allrentz-red">${totalAmount.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <p className="text-sm text-gray-600">
+              Your rental request for <span className="font-medium">{equipment.title}</span> has been received.
+              Your request has been submitted for vendor review.
+            </p>
 
-            <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-              <p className="text-sm text-green-800">
-                <Clock className="inline h-4 w-4 mr-1" />
-                Quote valid for 24 hours • Instant approval available
-              </p>
+            <div className="space-y-1 text-sm text-gray-600">
+              <p><span className="font-medium">Dates:</span> {startDate ? format(startDate, 'PPP') : ''} – {endDate ? format(endDate, 'PPP') : ''}</p>
+              <p><span className="font-medium">Delivery:</span> {deliveryAddress}</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" onClick={() => setQuoteGenerated(false)}>
-                Modify Quote
-              </Button>
-              <Button onClick={handleAcceptQuote} className="bg-allrentz-red hover:bg-red-700">
-                Accept Quote
-              </Button>
-            </div>
+            <Button
+              onClick={() => { onOpenChange(false); setQuoteGenerated(false); }}
+              className="w-full bg-allrentz-red hover:bg-red-700"
+            >
+              Close
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -160,12 +143,12 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(open) => { if (!open) setQuoteGenerated(false); onOpenChange(open); }}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Request Quote - {equipment.title}</DialogTitle>
         </DialogHeader>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column - Form */}
           <div className="space-y-4">
@@ -192,7 +175,7 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
                   </PopoverContent>
                 </Popover>
               </div>
-              
+
               <div className="space-y-2">
                 <Label>End Date</Label>
                 <Popover>
@@ -241,11 +224,11 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
             </div>
           </div>
 
-          {/* Right Column - Quote Summary */}
+          {/* Right Column - Request Summary */}
           <div className="space-y-4">
             <Card>
               <CardContent className="p-4">
-                <h3 className="font-semibold mb-3">Quote Summary</h3>
+                <h3 className="font-semibold mb-3">Request Summary</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Daily Rate:</span>
@@ -259,20 +242,6 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
                     <span>Equipment Subtotal:</span>
                     <span>${subtotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Delivery & Pickup:</span>
-                    <span>${deliveryFee.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Taxes & Fees:</span>
-                    <span>${taxes.toFixed(2)}</span>
-                  </div>
-                  <div className="border-t pt-2 mt-2">
-                    <div className="flex justify-between font-semibold">
-                      <span>Estimated Total:</span>
-                      <span className="text-allrentz-red">${totalAmount.toFixed(2)}</span>
-                    </div>
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -284,12 +253,12 @@ const EquipmentQuoteRequest: React.FC<EquipmentQuoteRequestProps> = ({
               </p>
             </div>
 
-            <Button 
-              onClick={handleRequestQuote} 
-              disabled={loading || !startDate || !endDate || !deliveryAddress}
+            <Button
+              onClick={handleRequestQuote}
+              disabled={loading || !startDate || !endDate || !deliveryAddress || authLoading || (!!user && !profile)}
               className="w-full bg-allrentz-red hover:bg-red-700"
             >
-              {loading ? 'Generating Quote...' : 'Get Instant Quote'}
+              {loading ? 'Submitting...' : 'Submit Request'}
             </Button>
           </div>
         </div>

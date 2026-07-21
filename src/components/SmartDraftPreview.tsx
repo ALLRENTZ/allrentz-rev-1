@@ -72,7 +72,7 @@ const SmartDraftPreview = ({ draftData, onBack, onDraftCreated }: SmartDraftPrev
           duration_days: draftData.durationDays,
           site_requirements: draftData.siteRequirements,
           special_instructions: draftData.specialInstructions,
-          matched_vendor_id: generatedDraft.matchedVendorId,
+          matched_vendor_id: null,
           matched_vendor_name: generatedDraft.matchedVendorName,
           matched_vendor_location: generatedDraft.matchedVendorLocation,
           estimated_daily_rate: editableRates.dailyRate,

@@ -16,6 +16,7 @@ interface UserProfile {
   status: string | null;
   onboarding_completed: boolean | null;
   profile_completion_score: number | null;
+  is_demo: boolean;
 }
 
 interface AuthContextType {
@@ -43,14 +44,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [showDemoTour, setShowDemoTour] = useState(false);
   const { toast } = useToast();
 
-  const refreshProfile = async () => {
-    if (!user) return;
-    
+  const fetchProfileForUser = async (authUser: User) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', authUser.id)
         .single();
 
       if (error) throw error;
@@ -58,6 +57,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
+  };
+
+  const refreshProfile = async () => {
+    if (!user) return;
+    await fetchProfileForUser(user);
   };
 
   const signIn = async (email: string, password: string) => {
@@ -101,26 +105,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         demoCredentials[type].password
       );
 
-      // If sign in fails, create the demo account
       if (signInError) {
-        const { error: signUpError } = await supabase.auth.signUp({
-          email: demoCredentials[type].email,
-          password: demoCredentials[type].password,
-          options: {
-            data: {
-              full_name: type === 'customer' ? 'Pat - Refinery' : 'Pat-Rentals',
-              role: type,
-            },
-            emailRedirectTo: `${window.location.origin}/`
-          }
+        toast({
+          title: "Demo login failed",
+          description: "Please try again or contact support.",
+          variant: "destructive",
         });
-
-        if (signUpError) {
-          console.error('Demo signup error:', signUpError);
-        } else {
-          // For demo purposes, sign in immediately after signup
-          await signIn(demoCredentials[type].email, demoCredentials[type].password);
-        }
+        return;
       }
 
       // Show demo tour after successful login
@@ -152,9 +143,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Defer profile fetch to avoid potential issues
           setTimeout(() => {
-            refreshProfile();
+            fetchProfileForUser(session.user);
           }, 0);
         } else {
           setProfile(null);
@@ -171,10 +161,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (session?.user) {
         setTimeout(() => {
-          refreshProfile();
+          fetchProfileForUser(session.user);
         }, 0);
       }
-      
+
       setLoading(false);
     });
 
