@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { HardHat, Zap, Truck, ArrowRight, Shield, Clock, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getDashboardPathForRole } from '@/lib/routeAuthority';
 
 const AuthPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -23,10 +24,7 @@ const AuthPage: React.FC = () => {
 
   if (user) {
     if (!profile) return null;
-    if (profile.role_type === 'vendor') {
-      return <Navigate to="/vendor-dashboard" replace />;
-    }
-    return <Navigate to="/customer-dashboard" replace />;
+    return <Navigate to={getDashboardPathForRole(profile.role_type)} replace />;
   }
 
   const handleSignIn = async () => {

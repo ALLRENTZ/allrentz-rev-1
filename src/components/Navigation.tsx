@@ -5,6 +5,7 @@ import { Menu, X, HardHat, User, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import LoginModal from './LoginModal';
 import { Button } from '@/components/ui/button';
+import { getDashboardPathForRole } from '@/lib/routeAuthority';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +21,12 @@ const Navigation = () => {
   const { user, profile, signOut } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
+  const dashboardPath = profile ? getDashboardPathForRole(profile.role_type) : '/';
+  const dashboardLabel = profile?.role_type === 'vendor'
+    ? 'Vendor Portal'
+    : profile?.role_type === 'admin' || profile?.role_type === 'manager'
+      ? 'Operations Center'
+      : 'Customer Portal';
 
   return (
     <>
@@ -50,24 +57,14 @@ const Navigation = () => {
               >
                 Browse Equipment
               </Link>
-              {user && profile?.role_type === 'customer' && (
+              {user && profile && (
                 <Link
-                  to="/customer-dashboard"
+                  to={dashboardPath}
                   className={`text-sm font-medium transition-colors ${
-                    isActive('/customer-dashboard') ? 'text-allrentz-red' : 'text-gray-700 hover:text-allrentz-red'
+                    isActive(dashboardPath) ? 'text-allrentz-red' : 'text-gray-700 hover:text-allrentz-red'
                   }`}
                 >
-                  Customer Portal
-                </Link>
-              )}
-              {user && profile?.role_type === 'vendor' && (
-                <Link
-                  to="/vendor-dashboard"
-                  className={`text-sm font-medium transition-colors ${
-                    isActive('/vendor-dashboard') ? 'text-allrentz-red' : 'text-gray-700 hover:text-allrentz-red'
-                  }`}
-                >
-                  Vendor Portal
+                  {dashboardLabel}
                 </Link>
               )}
             </div>
@@ -84,7 +81,7 @@ const Navigation = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem asChild>
-                      <Link to={profile?.role_type === 'vendor' ? '/vendor-dashboard' : '/customer-dashboard'}>Dashboard</Link>
+                      <Link to={dashboardPath}>Dashboard</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link to="/customer-onboarding">Request Quote</Link>
@@ -148,22 +145,13 @@ const Navigation = () => {
                 >
                   Browse Equipment
                 </Link>
-                {user && profile?.role_type === 'customer' && (
+                {user && profile && (
                   <Link
-                    to="/customer-dashboard"
+                    to={dashboardPath}
                     className="text-sm font-medium text-gray-700 hover:text-allrentz-red px-4 py-2"
                     onClick={() => setIsOpen(false)}
                   >
-                    Customer Portal
-                  </Link>
-                )}
-                {user && profile?.role_type === 'vendor' && (
-                  <Link
-                    to="/vendor-dashboard"
-                    className="text-sm font-medium text-gray-700 hover:text-allrentz-red px-4 py-2"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    Vendor Portal
+                    {dashboardLabel}
                   </Link>
                 )}
                 <div className="px-4 py-2 space-y-2">
