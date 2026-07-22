@@ -2,7 +2,7 @@
 
 **Status:** Active
 **Authority:** Subordinate to `/ALLRENTZ_CONSTITUTION.md` and `/MASTER_PRIORITY_BOARD.md`
-**Last reviewed:** 2026-06-29
+**Last reviewed:** 2026-07-21
 
 This folder is the **controlled** documentation layer for the ALLRENTZ engineering source of truth. It is version-controlled in git alongside the code it describes.
 
@@ -40,6 +40,7 @@ docs/
 ### doctrine/
 | File | Status | Authority source |
 |---|---|---|
+| `ALLRENTZ_ARCHITECTURAL_FOUNDATION.md` | Active | subordinate to `/ALLRENTZ_CONSTITUTION.md`; controls product and engineering implementation decisions |
 | `ALLRENTZ_HIGH_CONTROL_AGENT_GOVERNANCE.md` | Active | subordinate to `/ALLRENTZ_CONSTITUTION.md`; referenced from `/CLAUDE.md` |
 
 ### product/
