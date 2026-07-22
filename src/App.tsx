@@ -58,7 +58,16 @@ function App() {
                     <Route path="/enterprise-onboarding" element={<EnterpriseOnboarding />} />
                     <Route path="/smartmatch-demo" element={<SmartMatchDemo />} />
                     <Route path="/smart-draft" element={<SmartDraft />} />
-                    <Route path="/operations-center" element={<OperationsCenter />} />
+                    <Route
+                      path="/operations-center"
+                      element={
+                        <ProtectedRoute requiredRoles={['admin', 'manager'] as const}>
+                          <SecurityProvider>
+                            <OperationsCenter />
+                          </SecurityProvider>
+                        </ProtectedRoute>
+                      }
+                    />
                     <Route path="/security-center" element={<SecurityProvider><SecurityCenter /></SecurityProvider>} />
                     <Route path="/delivery-tracking" element={<DeliveryTracking />} />
                     <Route path="/documents-management" element={<DocumentsManagement />} />
