@@ -8,12 +8,12 @@ const DASHBOARD_PATHS: Record<UserRole, string> = {
 };
 
 export function isRoleAllowed(
-  role: UserRole,
+  role: UserRole | null | undefined,
   requiredRoles: readonly UserRole[],
 ): boolean {
-  return requiredRoles.includes(role);
+  return role !== null && role !== undefined && requiredRoles.includes(role);
 }
 
-export function getDashboardPathForRole(role: UserRole): string {
-  return DASHBOARD_PATHS[role];
+export function getDashboardPathForRole(role: UserRole | null | undefined): string {
+  return role === null || role === undefined ? '/' : DASHBOARD_PATHS[role];
 }

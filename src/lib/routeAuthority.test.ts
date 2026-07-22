@@ -17,4 +17,11 @@ describe('operations route authority', () => {
     expect(getDashboardPathForRole('admin')).toBe('/operations-center');
     expect(getDashboardPathForRole('manager')).toBe('/operations-center');
   });
+
+  it('fails closed when the profile role is missing', () => {
+    expect(isRoleAllowed(null, operationsRoles)).toBe(false);
+    expect(isRoleAllowed(undefined, operationsRoles)).toBe(false);
+    expect(getDashboardPathForRole(null)).toBe('/');
+    expect(getDashboardPathForRole(undefined)).toBe('/');
+  });
 });
