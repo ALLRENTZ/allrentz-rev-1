@@ -1,99 +1,173 @@
 # ALLRENTZ Autonomous Execution State
 
-Last updated: 2026-07-20
+Last updated: 2026-07-21 (America/Chicago)
 
-## Repository
+## Repository Baseline
 
 - Root: `C:\Users\prmcg\allrentz-main`
-- Branch: `reconcile/main-into-stabilization-2026-07-10`
-- HEAD: `ddd82cd`
-- Status: local only, no upstream, not pushed
+- Remote: `ALLRENTZ/allrentz-rev-1`
+- Current reconciliation branch: `docs/reconcile-execution-state-2026-07-21`
+- Current `main` baseline: `5562b635b7b33b06de0a0ebb239ce27420d264d6`
+- Current `main` CI: PASS
+- Production deployment: NOT RUN
+- Remote Supabase access: NOT RUN
+
+This document records repository evidence. It does not replace
+`/ALLRENTZ_CONSTITUTION.md`, `/MASTER_PRIORITY_BOARD.md`, or
+`docs/doctrine/ALLRENTZ_ARCHITECTURAL_FOUNDATION.md`.
 
 ## Current Phase
 
-Phase 1 is in progress.
+Phase 1 stabilization is complete and closed. It must not be reopened without
+new evidence of a current defect.
 
-Current work item:
+The stabilization, authority-hardening, dependency-remediation, architectural
+foundation, and operations-route continuity work are merged into `main`.
+Feature development has not been authorized merely by those merges.
 
-The Supabase publishable and secret API-key migration for the `rfq-transition` Edge Function is complete, locally verified, and committed. The next bounded item is production dependency-advisory remediation.
+## Merged Foundation
 
-## Completed and Committed
+### PR #2 — Phase 1 stabilization and authority hardening
 
-- Environment hygiene completed: `561157d`
-- Lockfile resynchronized: `4e8f382`
-- Supabase generated types repaired: `09e2dc8`
-- PowerShell verification handling repaired: `37f9e0f`
-- Auth, RLS, membership, vendor authority, and RFQ transition verification recorded as 144/144 PASS: `3a15979`
-- Supabase API-key migration, Vitest coverage, local key bridge, verification hardening, and Phase 1 CI workflow committed after full local verification: `ddd82cd`
+- Merge commit: `1f3d177883265f8bd01602c20b25932e9958de28`
+- API-key migration and credential-safe local fallback completed
+- UTF-8-without-BOM local function environment generation completed
+- membership, organization isolation, RFQ transition, invitation, vendor
+  authority, quote submission, audit, and correlation enforcement hardened
+- direct client updates to vendor quote authority fields revoked
+- vendor quote submission moved to a backend-authoritative path
+- high-severity production dependency remediation completed
 
-## Current Uncommitted Work
+### PR #4 — ALLRENTZ architectural foundation
 
-No Phase 1 migration changes remain uncommitted. The remaining dirty-tree files are intentionally excluded handoff documentation, local-only Gate 2 fixtures, and the pre-existing `CLAUDE.md` working-tree entry.
+- Merge commit: `5bd61e9d94f79ab04940987b09abbda0d3dfa6b0`
+- Active doctrine added and indexed at
+  `docs/doctrine/ALLRENTZ_ARCHITECTURAL_FOUNDATION.md`
+- Governing rule established:
+  `Object → Authorized Action → State Change → Audit Event → Next Step`
+- fail-closed, tenant-scoped, backend-authoritative, atomic,
+  concurrency-safe, auditable execution requirements established
 
-## Current Verification
+### PR #3 — operations-center role continuity
 
-- Unit tests: PASS, 19/19
-- Typecheck: PASS
-- Production build: PASS via standard `npm run build`; 2,661 modules transformed in 6.54 seconds with only non-blocking Browserslist-age and chunk-size warnings
-- Lint: PASS, 0 errors and 17 warnings
-- API-key fallback selection: PASS by unit test
-- Local key bridge: PASS with synthetic local-only values; emitted only the three `ALLRENTZ_LOCAL_*` function variables and set the two legacy session variables
-- Generated function env file: PASS; UTF-8 without BOM and exactly one final CRLF
-- API-key migration end-to-end verification: PASS, 6/6
-- Membership verification: PASS, 34/34
-- RFQ transition verification: PASS, 95/95
-- Vendor authority verification: PASS, 9/9
-- Local runtime total for the migration plus the three affected authority suites: PASS, 144/144
-- Edited PowerShell verification scripts: syntax PASS
-- Local JWT compatibility: PASS with gateway verification disabled for `rfq-transition`; the handler still requires a Bearer token and validates it through `auth.getUser()`
-- `npm audit`: 66 total advisories (5 low, 34 moderate, 27 high, 0 critical); production-only audit: 40 total (29 moderate, 11 high, 0 critical)
-- CI workflow: YAML added; hosted execution NOT RUN because push and remote Actions execution are forbidden
+- Merge commit: `5562b635b7b33b06de0a0ebb239ce27420d264d6`
+- operations center restricted in the interface to authenticated admin and
+  manager profiles
+- customer, vendor, admin, and manager dashboard routing centralized
+- missing or null profile roles fail closed to the public root
+- this remains interface continuity, not a substitute for backend authority
+
+## Verification Baseline
+
+### Local verification
+
+- API-key migration verification: PASS, 6/6
+- membership and authorization verification: PASS, 34/34
+- RFQ lifecycle and database enforcement verification: PASS, 95/95
+- vendor authority verification: PASS, 9/9
+- Phase 1 local Supabase runtime total recorded before merge: PASS, 144/144
+- operations-route unit suite after fail-closed correction: PASS, 22/22
+- TypeScript after operations-route correction: PASS
+- lint after operations-route correction: PASS, 0 errors and 17 existing warnings
+- production build after operations-route correction: PASS, 2,662 modules transformed
+- `git diff --check` for each merged task: PASS
+
+The 17 lint warnings, Browserslist-age warning, and bundle-size warning remain
+tracked quality work. They did not create a verified failure in the merged
+foundation changes and were not treated as merge blockers.
+
+### Hosted GitHub CI
+
+- `main` at `1f3d177`: PASS, run `29868048209`
+- `main` at `5bd61e9`: PASS, run `29881706338`
+- PR #3 updated head `e64f9f0`: PASS against base `5bd61e9`, run `29882068371`
+- current `main` at `5562b63`: PASS, run `29882201567`
+
+Hosted CI includes clean dependency installation, unit tests, TypeScript,
+lint, and production build. Supabase Preview was skipped on documentation and
+frontend-only PRs and was classified as not a defect for those scopes.
+
+## Dependency Security State
+
+The controlled remediation record is
+`docs/DEPENDENCY_SECURITY_REMEDIATION.md`.
+
+As recorded on 2026-07-20:
+
+- production baseline: 40 findings — 29 moderate, 11 high, 0 critical
+- production post-remediation: 1 finding — 1 moderate, 0 high, 0 critical
+- all 11 high-severity production package nodes and 15 associated high
+  advisories were removed
+- the remaining production finding is the separately scoped moderate
+  `GHSA-968p-4wvh-cqc8` advisory in `@babel/runtime@7.25.9`
+- the full development-inclusive audit retained dev/build-only findings that
+  were explicitly outside the production-high remediation scope
+
+These counts are time-stamped evidence, not a permanent guarantee. A future
+dependency task must run a fresh audit before making current claims.
 
 ## Current Blocker
 
-The `SUPABASE_*`/`ALLRENTZ_LOCAL_*` fallback defect and UTF-8 BOM defect are corrected. The user-started local function server allowed the full runtime verification to complete successfully despite this Codex sandbox remaining unable to access `//./pipe/docker_engine` directly.
+There is no verified repository, CI, API-key migration, or Phase 1 authority
+blocker in the merged baseline.
 
-There is no remaining local blocker for the API-key migration. Hosted CI execution remains intentionally blocked until remote execution is authorized.
+This statement does not imply production readiness or deployment approval.
+No production deployment, production access, or remote Supabase validation was
+performed as part of this reconciliation.
 
-Production variables remain primary:
+## Next Bounded Foundation Review
 
-- `SUPABASE_URL`
-- `SUPABASE_PUBLISHABLE_KEYS`
-- `SUPABASE_SECRET_KEYS`
+The next evidence-based foundation item is a **profile identity and role data
+contract review**.
 
-Local function serving must use fallback-only variables:
+Reason:
 
-- `ALLRENTZ_LOCAL_SUPABASE_URL`
-- `ALLRENTZ_LOCAL_SUPABASE_PUBLISHABLE_KEYS`
-- `ALLRENTZ_LOCAL_SUPABASE_SECRET_KEYS`
+- generated Supabase types permit `profiles.role_type` to be null
+- the committed profile table also permits null `role_type` and `status`
+- the current frontend profile interface assumes `role_type` is always a
+  non-null `UserRole`
+- PR #3 now fails closed when a role is missing, but the underlying database,
+  generated-type, and application contracts remain inconsistent
 
-The Edge Function now prefers the production variables and uses the local variables only when the production variables are absent.
+The review must define, before implementation:
 
-## Exact Next Action
+1. the profile object and authoritative source;
+2. valid role and account-status values, including null and unknown handling;
+3. assignment and modification authority for admin and manager roles;
+4. organization membership and tenant relationships;
+5. backfill and migration requirements for existing rows;
+6. backend, RLS, generated-type, and frontend contract changes;
+7. positive and negative tests for missing, inactive, unauthorized, and
+   cross-organization identities; and
+8. required audit evidence for privileged role changes.
 
-Treat the 11 high-severity production dependency advisories as a separate bounded remediation item. Do not run a broad automatic audit fix or take a breaking major-version upgrade without an independently reviewed plan.
-
-## Remaining Phase 1 Work
-
-- Treat the 11 high-severity production dependency advisories as a separate bounded dependency-remediation item; do not run a broad automatic audit fix
-- Run the CI workflow after remote execution is authorized
+This is initially a bounded read-only contract review. It does not authorize a
+migration, RLS change, role reassignment, production query, or deployment.
+Any resulting authority or schema change requires an independently reviewed
+plan and explicit human approval.
 
 ## Safety Boundary
 
-- Repository-local work only
-- Localhost and `127.0.0.1` only
-- No production access
-- No remote Supabase access
-- No key values printed, logged, or committed
-- No push or merge
-- No reset, clean, or history rewrite
-- Do not disable legacy Supabase keys
-- Do not modify `MASTER_PRIORITY_BOARD.md`
+- work directly in `C:\Users\prmcg\allrentz-main`
+- preserve intentionally excluded local artifacts
+- do not inspect or reuse PR #1
+- do not modify `/MASTER_PRIORITY_BOARD.md`
+- do not expose credentials or generated local environment values
+- no production access, production deployment, or remote Supabase access
+- no destructive Git operations or history rewriting
+- fetch, branch updates, pushes, PR state changes, and merges require explicit
+  authorization for their stated scope
+- backend authority, RLS, organization isolation, workflow enforcement, audit,
+  and correlation behavior must fail closed
 
 ## Working Tree
 
-The working tree is not clean.
+The working tree intentionally remains dirty outside this reconciliation:
 
-The API-key migration, Vitest, lint/type correction, verification-script hardening, and CI workflow are fully locally verified and committed in `ddd82cd`.
+- modified: `CLAUDE.md`
+- untracked: `AGENTS.md`
+- untracked: `docs/allrentz-handoff/`
+- untracked: `supabase/gate2_setup.sql`
+- untracked: `supabase/gate2_tests.ps1`
 
-Unrelated handoff documents and local-only Gate 2 fixtures remain untouched.
+Those artifacts are excluded from this task and remain byte-for-byte unchanged.
