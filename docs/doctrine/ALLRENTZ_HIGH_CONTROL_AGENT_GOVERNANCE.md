@@ -3,8 +3,8 @@ title: ALLRENTZ High-Control Agent Governance
 domain: doctrine
 status: active
 authority: subordinate to /ALLRENTZ_CONSTITUTION.md; governs agent (Claude) conduct
-related: docs/engineering/p7-verify-doctrine.md, docs/engineering/ai-governance.md
-last_reviewed: 2026-06-29
+related: docs/doctrine/ALLRENTZ_ARCHITECTURAL_FOUNDATION.md, docs/engineering/p7-verify-doctrine.md, docs/engineering/ai-governance.md
+last_reviewed: 2026-07-21
 ---
 
 # ALLRENTZ High-Control Agent Governance
@@ -82,5 +82,6 @@ No layer may borrow the authority of the layer above it. AI recommendations are 
 ## Relationship to Other Doctrine
 
 - **`/ALLRENTZ_CONSTITUTION.md`** — root authority. AI is layer 10 of the operational authority order; AI outputs are never authoritative by default.
+- **`docs/doctrine/ALLRENTZ_ARCHITECTURAL_FOUNDATION.md`** — the controlling product and engineering evaluation contract for business objects, data integrity, tenant-scoped authority, state, evidence, audit, and next actions.
 - **`docs/engineering/p7-verify-doctrine.md`** — the runtime harness: full action-classification table, tool permission boundaries, Verification Failure Artifacts, and uncertainty-blocks-implementation rules.
 - **`docs/engineering/ai-governance.md`** — how AI/model output is constrained inside product workflows.
