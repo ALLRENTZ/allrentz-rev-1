@@ -14,11 +14,13 @@ There are two storage homes and three authority classes for ALLRENTZ knowledge. 
 
 | Class | Location | Role | Rules |
 |---|---|---|---|
-| **Raw archive** | OneDrive — `Documentos\ALLRENTZ`, `Documentos\Claude\Projects\ALLRENTZ – Marketplace Strategy & Development`, `Documentos\ALLRENTZ Enterprise Platform…` | Unfiltered history: every draft, audit, blueprint, pitch, `.docx`. Nothing is deleted. | Append-only. Never the source of truth. Not loaded into the repo. |
+| **Raw archive** | OneDrive — `Documentos\ALLRENTZ`, `Documentos\Claude\Projects\ALLRENTZ – Marketplace Strategy & Development`, `Documentos\ALLRENTZ Enterprise Platform…` | Unfiltered historical source material: drafts, audits, blueprints, pitches, and `.docx` files. Historical material is preserved by default. | Preservation policy is append-oriented; technical immutability is not guaranteed. Never the source of truth. Not loaded into the repo. |
 | **Controlled current** | this repo — `allrentz-main/docs/`, excluding `docs/archive/` | Curated doctrine, architecture, specifications, and current product, engineering, and strategy references. Markdown only. | Authority depends on the document's declared governance state and the precedence contract below. Candidates and drafts remain controlled but non-binding. Every file is indexed. |
 | **Controlled non-authoritative archive** | this repo — `allrentz-main/docs/archive/` | Migrated historical material retained for traceability and comparison. | Indexed and version-controlled, but never current doctrine, architecture, implementation authority, or product truth. |
 
 **Rule:** repository location and indexing are necessary for controlled authority, but they are not sufficient. A document carries authority only to the extent granted by its declared governance state and the precedence contract below. Files in either archive remain non-authoritative.
+
+Secrets, credentials, malware, unlawfully retained personal information, legally required deletions, and material governed by an approved security or records-disposition Action may be quarantined or removed. The disposition must preserve an auditable record without retaining the prohibited content itself.
 
 ## Authority precedence
 
@@ -72,7 +74,7 @@ docs/
 | `p7-verify-doctrine.md` | Draft | derives from `/ALLRENTZ_CONSTITUTION.md` (Formal Workflow Safety and Advanced Verification Doctrine) — P7 = P7-VERIFY harness workstream |
 | `ai-governance.md` | Draft | derives from `/ALLRENTZ_CONSTITUTION.md` (AI Governance Rule) |
 | `stage-2-authority-architecture-specification.md` | Active / Ratified v1.0 — bounded inventory/planning only; implementation separately authorized | derives from `docs/doctrine/ALLRENTZ_ARCHITECTURAL_FOUNDATION.md` and verified Stage 1 containment |
-| `stage-2i-stage-2a-principal-authority-implementation-specification.md` | Active / Approved v0.2 — Stage 2I/2A implementation-planning baseline; no implementation authorized | implements the ratified `ALLRENTZ-AUTH-001` architecture without superseding it |
+| `stage-2i-stage-2a-principal-authority-implementation-specification.md` | Active / Approved v0.3 — corrected Stage 2I/2A implementation-planning baseline; no implementation authorized | implements the ratified `ALLRENTZ-AUTH-001` architecture without superseding it |
 
 ### strategy/
 | File | Status | Source in raw archive |

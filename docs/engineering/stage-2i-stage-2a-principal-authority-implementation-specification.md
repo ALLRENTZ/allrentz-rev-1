@@ -2,13 +2,13 @@
 title: ALLRENTZ Stage 2I and Stage 2A Principal Authority Implementation Specification
 domain: engineering
 specification_id: ALLRENTZ-AUTH-002
-revision: 0.2
+revision: 0.3
 lifecycle_status: active
 governance_state: approved
 authorized_scope: implementation planning only; no schema, code, runtime, deployment, or production execution
 authorization_reference: ALLRENTZ Product Owner approval in the controlled Codex session on 2026-07-23
-decision_status: four policy decisions and the corrected Stage 2I implementation contract are incorporated; the canonicalization dependency, operational providers, custodians, approvers, and execution evidence remain pending
-validation_status: exact revision 0.2 documentation-only diff review passed; planning baseline approved
+decision_status: targeted implementation-contract corrections incorporated; canonicalize@3.0.0 tarball preflight passed, but dependency approval and a no-churn lockfile procedure remain pending
+validation_status: exact revision 0.3 documentation-only diff review passed; corrected planning baseline approved
 created_on: 2026-07-23
 approved_on: 2026-07-23
 approved_by: ALLRENTZ Product Owner
@@ -21,7 +21,7 @@ last_reviewed: 2026-07-23
 
 ## 1. Decision and authorization boundary
 
-This candidate converts the ratified `ALLRENTZ-AUTH-001` architecture into a bounded implementation plan for:
+This approved revision `0.3` corrects the locally committed revision `0.2` implementation-planning baseline and converts the ratified `ALLRENTZ-AUTH-001` architecture into a bounded implementation plan for:
 
 1. Stage 2I shadow authority initialization foundations; and
 2. Stage 2A principal-access expansion, cutover, and acceptance.
@@ -170,6 +170,8 @@ Required concepts:
 `unclassified` is a fail-closed classification state, not a third principal kind. An unclassified registry record has no assigned principal kind and cannot hold a human platform role, organization authority, or operational grant.
 
 Anonymous, demo, test, shared, imported, orphaned, service, scheduled, automated, and AI-controlled identities must be explicitly reconciled. They must never be inferred to be eligible humans from an email address, profile, name, metadata field, or existing role label.
+
+Authentication provenance is environment-scoped. The live identity mapping enforces one `auth_subject_reference` per environment through a uniqueness contract equivalent to `UNIQUE (environment_id, auth_subject_reference)`. An identical Auth UUID in local, preview, staging, and production represents separate identity evidence unless an explicit governed reconciliation links the principals. Email is mutable routing/contact data and never an immutable identity key.
 
 ### 5.2 Principal Access Record
 
@@ -326,18 +328,22 @@ Stage 2I creates no effective canonical platform grant. Until the approved cutov
 
 ### 5.8 Private authority schema and execution boundary
 
-Shadow authority objects belong in a non-exposed `authority_private` schema that is absent from the Data API exposed-schema configuration.
+Shadow authority tables, internal functions, and transition machinery belong in a non-exposed `authority_private` schema that is absent from the Data API exposed-schema configuration. API callers receive no `USAGE` on that schema.
 
 The implementation must:
 
-- revoke schema `USAGE`, direct table and sequence access, and broad/default function execution from `PUBLIC`, `anon`, `authenticated`, and `service_role`;
+- revoke private-schema `USAGE`, direct table and sequence access, and all private-function execution from `PUBLIC`, `anon`, `authenticated`, and `service_role`;
 - revoke unsafe default privileges for the actual object-creating role;
 - give `service_role` no direct table access to private authority objects;
-- selectively grant only the minimum `USAGE` and `EXECUTE` needed for exact controlled functions, which independently derive and validate the initiating principal, requested Action, current state, and object scope;
+- expose only narrowly scoped `SECURITY DEFINER` Action wrappers in an approved Data API schema; under the current file boundary that schema is `public`, and a dedicated `api` schema would require an explicit `supabase/config.toml` boundary amendment;
+- grant callers only `USAGE` on the approved exposed schema and `EXECUTE` on the exact wrapper signatures they require;
+- require each wrapper to derive and validate the initiating principal, requested Action, current state, and object scope before invoking fully qualified private machinery;
 - fully qualify object references;
 - use a hardened `search_path` containing only required trusted schemas followed by `pg_temp`;
 - revoke `PUBLIC` function execution in the same migration transaction; and
 - provide no generic actor-ID parameter or service-authority oracle.
+
+No ordinary caller receives private-schema `USAGE` merely to reach a function. Internal RLS integration must use a separately reviewed safe evaluator surface or another explicitly approved privilege pattern; it cannot silently reopen private-schema access. Stage 2I changes no RLS outcome and need not expose an ordinary-client Action wrapper.
 
 Every private object and function requires an explicit ownership outcome. A dedicated non-login owner is preferred only when verified local and hosted migration-role capabilities support it; role creation is not assumed or authorized by this candidate. The implementation preflight must record the feasible owner, creator, migration, and runtime-role matrix before SQL is written.
 
@@ -348,7 +354,7 @@ Authority history must survive deletion of an authentication identity. No foreig
 The identity link uses:
 
 - a nullable live `auth_user_id` reference with `ON DELETE SET NULL`;
-- a separate immutable `auth_subject_reference` suitable for provenance without containing a credential; and
+- a separate immutable `auth_subject_reference` suitable for provenance without containing a credential and unique only within its `environment_id`; and
 - `auth_identity_deleted_at` for the observed identity-loss event.
 
 During Stage 2I, Auth deletion makes future authentication impossible but does not invoke a canonical access transition, because shadow state is non-enforcing and Stage 2I is prohibited from restricting or disabling a principal. Stage 2A must define and verify the separate backend-controlled identity-loss Action before enforcement.
@@ -453,6 +459,12 @@ The manifest uses:
 
 There is exactly one canonical byte source. A pinned, vetted Node module performs canonicalization. PowerShell orchestrates file handling and hashing but never reconstructs, serializes, or text-normalizes the manifest. PostgreSQL receives the exact canonical bytes, recomputes SHA-256 over those bytes, validates the parsed envelope and approved compatibility versions, and never attempts to recreate RFC 8785 bytes from `jsonb`.
 
+The database transport is binary:
+
+> canonical manifest bytes → binary parameter (`bytea`) or strict base64 decoding into `bytea` → SHA-256 over that `bytea` → digest comparison → fatal UTF-8 decode and JSON/profile parsing
+
+Hashing an ordinary database `text` value, driver newline or encoding conversion, Unicode normalization, or JSON reserialization before digest verification is prohibited. If a driver cannot bind the raw bytes as `bytea`, it transmits strict base64 and the controlled database function decodes it exactly once. Parsing is permitted only after the received-byte digest matches the approved digest.
+
 The wrapper reads raw bytes and, in order:
 
 1. rejects a UTF-8 byte-order mark;
@@ -466,7 +478,7 @@ The wrapper reads raw bytes and, in order:
 
 The manifest is never manually edited after creation. Any semantic or byte change requires a new digest, nonce, expiration, approval records, and package.
 
-The restricted profile permits objects, arrays, strings, Booleans, `null`, and safe nonnegative integers only. It rejects floating-point values, negative zero, duplicate properties, malformed Unicode, lone surrogates, and implicit Unicode normalization. UUIDs, digests, timestamps, monetary values, and identifiers that may exceed the safe-integer range are strings. Every manifest declares a `canonicalization_profile_version`. Arrays retain their schema-defined order.
+The restricted profile permits objects, arrays, strings, Booleans, `null`, and nonnegative integers from `0` through `9,007,199,254,740,991` inclusive. It rejects floating-point values, negative zero, duplicate properties, malformed Unicode, lone surrogates, implicit Unicode normalization, and larger numeric literals. UUIDs, digests, timestamps, monetary values, and identifiers that may exceed the safe-integer range are strings. Every manifest declares a `canonicalization_profile_version`. Arrays retain their schema-defined order.
 
 Canonicalization is an executable compatibility contract, not merely an RFC reference. Shared, versioned conformance vectors must prove:
 
@@ -486,7 +498,9 @@ The tooling has two explicit modes:
 
 The test-vector set is digest-bound to the compatibility version and consumed by both modes. No implementation may normalize invalid input into an apparently valid manifest.
 
-`canonicalize@3.0.0` is the leading dependency candidate, not an approved dependency. Before any package or lockfile change, a bounded dependency decision must verify the exact version, license, dependency graph, install scripts, maintainer and release provenance, supported Node/module format, lockfile integrity, supply-chain characteristics, and all required vectors. Execution uses `npm ci` and imports the exact pinned module; package CLIs, `npx`, globally installed tools, and floating versions are prohibited. Rejecting or substituting the candidate reopens the proposed Stage 2I file boundary for explicit review.
+`canonicalize@3.0.0` is the leading dependency candidate, not an approved dependency. Before any package or lockfile change, a bounded dependency decision must verify the exact version, license, dependency graph, install scripts, maintainer and release provenance, supported Node/module format, lockfile integrity, supply-chain characteristics, published tarball contents, source-tag correspondence, and all required vectors. It may be added only as an exact development/governance dependency; frontend and production application code must not import it. Execution uses `npm ci` and imports the exact pinned module; package CLIs, `npx`, globally installed tools, floating versions, and automatic dependency upgrades are prohibited. Every later version change requires a fresh bounded review.
+
+The 2026-07-23 read-only preflight confirmed the published `3.0.0` tarball integrity, six-file contents, Apache-2.0 license, ESM export, Node `>=18` engine, absence of runtime/optional/peer dependencies, and absence of install lifecycle scripts. It did not approve the dependency: npm `11.6.0` lockfile-only simulation removed 27 unrelated optional/esbuild entries from the current lockfile. The package-manager procedure must be pinned or otherwise corrected so the reviewed lockfile delta is limited to the exact root declaration and canonicalize package entry. Any unrelated lockfile churn is a stop condition, not acceptable normalization.
 
 The protected package contains logical equivalents of:
 
@@ -891,6 +905,19 @@ On serialization failure, timeout, lock failure, expiration, digest mismatch, at
 - the retry uses a new transaction and revalidates every current condition; and
 - an exhausted retry budget stops for controlled review rather than weakening isolation or validation.
 
+Execution and verification are separate programs. The future `supabase/stage2a_cutover.ps1` executor:
+
+- defaults to dry-run and requires one explicit execution flag for an authority-changing run;
+- proves the exact target environment before accepting a manifest;
+- binds the approved raw manifest bytes without text conversion;
+- uses one transaction-capable database connection;
+- begins `SERIALIZABLE` before issuing any cutover query;
+- performs the complete lock, manifest, eligibility, mutation, event, obligation, consumption, and latch sequence through that single transaction;
+- stops on every mismatch and prints no credential, protected manifest content, approval evidence, or sensitive reason; and
+- never represents multiple independent REST, RPC, or shell database calls as one atomic transaction.
+
+`supabase/stage2a_cutover_verify.ps1` is a separate postcondition verifier. It may not perform the authority-changing cutover or silently repair a failed result.
+
 ## 12. Time, version, idempotency, and correlation
 
 ### 12.1 Time
@@ -1141,7 +1168,7 @@ Absence of a current Storage, workload, webhook, or scheduled-job path is record
 
 ## 15. Stage 2I future implementation file boundary
 
-Subject to separate implementation authorization **and approval of the exact canonicalization dependency**, the proposed Stage 2I boundary is exactly these 16 files:
+Subject to separate implementation authorization **and approval of the exact canonicalization dependency**, the proposed Stage 2I boundary is exactly these 17 files:
 
 - `supabase/migrations/20260723120000_stage2i_principal_authority_shadow.sql`
 - `supabase/migrations/20260723121000_stage2i_authority_compatibility_hooks.sql`
@@ -1152,6 +1179,7 @@ Subject to separate implementation authorization **and approval of the exact can
 - `supabase/stage2_authority_inventory.ps1`
 - `supabase/stage2_authority_manifest_verify.ps1`
 - `supabase/stage2i_shadow_verify.ps1`
+- `supabase/test_helpers/stage2_shadow_fixture_cleanup.ps1`
 - `supabase/key_migration_verify.ps1`
 - `supabase/profile_authority_verify.ps1`
 - `supabase/membership_verify.ps1`
@@ -1164,7 +1192,7 @@ No listed file is authorized by this documentation candidate.
 
 The migration names are provisional candidates derived from the current local migration order. Immediately before file creation, an authorized implementation preflight must re-check the exact branch, HEAD, complete migration ordering, and duplicate timestamp prefixes. Any required rename or additional migration reopens the exact boundary for review.
 
-The seven existing verification scripts enter the boundary only to preserve their current fixtures and assertions while adding shadow-object reconciliation. There is no broad fixture rewrite.
+The shared helper owns only the new Stage 2 shadow-fixture registration, exact affected-table reconciliation, dependency-ordered shadow cleanup, and cleanup-only recovery primitives. It accepts no arbitrary table name or SQL, validates every identifier and loopback/container precondition, and is loaded from an exact `$PSScriptRoot`-relative path. The seven existing verification scripts retain their current test-specific fixture and cleanup implementations; they enter the boundary only to preserve their existing assertions while invoking the common shadow reconciliation. There is no broad harness rewrite.
 
 `src/integrations/supabase/types.ts`, `supabase/config.toml`, Edge Functions, frontend files, existing migrations, untracked Gate 2 artifacts, `MASTER_PRIORITY_BOARD.md`, and intentionally excluded local artifacts are explicitly outside Stage 2I. The private schema is verified through catalog, privilege, function, trigger, and behavioral assertions—not browser-generated types. Generated types enter a later Stage 2A boundary only if an approved public safe-snapshot contract changes.
 
@@ -1190,6 +1218,7 @@ Subject to separate authorization after Stage 2I acceptance, the proposed Stage 
 - `src/lib/principalAccess.test.ts`
 - `src/integrations/supabase/types.ts`
 - `supabase/principal_access_verify.ps1`
+- `supabase/stage2a_cutover.ps1`
 - `supabase/stage2a_cutover_verify.ps1`
 
 `src/components/SmartDraftStatusTracker.tsx` enters the authorized boundary only if the controlled Realtime test requires a change.
@@ -1253,7 +1282,7 @@ Stage 2I passes only when:
 - catalog assertions match the committed private schema without exposing it in browser-generated types;
 - every affected script retains its prior assertions and adds the required shadow assertions;
 - synthetic fixtures and every correlated dependent record are fully reconciled and removed;
-- authority-query plans, concurrency, timeout, and stale-cache behavior meet the fail-closed contract;
+- shadow lookup query plans, signup concurrency, and timeout behavior meet the fail-closed and pre-cutover compatibility contract;
 - existing test, typecheck, lint, build, and authorized local runtime suites pass; and
 - the exact Stage 2I file diff contains no unrelated file.
 
@@ -1281,6 +1310,7 @@ Stage 2A passes only when:
 - maintenance deny-all requires step-up evidence, creates the required event and obligation, and cannot be exited by one administrator;
 - the Realtime test reaches an evidence-based retain or contain decision;
 - the Realtime test records raw callback delivery separately from cache and UI behavior and uses named authority Actions;
+- previously issued token containment, cache invalidation after authority loss, non-active route handling, and frontend stale-state behavior pass across every protected client path;
 - browser cache clearing and residual exposure are classified;
 - every field classified as protected equipment data is no longer broadly visible outside its approved relationship through any table, view, RPC, Edge Function, service-role, Realtime, or frontend path under a separately authorized correction;
 - manifest application and database consumption are atomic;
@@ -1305,9 +1335,10 @@ The four decisions are recorded now, but operational evidence is required at dif
 | Control | Policy recorded | Operational proof required before |
 | --- | ---: | --- |
 | Manifest custody contract | Yes | Stage 2A production manifest preparation |
-| Exact canonicalization dependency | Candidate only | Stage 2I package or tooling change |
+| Exact canonicalization dependency | Tarball preflight passed; lockfile procedure and approval pending | Stage 2I package or tooling change |
 | Private-schema object ownership and creator-role matrix | Direction only | Stage 2I SQL creation |
-| Exact migration filenames and ordering | Provisional only | Stage 2I migration creation |
+| Exact migration filenames and ordering | Collision-free at local commit `c4f382b`; recheck required | Stage 2I migration creation |
+| Shared shadow-fixture helper | Included in proposed boundary | Stage 2I script creation |
 | Local firewall/loopback containment and rollback | Prior evidence only | Every authorized local runtime pass |
 | Actual governance/approval providers, vault, custodians, and approver identities | No | Stage 2A cutover |
 | Administrator initialization rule | Yes | Stage 2I specification acceptance |
@@ -1346,18 +1377,19 @@ These sources validate external behavior. They do not delegate ALLRENTZ product 
 | Controlled-docs model | **APPROVED; GOVERNANCE CORRECTIONS INCORPORATED** |
 | Stage 2I/2A architecture direction | **APPROVED** |
 | Four policy decisions in this document | **INCORPORATED; OPERATIONAL PROVIDERS AND NAMED PEOPLE PENDING** |
-| `ALLRENTZ-AUTH-002` | **APPROVED v0.2 IMPLEMENTATION-PLANNING BASELINE** |
+| `ALLRENTZ-AUTH-002` revision `0.2` | **APPROVED AND LOCALLY COMMITTED AT `c4f382b`** |
+| `ALLRENTZ-AUTH-002` revision `0.3` | **APPROVED CORRECTED IMPLEMENTATION-PLANNING BASELINE** |
 | Canonicalization dependency | **`canonicalize@3.0.0` LEADING CANDIDATE; NOT APPROVED** |
-| Final planning-baseline approval | **APPROVED** |
+| Current approved planning baseline | **REVISION 0.3** |
 | Stage 2I implementation | **NOT AUTHORIZED** |
 | Stage 2A implementation | **NOT AUTHORIZED** |
 | Governance-vault creation | **NOT AUTHORIZED** |
 | Local or hosted Supabase execution | **NOT AUTHORIZED** |
 | Branch, commit, push, PR, merge, or deployment | **NOT AUTHORIZED** |
 
-The approved documentation-only action is the status update, staging, and local commit of:
+The approved documentation-only action is the revision `0.3` status update, staging, and local commit of:
 
 - `docs/README.md`; and
 - `docs/engineering/stage-2i-stage-2a-principal-authority-implementation-specification.md`.
 
-No push, branch, package installation, runtime execution, or implementation action follows from this planning-baseline approval or documentation-only commit. Approval of a planning baseline does not authorize implementation. Every Stage 2I or Stage 2A implementation tranche still requires separate exact-scope authorization.
+No push, branch, package installation, runtime execution, dependency approval, or implementation action follows from this planning-baseline approval or documentation-only commit. Approval of the planning baseline does not authorize `canonicalize@3.0.0` or Stage 2I. Every Stage 2I or Stage 2A implementation tranche still requires separate exact-scope authorization.
