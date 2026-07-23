@@ -2,13 +2,13 @@
 title: ALLRENTZ Stage 2I and Stage 2A Principal Authority Implementation Specification
 domain: engineering
 specification_id: ALLRENTZ-AUTH-002
-revision: 0.3
+revision: 0.4
 lifecycle_status: active
 governance_state: approved
 authorized_scope: implementation planning only; no schema, code, runtime, deployment, or production execution
-authorization_reference: ALLRENTZ Product Owner approval in the controlled Codex session on 2026-07-23
-decision_status: targeted implementation-contract corrections incorporated; canonicalize@3.0.0 tarball preflight passed, but dependency approval and a no-churn lockfile procedure remain pending
-validation_status: exact revision 0.3 documentation-only diff review passed; corrected planning baseline approved
+authorization_reference: ALLRENTZ-AUTH-002-STATUS-0.4-20260723; ALLRENTZ Product Owner approval in the controlled Codex session on 2026-07-23
+decision_status: canonicalize@3.0.0 and its bounded npm 10.9.8 lockfile procedure approved for later separately authorized implementation; local PostgreSQL 17 ownership capability verified; hosted compatibility and implementation remain unauthorized
+validation_status: revision 0.4 records the controlled dependency and local ownership preflights; exact documentation-only diff review passed
 created_on: 2026-07-23
 approved_on: 2026-07-23
 approved_by: ALLRENTZ Product Owner
@@ -347,6 +347,30 @@ No ordinary caller receives private-schema `USAGE` merely to reach a function. I
 
 Every private object and function requires an explicit ownership outcome. A dedicated non-login owner is preferred only when verified local and hosted migration-role capabilities support it; role creation is not assumed or authorized by this candidate. The implementation preflight must record the feasible owner, creator, migration, and runtime-role matrix before SQL is written.
 
+#### 5.8.1 Local ownership-capability evidence
+
+Authorization `ALLRENTZ-AUTH-002-STATUS-0.4-20260723` records a controlled local capability probe executed on 2026-07-23 against PostgreSQL `17.6` in the local `supabase_db_encqbibzgoarvtcivgra` container through direct container execution. No credential value was displayed or recorded.
+
+The first transaction failed closed because it attempted to transfer table ownership before transferring ownership of the containing schema. A new database session then confirmed zero residual probe roles, memberships, schemas, relations, or functions.
+
+The corrected transaction proved:
+
+- a dedicated owner can be created with `NOLOGIN`, `NOINHERIT`, `NOSUPERUSER`, `NOCREATEDB`, `NOCREATEROLE`, `NOREPLICATION`, and `NOBYPASSRLS`;
+- the migration role can receive membership with `SET TRUE`, `INHERIT FALSE`, and `ADMIN FALSE`;
+- private-schema and contained-table ownership can be transferred using the required schema-first order;
+- an owner-controlled `SECURITY DEFINER` function can use `search_path = pg_catalog, pg_temp`;
+- `PUBLIC` execution can be removed through owner default privileges and explicit revocation;
+- `anon`, `authenticated`, and `service_role` can be denied private schema, table, and function authority; and
+- the complete transaction can be explicitly rolled back.
+
+A separate post-rollback database session confirmed zero probe roles, memberships, schemas, relations, or functions. This evidence is classified **LOCALLY VERIFIED; NOT YET INDEPENDENTLY OR HOSTED-PREVIEW VERIFIED**. The probe did not access or mutate application tables, so it makes no application-row reconciliation claim.
+
+Stage 2I must preserve this ownership order:
+
+> establish controlled owner membership → verify the database `CREATE` prerequisite → create the schema and objects → transfer schema ownership → transfer contained object ownership → apply and verify hardened privileges
+
+Before implementation is authorized, the owner role's database-level `CREATE` privilege requires an explicit inventory and disposition identifying its source, whether it is direct, inherited, or available through `PUBLIC`, and its intended post-transfer state. Local transfer success proves that the prerequisite existed during the probe; it does not establish the least-privilege production disposition. A hosted Supabase Preview remains a separate compatibility and merge gate.
+
 ### 5.9 Authentication identity lifecycle
 
 Authority history must survive deletion of an authentication identity. No foreign key from the Principal Registry, Principal Access Record, platform-role grant, Authority Event, or evidence record may cascade-delete authority history from `auth.users`.
@@ -498,9 +522,17 @@ The tooling has two explicit modes:
 
 The test-vector set is digest-bound to the compatibility version and consumed by both modes. No implementation may normalize invalid input into an apparently valid manifest.
 
-`canonicalize@3.0.0` is the leading dependency candidate, not an approved dependency. Before any package or lockfile change, a bounded dependency decision must verify the exact version, license, dependency graph, install scripts, maintainer and release provenance, supported Node/module format, lockfile integrity, supply-chain characteristics, published tarball contents, source-tag correspondence, and all required vectors. It may be added only as an exact development/governance dependency; frontend and production application code must not import it. Execution uses `npm ci` and imports the exact pinned module; package CLIs, `npx`, globally installed tools, floating versions, and automatic dependency upgrades are prohibited. Every later version change requires a fresh bounded review.
+Authorization `ALLRENTZ-AUTH-002-STATUS-0.4-20260723` approves `canonicalize@3.0.0` only as an exact Stage 2I development/governance dependency for later separately authorized implementation. It must be recorded as the exact `devDependency` value `"3.0.0"`. Frontend and production application code must not import it. Package CLIs, `npx`, remotely resolved `npm exec`, globally installed canonicalization tools, floating versions, automatic dependency upgrades, audit fixes, deduplication, and unrelated lockfile normalization are prohibited. Every later version change requires a fresh bounded review.
 
-The 2026-07-23 read-only preflight confirmed the published `3.0.0` tarball integrity, six-file contents, Apache-2.0 license, ESM export, Node `>=18` engine, absence of runtime/optional/peer dependencies, and absence of install lifecycle scripts. It did not approve the dependency: npm `11.6.0` lockfile-only simulation removed 27 unrelated optional/esbuild entries from the current lockfile. The package-manager procedure must be pinned or otherwise corrected so the reviewed lockfile delta is limited to the exact root declaration and canonicalize package entry. Any unrelated lockfile churn is a stop condition, not acceptable normalization.
+The 2026-07-23 preflight confirmed the published `3.0.0` tarball integrity, six-file contents, Apache-2.0 license, ESM export, Node `>=18` engine, absence of runtime/optional/peer dependencies, absence of install lifecycle scripts, byte-for-byte correspondence of published files with source tag `v3.0.0`, and 35 passing upstream tests. Targeted behavior checks also confirmed that the dependency is a serializer, not the ALLRENTZ restricted-profile validator; the governed wrapper and conformance vectors remain mandatory.
+
+The approved lockfile generator for this mutation is exactly npm `10.9.8`, not a permanent repository-wide npm standard. A disposable-copy simulation from the approved baseline produced only:
+
+- the exact root `devDependency`;
+- the exact root lockfile dependency declaration; and
+- the exact `node_modules/canonicalize` record with immutable resolution and integrity metadata.
+
+It removed zero unrelated entries. This result is classified **VERIFIED IN A DISPOSABLE COPY; NOT YET APPLIED TO THE REPOSITORY**. By contrast, npm `11.6.0` removed 27 unrelated optional/esbuild entries and is not authorized to generate this mutation. Later implementation must use exact-save semantics, reject any additional semantic lockfile change, and run `npm ci` under the same dependency-tree-affecting configuration. `npm ci` must leave `package.json` and `package-lock.json` byte-for-byte unchanged. The package and lockfile may enter the repository only under the separately approved Stage 2I implementation boundary.
 
 The protected package contains logical equivalents of:
 
@@ -1379,17 +1411,21 @@ These sources validate external behavior. They do not delegate ALLRENTZ product 
 | Four policy decisions in this document | **INCORPORATED; OPERATIONAL PROVIDERS AND NAMED PEOPLE PENDING** |
 | `ALLRENTZ-AUTH-002` revision `0.2` | **APPROVED AND LOCALLY COMMITTED AT `c4f382b`** |
 | `ALLRENTZ-AUTH-002` revision `0.3` | **APPROVED CORRECTED IMPLEMENTATION-PLANNING BASELINE** |
-| Canonicalization dependency | **`canonicalize@3.0.0` LEADING CANDIDATE; NOT APPROVED** |
-| Current approved planning baseline | **REVISION 0.3** |
+| `ALLRENTZ-AUTH-002` revision `0.4` | **APPROVED STATUS/EVIDENCE CORRECTION UNDER `ALLRENTZ-AUTH-002-STATUS-0.4-20260723`** |
+| Canonicalization dependency | **`canonicalize@3.0.0` APPROVED AS AN EXACT STAGE 2I `devDependency`; NOT YET APPLIED** |
+| Lockfile generator | **npm `10.9.8` APPROVED FOR THIS MUTATION ONLY; DISPOSABLE NO-CHURN PROCEDURE VERIFIED** |
+| Local PostgreSQL ownership capability | **LOCALLY VERIFIED ON POSTGRESQL `17.6`; NOT INDEPENDENTLY OR HOSTED-PREVIEW VERIFIED** |
+| Database-level owner `CREATE` privilege | **SOURCE AND POST-TRANSFER DISPOSITION PENDING BEFORE IMPLEMENTATION** |
+| Current approved planning baseline | **REVISION 0.4** |
 | Stage 2I implementation | **NOT AUTHORIZED** |
 | Stage 2A implementation | **NOT AUTHORIZED** |
 | Governance-vault creation | **NOT AUTHORIZED** |
-| Local or hosted Supabase execution | **NOT AUTHORIZED** |
+| Further local or hosted Supabase execution | **NOT AUTHORIZED** |
 | Branch, commit, push, PR, merge, or deployment | **NOT AUTHORIZED** |
 
-The approved documentation-only action is the revision `0.3` status update, staging, and local commit of:
+Authorization `ALLRENTZ-AUTH-002-STATUS-0.4-20260723` permits only the revision `0.4` documentation status/evidence correction in:
 
 - `docs/README.md`; and
 - `docs/engineering/stage-2i-stage-2a-principal-authority-implementation-specification.md`.
 
-No push, branch, package installation, runtime execution, dependency approval, or implementation action follows from this planning-baseline approval or documentation-only commit. Approval of the planning baseline does not authorize `canonicalize@3.0.0` or Stage 2I. Every Stage 2I or Stage 2A implementation tranche still requires separate exact-scope authorization.
+The authorization ends after the complete two-file diff, scoped whitespace validation, file/diff hashes, empty-index confirmation, and excluded-artifact preservation report. It authorizes no staging or commit. No package or lockfile mutation, branch, runtime execution, push, PR, merge, deployment, Preview access, production access, or implementation action follows from this planning-baseline correction. Approval of the dependency decision does not authorize its installation or Stage 2I. Every Stage 2I or Stage 2A implementation tranche still requires separate exact-scope authorization.
