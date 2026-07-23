@@ -72,7 +72,7 @@ docs/
 | `p7-verify-doctrine.md` | Draft | derives from `/ALLRENTZ_CONSTITUTION.md` (Formal Workflow Safety and Advanced Verification Doctrine) — P7 = P7-VERIFY harness workstream |
 | `ai-governance.md` | Draft | derives from `/ALLRENTZ_CONSTITUTION.md` (AI Governance Rule) |
 | `stage-2-authority-architecture-specification.md` | Active / Ratified v1.0 — bounded inventory/planning only; implementation separately authorized | derives from `docs/doctrine/ALLRENTZ_ARCHITECTURAL_FOUNDATION.md` and verified Stage 1 containment |
-| `stage-2i-stage-2a-principal-authority-implementation-specification.md` | Active / Approved v0.1 — Stage 2I/2A implementation-planning baseline; no implementation authorized | implements the ratified `ALLRENTZ-AUTH-001` architecture without superseding it |
+| `stage-2i-stage-2a-principal-authority-implementation-specification.md` | Active / Approved v0.2 — Stage 2I/2A implementation-planning baseline; no implementation authorized | implements the ratified `ALLRENTZ-AUTH-001` architecture without superseding it |
 
 ### strategy/
 | File | Status | Source in raw archive |

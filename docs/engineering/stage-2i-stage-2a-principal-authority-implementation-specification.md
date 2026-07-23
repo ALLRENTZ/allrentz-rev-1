@@ -2,13 +2,13 @@
 title: ALLRENTZ Stage 2I and Stage 2A Principal Authority Implementation Specification
 domain: engineering
 specification_id: ALLRENTZ-AUTH-002
-revision: 0.1
+revision: 0.2
 lifecycle_status: active
 governance_state: approved
 authorized_scope: implementation planning only; no schema, code, runtime, deployment, or production execution
 authorization_reference: ALLRENTZ Product Owner approval in the controlled Codex session on 2026-07-23
-decision_status: four policy decisions incorporated; operational providers, custodians, approvers, and execution evidence remain pending
-validation_status: targeted documentation corrections incorporated; final documentation-only diff review passed
+decision_status: four policy decisions and the corrected Stage 2I implementation contract are incorporated; the canonicalization dependency, operational providers, custodians, approvers, and execution evidence remain pending
+validation_status: exact revision 0.2 documentation-only diff review passed; planning baseline approved
 created_on: 2026-07-23
 approved_on: 2026-07-23
 approved_by: ALLRENTZ Product Owner
@@ -21,7 +21,7 @@ last_reviewed: 2026-07-23
 
 ## 1. Decision and authorization boundary
 
-This document converts the ratified `ALLRENTZ-AUTH-001` architecture into a bounded implementation plan for:
+This candidate converts the ratified `ALLRENTZ-AUTH-001` architecture into a bounded implementation plan for:
 
 1. Stage 2I shadow authority initialization foundations; and
 2. Stage 2A principal-access expansion, cutover, and acceptance.
@@ -110,11 +110,10 @@ Subject to separate implementation authorization, Stage 2I may prepare:
 - authority-Action idempotency records;
 - manifest metadata and single-use consumption foundations;
 - an authority runtime-state record initialized to `pre_cutover`;
-- concurrent-signup handling that creates a fail-closed shadow principal and `pending_activation` record;
+- concurrent-signup handling that preserves required legacy signup writes while atomically creating one non-authoritative, fail-closed shadow principal and `pending_activation` record;
 - dormant compatibility helpers;
 - read-only inventory and dry-run tooling;
 - manifest validation tooling;
-- generated Supabase types; and
 - local-only shadow verification.
 
 ### 4.2 Prohibited Stage 2I outcomes
@@ -142,6 +141,7 @@ Before cutover:
 - existing legitimate workflows behave exactly as they did before Stage 2I;
 - shadow records grant nothing;
 - absence or presence of a shadow record changes no effective permission;
+- `pending_activation` is a shadow classification only and does not deny a legacy-authorized operation before the enforcement latch;
 - dormant helpers return the pre-cutover compatibility outcome only in `pre_cutover`;
 - service-role and security-definer paths remain governed by their existing controls; and
 - new shadow tables, cases, events, manifests, and obligations are inaccessible to ordinary clients.
@@ -304,6 +304,55 @@ These records are application-immutable and append-only under ordinary client, a
 
 Named backend Actions record sanitized denied-attempt evidence. Raw RLS-filtered reads rely on provider and database technical logs until a separately approved collection path exists. This specification does not claim universal database events for every RLS denial.
 
+### 5.7 Platform Role Grant
+
+`platform_role_grants` is the final canonical storage foundation for platform-level authority, not a temporary bootstrap table. It may represent only approved platform roles such as `platform_admin` and `operations_manager`; customer and vendor personas or organization roles never migrate into it.
+
+Required concepts:
+
+- immutable grant identifier;
+- human principal identifier and environment binding;
+- exact platform role;
+- grant state and monotonically increasing version;
+- `[effective_at, expires_at)` term;
+- origin and governing approval references;
+- correlation and causation identifiers;
+- superseded, suspended, revoked, and expired outcomes; and
+- immutable Authority Events for every accepted mutation.
+
+Grant effectiveness is derived at request time. It is never stored as a mutable `is_effective` Boolean. The decision must evaluate the authority runtime state, grant state and version, effective window, principal kind and classification, current assurance and access state, role eligibility, and every applicable suspension, revocation, or supersession. Mutable history is not duplicated in JSON or convenience columns.
+
+Stage 2I creates no effective canonical platform grant. Until the approved cutover, existing platform-admin and operations-manager behavior remains temporarily sourced from legacy `user_roles`. Stage 2I records and tools may inventory that legacy provenance but may not silently convert it.
+
+### 5.8 Private authority schema and execution boundary
+
+Shadow authority objects belong in a non-exposed `authority_private` schema that is absent from the Data API exposed-schema configuration.
+
+The implementation must:
+
+- revoke schema `USAGE`, direct table and sequence access, and broad/default function execution from `PUBLIC`, `anon`, `authenticated`, and `service_role`;
+- revoke unsafe default privileges for the actual object-creating role;
+- give `service_role` no direct table access to private authority objects;
+- selectively grant only the minimum `USAGE` and `EXECUTE` needed for exact controlled functions, which independently derive and validate the initiating principal, requested Action, current state, and object scope;
+- fully qualify object references;
+- use a hardened `search_path` containing only required trusted schemas followed by `pg_temp`;
+- revoke `PUBLIC` function execution in the same migration transaction; and
+- provide no generic actor-ID parameter or service-authority oracle.
+
+Every private object and function requires an explicit ownership outcome. A dedicated non-login owner is preferred only when verified local and hosted migration-role capabilities support it; role creation is not assumed or authorized by this candidate. The implementation preflight must record the feasible owner, creator, migration, and runtime-role matrix before SQL is written.
+
+### 5.9 Authentication identity lifecycle
+
+Authority history must survive deletion of an authentication identity. No foreign key from the Principal Registry, Principal Access Record, platform-role grant, Authority Event, or evidence record may cascade-delete authority history from `auth.users`.
+
+The identity link uses:
+
+- a nullable live `auth_user_id` reference with `ON DELETE SET NULL`;
+- a separate immutable `auth_subject_reference` suitable for provenance without containing a credential; and
+- `auth_identity_deleted_at` for the observed identity-loss event.
+
+During Stage 2I, Auth deletion makes future authentication impossible but does not invoke a canonical access transition, because shadow state is non-enforcing and Stage 2I is prohibited from restricting or disabling a principal. Stage 2A must define and verify the separate backend-controlled identity-loss Action before enforcement.
+
 ## 6. Principal-access transition contract
 
 ### 6.1 Allowed transitions
@@ -395,26 +444,49 @@ The approval evidence contains no credential, factor secret, recovery code, or r
 The manifest uses:
 
 - UTF-8 without a byte-order mark;
-- RFC 8785 canonical JSON serialization;
+- a versioned restricted JSON input profile and RFC 8785 canonical JSON serialization;
 - SHA-256 over the canonical representation;
 - UTC timestamps;
 - `[issued_at, expires_at)` validity;
 - a cryptographically random non-secret single-use nonce; and
 - stable opaque references that map unambiguously to immutable identity evidence.
 
-Canonicalization is an executable compatibility contract, not merely an RFC reference. Before any manifest can be accepted, shared conformance vectors must prove:
+There is exactly one canonical byte source. A pinned, vetted Node module performs canonicalization. PowerShell orchestrates file handling and hashing but never reconstructs, serializes, or text-normalizes the manifest. PostgreSQL receives the exact canonical bytes, recomputes SHA-256 over those bytes, validates the parsed envelope and approved compatibility versions, and never attempts to recreate RFC 8785 bytes from `jsonb`.
+
+The wrapper reads raw bytes and, in order:
+
+1. rejects a UTF-8 byte-order mark;
+2. decodes with fatal UTF-8 error handling;
+3. parses JSON while rejecting duplicate properties;
+4. validates the versioned restricted profile, including lone-surrogate rejection;
+5. canonicalizes through the exact pinned Node dependency;
+6. encodes the result as UTF-8 without a byte-order mark;
+7. requires byte-for-byte equality between the approved manifest input and the canonical output; and
+8. only then computes SHA-256.
+
+The manifest is never manually edited after creation. Any semantic or byte change requires a new digest, nonce, expiration, approval records, and package.
+
+The restricted profile permits objects, arrays, strings, Booleans, `null`, and safe nonnegative integers only. It rejects floating-point values, negative zero, duplicate properties, malformed Unicode, lone surrogates, and implicit Unicode normalization. UUIDs, digests, timestamps, monetary values, and identifiers that may exceed the safe-integer range are strings. Every manifest declares a `canonicalization_profile_version`. Arrays retain their schema-defined order.
+
+Canonicalization is an executable compatibility contract, not merely an RFC reference. Shared, versioned conformance vectors must prove:
 
 - duplicate object property names are rejected before semantic parsing;
 - malformed Unicode and lone surrogates are rejected;
-- `NaN` and positive or negative infinity are rejected;
-- negative zero is rejected in accordance with the verified RFC 8785 security erratum;
+- floating-point values, negative zero, and unsafe integers are rejected;
 - nested object properties use the required deterministic ordering;
 - array order is preserved;
 - output is UTF-8 without a byte-order mark;
-- PowerShell and Node implementations produce identical canonical bytes and SHA-256 digests; and
-- the database verifier accepts the same canonical representation and digest and rejects every altered vector.
+- the Node canonicalizer and PowerShell-orchestrated hash operate on the same bytes; and
+- the database verifier accepts those exact bytes and digest and rejects every altered vector.
 
-The test-vector set is versioned and digest-bound to the compatibility version. No implementation may normalize invalid input into an apparently valid manifest.
+The tooling has two explicit modes:
+
+- **BUILD** accepts structured, validated inventory dispositions and produces canonical bytes, digest, and package.
+- **VERIFY** accepts approved raw bytes and performs byte/profile validation, re-canonicalization, byte equality, hashing, approval-envelope validation, and database verification without rebuilding the document.
+
+The test-vector set is digest-bound to the compatibility version and consumed by both modes. No implementation may normalize invalid input into an apparently valid manifest.
+
+`canonicalize@3.0.0` is the leading dependency candidate, not an approved dependency. Before any package or lockfile change, a bounded dependency decision must verify the exact version, license, dependency graph, install scripts, maintainer and release provenance, supported Node/module format, lockfile integrity, supply-chain characteristics, and all required vectors. Execution uses `npm ci` and imports the exact pinned module; package CLIs, `npx`, globally installed tools, and floating versions are prohibited. Rejecting or substituting the candidate reopens the proposed Stage 2I file boundary for explicit review.
 
 The protected package contains logical equivalents of:
 
@@ -753,21 +825,26 @@ Polling timing is an implementation default, not a permanent architecture rule.
 
 Before the final inventory snapshot, concurrent signup handling must already create:
 
-- one shadow principal record;
-- a fail-closed class/assurance result;
+- every legacy profile, persona-routing, and legacy customer/vendor `user_roles` row required by the current signup contract;
+- exactly one shadow principal record classified `unclassified`;
+- an `unverified` identity-assurance result;
 - one `pending_activation` shadow access record; and
-- no grant or membership.
+- no canonical or effective membership, platform-role grant, qualification, or operational grant.
 
 Shadow signup behavior must be idempotent and transactional:
 
-- ordinary signup still completes;
-- duplicate or retried trigger execution creates exactly one principal registry record;
-- duplicate or retried trigger execution creates exactly one pending access record;
-- no organization membership, platform role, or operational grant is created;
-- a trigger failure rolls back all shadow creation cleanly;
+- the legacy writes and shadow writes execute in the same Auth-trigger transaction and all commit or all roll back;
+- ordinary signup still completes with its current compatible legacy result;
+- exact retry creates neither duplicates nor divergent state;
+- duplicate or retried trigger execution resolves to exactly one principal registry record and one pending access record;
+- an immutable-field conflict or incompatible retry fails closed rather than overwriting provenance;
+- no canonical organization membership, platform role, qualification, or operational grant is created;
+- customer/vendor legacy persona rows remain legacy compatibility data and never become `platform_role_grants`;
 - existing users are not silently modified;
 - anonymous identities remain non-operational;
-- ordinary signup cannot create a workload principal; and
+- user metadata cannot classify a human or workload principal, create canonical authority, or select an effective access state;
+- ordinary signup cannot create a workload principal;
+- before the latch, the shadow `pending_activation` result changes no legacy authorization outcome; and
 - pre-cutover RLS outcomes remain unchanged.
 
 The controlled cutover runner begins one `SERIALIZABLE` database transaction before issuing any cutover query. That transaction acquires a transaction-scoped advisory lock, explicit row locks on the authority runtime-state and manifest-consumption records, and one documented deterministic lock order. The database cutover procedure verifies the expected isolation level rather than assuming that an RPC can change an already-started transaction. Every cooperating authority mutation must honor the same advisory-lock contract. Serialization or lock failure aborts the entire transaction and may enter only a bounded retry that reruns every verification against current state.
@@ -1064,20 +1141,36 @@ Absence of a current Storage, workload, webhook, or scheduled-job path is record
 
 ## 15. Stage 2I future implementation file boundary
 
-Subject to separate authorization, the proposed Stage 2I file boundary is exactly:
+Subject to separate implementation authorization **and approval of the exact canonicalization dependency**, the proposed Stage 2I boundary is exactly these 16 files:
 
-- `supabase/migrations/<timestamp>_stage2i_principal_authority_shadow.sql`
-- `supabase/migrations/<timestamp>_stage2i_authority_compatibility_hooks.sql`
+- `supabase/migrations/20260723120000_stage2i_principal_authority_shadow.sql`
+- `supabase/migrations/20260723121000_stage2i_authority_compatibility_hooks.sql`
+- `package.json`
+- `package-lock.json`
+- `supabase/stage2_authority_canonicalize.mjs`
+- `supabase/fixtures/stage2_authority_manifest_vectors.json`
 - `supabase/stage2_authority_inventory.ps1`
 - `supabase/stage2_authority_manifest_verify.ps1`
 - `supabase/stage2i_shadow_verify.ps1`
-- `src/integrations/supabase/types.ts`
-
-No package manifest or lockfile change is expected.
+- `supabase/key_migration_verify.ps1`
+- `supabase/profile_authority_verify.ps1`
+- `supabase/membership_verify.ps1`
+- `supabase/rfq_transition_verify.ps1`
+- `supabase/b6_2_vendor_authority_verify.ps1`
+- `supabase/b6_3_vqr_pending_review_verify.ps1`
+- `supabase/vendor_quote_submission_verify.ps1`
 
 No listed file is authorized by this documentation candidate.
 
-Migration timestamps are placeholders until an implementation branch is authorized and the complete migration order is reverified. Implementation authorization must replace each placeholder with a unique, correctly ordered timestamp and review the resulting exact path; it cannot silently rename or add a migration.
+The migration names are provisional candidates derived from the current local migration order. Immediately before file creation, an authorized implementation preflight must re-check the exact branch, HEAD, complete migration ordering, and duplicate timestamp prefixes. Any required rename or additional migration reopens the exact boundary for review.
+
+The seven existing verification scripts enter the boundary only to preserve their current fixtures and assertions while adding shadow-object reconciliation. There is no broad fixture rewrite.
+
+`src/integrations/supabase/types.ts`, `supabase/config.toml`, Edge Functions, frontend files, existing migrations, untracked Gate 2 artifacts, `MASTER_PRIORITY_BOARD.md`, and intentionally excluded local artifacts are explicitly outside Stage 2I. The private schema is verified through catalog, privilege, function, trigger, and behavioral assertions—not browser-generated types. Generated types enter a later Stage 2A boundary only if an approved public safe-snapshot contract changes.
+
+If `canonicalize@3.0.0` is rejected or another implementation is proposed, the package, tooling, vectors, and resulting file boundary must be reconsidered and approved before implementation.
+
+Branch creation remains separately authorized. If the Stage 1 and documentation work has merged, Stage 2I branches from the then-current verified `main`. If implementation must begin before its parent documentation commit merges, it uses a clearly declared stacked local branch such as `stage2/principal-access-foundation` from the exact approved documentation commit. Neither path permits fetching, merging, rebasing, pushing, or creating a branch without its own authorization.
 
 ## 16. Stage 2A future implementation file boundary
 
@@ -1123,27 +1216,43 @@ Explicitly excluded:
 
 ## 17. Stage 2I acceptance
 
+Stage 2I verification remains local and disposable. Fixture identity is never accepted from user-controlled profile, Auth metadata, or other authority-bearing application data, and no production cleanup RPC is created. The local harness uses exact known synthetic identifiers, one unique run correlation, and an out-of-band local fixture inventory after proving loopback/container targeting.
+
+Each affected script must preserve its existing assertions and pass accounting while adding separately labeled shadow assertions. Pre-run orphan reconciliation, fixture creation, verification, cleanup, and cleanup-only recovery run through `try`/`finally` behavior. Cleanup uses an explicit dependency order and exact fixture identifiers. Unexpected rows, relationships, events, effective grants, memberships, qualifications, or non-fixture event linkage fail the run and preserve sanitized evidence for review. Success requires zero remaining synthetic state across every affected table, not only the primary fixture objects.
+
+The execution evidence records the actual PostgreSQL version, Supabase CLI and local runtime versions, Docker image identifiers, Node version, PowerShell version, TypeScript version, and `supabase-js` version. The specification fixes compatibility requirements, not unevidenced patch versions. Immediately before future local runtime execution, the runbook must revalidate firewall/loopback containment and record the restoration procedure; the previously observed firewall-enforced state must not be misreported as process-level loopback binding.
+
+Demo identities are non-human, non-operational, and ineligible for administrator initialization or approval quorum. If any browser-visible demo credential reaches protected non-simulated data, the run stops as an immediate containment blocker.
+
 Stage 2I passes only when:
 
 - signup still works;
-- new signup creates exactly one fail-closed principal registry record and one pending access record;
+- legacy signup outputs remain compatible while new signup atomically creates exactly one `unclassified` principal, one `unverified` assurance result, and one shadow `pending_activation` record;
 - duplicate or retried signup-trigger execution is idempotent;
-- signup-trigger failure rolls back all shadow creation;
-- signup creates no membership, platform role, or operational grant;
+- signup-trigger failure rolls back both legacy and shadow writes;
+- signup creates no canonical membership, effective platform role, qualification, or operational grant;
+- metadata cannot classify a principal or create canonical authority;
 - existing users are not silently modified;
 - anonymous signup remains non-operational;
 - ordinary signup cannot create a workload principal;
 - pre-cutover RLS outcomes remain unchanged;
 - no current effective authority changes;
+- no effective canonical `platform_role_grants` row exists before cutover;
+- the final platform-grant schema derives effectiveness from current state and retains history through Authority Events;
+- Auth identity deletion preserves authority history and clears only the live Auth reference;
 - shadow objects are inaccessible to ordinary clients;
+- `authority_private` is not exposed through the Data API and its owner, direct grants, default privileges, function execution, and `search_path` assertions pass for every relevant role;
+- `service_role` has no direct private-table authority and controlled functions cannot trust a supplied actor identifier;
 - existing local workflows remain unchanged;
 - no role, membership, or operational grant is created;
 - manifest validation fails closed on wrong environment, digest, count, version, expiration, approval, nonce, or replay;
-- canonicalization conformance vectors pass across PowerShell, Node, and the database verifier;
-- invalid Unicode, duplicate properties, unsupported numbers, negative zero, and cross-language digest disagreement fail closed;
+- BUILD and VERIFY modes operate on the same canonical bytes and the approved pinned dependency;
+- canonicalization conformance vectors pass through Node, the PowerShell byte-preserving orchestrator, and the database verifier;
+- byte-order marks, trailing newlines, invalid UTF-8 or Unicode, duplicate properties, unsupported or unsafe numbers, negative zero, non-canonical bytes, and digest disagreement fail closed;
 - inventory covers the complete protected surface;
-- generated types match the committed shadow schema;
-- synthetic fixtures are fully reconciled and removed;
+- catalog assertions match the committed private schema without exposing it in browser-generated types;
+- every affected script retains its prior assertions and adds the required shadow assertions;
+- synthetic fixtures and every correlated dependent record are fully reconciled and removed;
 - authority-query plans, concurrency, timeout, and stale-cache behavior meet the fail-closed contract;
 - existing test, typecheck, lint, build, and authorized local runtime suites pass; and
 - the exact Stage 2I file diff contains no unrelated file.
@@ -1196,6 +1305,10 @@ The four decisions are recorded now, but operational evidence is required at dif
 | Control | Policy recorded | Operational proof required before |
 | --- | ---: | --- |
 | Manifest custody contract | Yes | Stage 2A production manifest preparation |
+| Exact canonicalization dependency | Candidate only | Stage 2I package or tooling change |
+| Private-schema object ownership and creator-role matrix | Direction only | Stage 2I SQL creation |
+| Exact migration filenames and ordering | Provisional only | Stage 2I migration creation |
+| Local firewall/loopback containment and rollback | Prior evidence only | Every authorized local runtime pass |
 | Actual governance/approval providers, vault, custodians, and approver identities | No | Stage 2A cutover |
 | Administrator initialization rule | Yes | Stage 2I specification acceptance |
 | Named eligible administrators | No | Stage 2A cutover |
@@ -1204,7 +1317,7 @@ The four decisions are recorded now, but operational evidence is required at dif
 | Final Realtime retain/contain outcome | No | Stage 2A acceptance |
 | Optional WORM hardening | Deferred | Separately approved governance hardening |
 
-No further broad research cycle is required to accept this implementation plan. Vendor setup, human eligibility, repository diff review, local runtime evidence, and any hosted inventory remain execution evidence—not assumptions.
+No further broad research cycle is required to review this candidate. The canonicalization dependency decision, ownership feasibility, vendor setup, human eligibility, repository diff review, local runtime evidence, and any hosted inventory remain bounded execution gates—not assumptions.
 
 ## 20. Non-normative primary references
 
@@ -1233,7 +1346,8 @@ These sources validate external behavior. They do not delegate ALLRENTZ product 
 | Controlled-docs model | **APPROVED; GOVERNANCE CORRECTIONS INCORPORATED** |
 | Stage 2I/2A architecture direction | **APPROVED** |
 | Four policy decisions in this document | **INCORPORATED; OPERATIONAL PROVIDERS AND NAMED PEOPLE PENDING** |
-| `ALLRENTZ-AUTH-002` | **APPROVED v0.1 IMPLEMENTATION-PLANNING BASELINE** |
+| `ALLRENTZ-AUTH-002` | **APPROVED v0.2 IMPLEMENTATION-PLANNING BASELINE** |
+| Canonicalization dependency | **`canonicalize@3.0.0` LEADING CANDIDATE; NOT APPROVED** |
 | Final planning-baseline approval | **APPROVED** |
 | Stage 2I implementation | **NOT AUTHORIZED** |
 | Stage 2A implementation | **NOT AUTHORIZED** |
@@ -1241,9 +1355,9 @@ These sources validate external behavior. They do not delegate ALLRENTZ product 
 | Local or hosted Supabase execution | **NOT AUTHORIZED** |
 | Branch, commit, push, PR, merge, or deployment | **NOT AUTHORIZED** |
 
-The approved documentation-only action is the exact status update, staging, and local commit of:
+The approved documentation-only action is the status update, staging, and local commit of:
 
 - `docs/README.md`; and
 - `docs/engineering/stage-2i-stage-2a-principal-authority-implementation-specification.md`.
 
-No push or implementation action follows from approval or commit of this planning baseline. Every Stage 2I or Stage 2A implementation tranche still requires separate exact-scope authorization.
+No push, branch, package installation, runtime execution, or implementation action follows from this planning-baseline approval or documentation-only commit. Approval of a planning baseline does not authorize implementation. Every Stage 2I or Stage 2A implementation tranche still requires separate exact-scope authorization.
