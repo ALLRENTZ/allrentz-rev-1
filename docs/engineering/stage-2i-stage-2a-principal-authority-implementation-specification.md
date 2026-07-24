@@ -2,13 +2,15 @@
 title: ALLRENTZ Stage 2I and Stage 2A Principal Authority Implementation Specification
 domain: engineering
 specification_id: ALLRENTZ-AUTH-002
-revision: 0.4
+revision: 0.5
 lifecycle_status: active
 governance_state: approved
 authorized_scope: implementation planning only; no schema, code, runtime, deployment, or production execution
-authorization_reference: ALLRENTZ-AUTH-002-STATUS-0.4-20260723; ALLRENTZ Product Owner approval in the controlled Codex session on 2026-07-23
-decision_status: canonicalize@3.0.0 and its bounded npm 10.9.8 lockfile procedure approved for later separately authorized implementation; local PostgreSQL 17 ownership capability verified; hosted compatibility and implementation remain unauthorized
-validation_status: revision 0.4 records the controlled dependency and local ownership preflights; exact documentation-only diff review passed
+authorization_reference: ALLRENTZ Product Owner approval of revision 0.5 candidate SHA-256 598ABA1AB5D33AF44A994A89B042C092AC88B7CECB33377610FFBB4F007742C9 in the controlled Codex session on 2026-07-23
+current_approved_baseline: revision 0.5 approved from candidate SHA-256 598ABA1AB5D33AF44A994A89B042C092AC88B7CECB33377610FFBB4F007742C9
+supersedes: revision 0.4 at commit 848952fc5c97127e72e72f7abd5bd360c81cf806
+decision_status: revision 0.5 approved as the implementation-planning baseline; Pattern B, the accepted managed control-plane invariant, and the required hosted Preview gate are recorded; Stage 2I implementation remains unauthorized
+validation_status: approved candidate SHA-256 matched before the status transition; complete status-only diff, final hashes, empty-index, and excluded-artifact-preservation evidence required before any staging
 created_on: 2026-07-23
 approved_on: 2026-07-23
 approved_by: ALLRENTZ Product Owner
@@ -21,7 +23,9 @@ last_reviewed: 2026-07-23
 
 ## 1. Decision and authorization boundary
 
-This approved revision `0.3` corrects the locally committed revision `0.2` implementation-planning baseline and converts the ratified `ALLRENTZ-AUTH-001` architecture into a bounded implementation plan for:
+This approved revision `0.5` is the implementation-planning baseline and supersedes revision `0.4` at commit `848952fc5c97127e72e72f7abd5bd360c81cf806`. Approval is pinned to candidate SHA-256 `598ABA1AB5D33AF44A994A89B042C092AC88B7CECB33377610FFBB4F007742C9`. The status-only transition does not alter the candidate's substantive architecture or implementation boundary.
+
+Revision `0.5` converts the ratified `ALLRENTZ-AUTH-001` architecture into a bounded implementation plan for:
 
 1. Stage 2I shadow authority initialization foundations; and
 2. Stage 2A principal-access expansion, cutover, and acceptance.
@@ -333,43 +337,124 @@ Shadow authority tables, internal functions, and transition machinery belong in 
 The implementation must:
 
 - revoke private-schema `USAGE`, direct table and sequence access, and all private-function execution from `PUBLIC`, `anon`, `authenticated`, and `service_role`;
-- revoke unsafe default privileges for the actual object-creating role;
+- harden the actual object-creating role's global default function privileges before any private function is created;
 - give `service_role` no direct table access to private authority objects;
 - expose only narrowly scoped `SECURITY DEFINER` Action wrappers in an approved Data API schema; under the current file boundary that schema is `public`, and a dedicated `api` schema would require an explicit `supabase/config.toml` boundary amendment;
 - grant callers only `USAGE` on the approved exposed schema and `EXECUTE` on the exact wrapper signatures they require;
 - require each wrapper to derive and validate the initiating principal, requested Action, current state, and object scope before invoking fully qualified private machinery;
 - fully qualify object references;
-- use a hardened `search_path` containing only required trusted schemas followed by `pg_temp`;
+- use `search_path = pg_catalog, pg_temp` and fully qualified application-object references;
 - revoke `PUBLIC` function execution in the same migration transaction; and
 - provide no generic actor-ID parameter or service-authority oracle.
 
 No ordinary caller receives private-schema `USAGE` merely to reach a function. Internal RLS integration must use a separately reviewed safe evaluator surface or another explicitly approved privilege pattern; it cannot silently reopen private-schema access. Stage 2I changes no RLS outcome and need not expose an ordinary-client Action wrapper.
 
-Every private object and function requires an explicit ownership outcome. A dedicated non-login owner is preferred only when verified local and hosted migration-role capabilities support it; role creation is not assumed or authorized by this candidate. The implementation preflight must record the feasible owner, creator, migration, and runtime-role matrix before SQL is written.
+Every private object and function requires an explicit ownership outcome. Stage 2I uses one dedicated non-login role, `allrentz_authority_owner`, and Pattern B: direct creation under the final owner. Stage 2I performs no schema, table, sequence, or function ownership transfer. Pattern A remains a documented, non-selected alternative and cannot be used as an automatic fallback; future use requires separate review and authorization.
 
-#### 5.8.1 Local ownership-capability evidence
+#### 5.8.1 Local ownership evidence and selected pattern
 
 Authorization `ALLRENTZ-AUTH-002-STATUS-0.4-20260723` records a controlled local capability probe executed on 2026-07-23 against PostgreSQL `17.6` in the local `supabase_db_encqbibzgoarvtcivgra` container through direct container execution. No credential value was displayed or recorded.
 
-The first transaction failed closed because it attempted to transfer table ownership before transferring ownership of the containing schema. A new database session then confirmed zero residual probe roles, memberships, schemas, relations, or functions.
+The first Pattern A transaction failed closed because it attempted to transfer table ownership before transferring ownership of the containing schema. A new database session confirmed zero residual probe roles, memberships, schemas, relations, functions, sequences, or probe grants. A corrected schema-first Pattern A transaction passed and rolled back cleanly, but required temporary database-level `CREATE` and ownership transfers.
 
-The corrected transaction proved:
+A later bounded comparison proved that Pattern B can:
 
-- a dedicated owner can be created with `NOLOGIN`, `NOINHERIT`, `NOSUPERUSER`, `NOCREATEDB`, `NOCREATEROLE`, `NOREPLICATION`, and `NOBYPASSRLS`;
-- the migration role can receive membership with `SET TRUE`, `INHERIT FALSE`, and `ADMIN FALSE`;
-- private-schema and contained-table ownership can be transferred using the required schema-first order;
-- an owner-controlled `SECURITY DEFINER` function can use `search_path = pg_catalog, pg_temp`;
-- `PUBLIC` execution can be removed through owner default privileges and explicit revocation;
-- `anon`, `authenticated`, and `service_role` can be denied private schema, table, and function authority; and
-- the complete transaction can be explicitly rolled back.
+- create the private schema with `AUTHORIZATION allrentz_authority_owner`;
+- create its table, sequence, and hardened `SECURITY DEFINER` function directly under the final owner;
+- operate while the owner has no database-level `CREATE`;
+- contain the default `PUBLIC` function-execution privilege for existing and future owner-created functions;
+- deny private authority to application and provider workload roles; and
+- remove the explicit temporary migration membership before commit.
 
-A separate post-rollback database session confirmed zero probe roles, memberships, schemas, relations, or functions. This evidence is classified **LOCALLY VERIFIED; NOT YET INDEPENDENTLY OR HOSTED-PREVIEW VERIFIED**. The probe did not access or mutate application tables, so it makes no application-row reconciliation claim.
+Pattern B therefore provides the smaller persistent privilege surface and the clearer fail-closed migration contract. This candidate records Pattern B as the selected Stage 2I ownership model.
 
-Stage 2I must preserve this ownership order:
+A separate disposable Supabase CLI `2.45.5` `roles.sql` experiment established:
 
-> establish controlled owner membership → verify the database `CREATE` prerequisite → create the schema and objects → transfer schema ownership → transfer contained object ownership → apply and verify hardened privileges
+- `roles.sql` executed with `session_user`, `current_user`, and `current_role` equal to `postgres`;
+- owner creation produced PostgreSQL's automatic creator membership for `postgres`, granted locally by `supabase_admin`, with `ADMIN TRUE`, `SET FALSE`, and `INHERIT FALSE`;
+- repeated `db push --local --include-roles` reused the same role OID;
+- local `db reset` recreated the cluster and role, changed the system/container/OID evidence, reprocessed `roles.sql`, and reproduced the automatic creator edge;
+- Pattern B passed without owner database-level `CREATE`;
+- an intentionally failed transaction removed its temporary membership and objects through rollback; and
+- cleanup and new-session reconciliation found zero disposable probe roles, memberships, schemas, relations, sequences, functions, grants, containers, networks, or volumes.
 
-Before implementation is authorized, the owner role's database-level `CREATE` privilege requires an explicit inventory and disposition identifying its source, whether it is direct, inherited, or available through `PUBLIC`, and its intended post-transfer state. Local transfer success proves that the prerequisite existed during the probe; it does not establish the least-privilege production disposition. A hosted Supabase Preview remains a separate compatibility and merge gate.
+The experiment is classified **ACCEPT_CONTROL_PLANE_INVARIANT_LOCALLY**. It does not prove hosted or production behavior. `roles.sql` is rejected specifically as the Stage 2I owner-provisioning mechanism because it does not remove the managed creator relationship and adds a second cluster-role lifecycle. This is not a general claim that Supabase `roles.sql` is unsupported or unsafe.
+
+All local ownership evidence is classified **LOCALLY VERIFIED; NOT YET INDEPENDENTLY OR HOSTED-PREVIEW VERIFIED**. The probes did not access or mutate application tables and make no application-row reconciliation claim.
+
+#### 5.8.2 Managed control-plane invariant and identity boundary
+
+ALLRENTZ accepts PostgreSQL/Supabase's automatic creator relationship—granted role `allrentz_authority_owner`, member `postgres`—as a managed database control-plane invariant when its observed semantics are `ADMIN TRUE`, `SET FALSE`, and `INHERIT FALSE`. This acceptance does not convert `postgres`, `supabase_admin`, a database owner, or a provider control-plane identity into an application principal. Those identities remain outside ordinary application authority and inside separately controlled database administration and recovery.
+
+The trusted control-plane boundary is limited to:
+
+- the managed Supabase database administration plane;
+- an explicitly authorized `postgres` database-administration session;
+- the separately authorized migration or recovery session executing the reviewed migration; and
+- any human, CI, developer, or automation identity only for the duration and scope in which it possesses that approved administration session.
+
+Any temporary control-plane participant requires exact identity attribution, an environment restriction, the reviewed migration or commit digest, time-bounded credential availability where the provider permits it, independent approval, audit evidence, and post-run reconciliation. This specification records those requirements; it does not claim that every current local or hosted mechanism already supplies them.
+
+The following identities are outside direct private-authority trust: `PUBLIC`, `anon`, `authenticated`, `authenticator`, `service_role`, `supabase_auth_admin`, `supabase_storage_admin`, ordinary application and Edge Function sessions, background workloads, analytics identities, normal test identities, AI agents, and developer or CI identities without an explicitly approved database-administration session. They receive no private-schema `USAGE`, private relation or sequence privileges, or private-function execution. `service_role` bypassing RLS does not grant private-schema or private-object authority and is not a substitute for this privilege boundary.
+
+The dedicated owner reduces the ordinary migration and runtime privilege surface. It does not claim protection from `postgres`, `supabase_admin`, the database owner, a provider operator, or another equivalent control-plane identity.
+
+#### 5.8.3 Idempotent owner validation
+
+Owner establishment is a closed-world operation:
+
+1. if `allrentz_authority_owner` is absent, create it with exactly `NOLOGIN`, `NOINHERIT`, `NOSUPERUSER`, `NOCREATEDB`, `NOCREATEROLE`, `NOREPLICATION`, and `NOBYPASSRLS`, then verify the complete state;
+2. if it already exists, do not normalize or alter it; verify the complete attribute, ownership, and membership contract and abort on any mismatch;
+3. if concurrent creation produces a duplicate-role race or the observed state changes between precheck and use, abort and reconcile rather than silently skipping or repairing; and
+4. require the owner to have no effective database-level `CREATE`, whether direct, inherited, obtained through `PUBLIC`, or obtained through another membership.
+
+`NOLOGIN` is the enforced no-login boundary. Catalog evidence must not be described as proving the absence of every possible password representation. No application or workload role may be a member of the owner role, and no unexpected membership edge may be tolerated.
+
+The managed automatic creator edge must match the environment's independently observed control-plane contract. The local grantor was `supabase_admin`; hosted execution must discover and validate the actual grantor and semantics instead of assuming the local value.
+
+#### 5.8.4 Pattern B transactional sequence
+
+A separately authorized Stage 2I migration must execute in one explicit transaction and preserve this order:
+
+1. assert the expected environment, PostgreSQL version range, `session_user`, `current_user`, `current_role`, migration digest, owner presence or absence, complete owner attributes, memberships, database privileges, and absence of conflicting private objects;
+2. create the owner only when absent, or exact-validate it when present;
+3. validate the managed automatic creator edge and reject unknown or additional control-plane edges;
+4. grant the migration identity one explicit temporary owner membership with `ADMIN FALSE`, `SET TRUE`, and `INHERIT FALSE`;
+5. create `authority_private` with `AUTHORIZATION allrentz_authority_owner`;
+6. execute `SET LOCAL ROLE allrentz_authority_owner`;
+7. before creating any function, globally harden the owner's default function privileges with `ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`; do not add `IN SCHEMA`, because a schema-specific default-privilege revocation does not override PostgreSQL's global default `PUBLIC EXECUTE`;
+8. create the private table, sequence, function, and other private objects directly under the final owner, with fully qualified application-object references and `search_path = pg_catalog, pg_temp`;
+9. explicitly `REVOKE ALL` on every exact private-function signature from `PUBLIC` as defense in depth, even though the global owner default has already been hardened;
+10. execute `RESET ROLE`;
+11. remove only the migration identity's temporary grant by its exact grantor, using the equivalent of:
+
+   ```sql
+   REVOKE allrentz_authority_owner
+   FROM postgres
+   GRANTED BY postgres;
+   ```
+
+12. run every postcondition from the migration identity and commit only when all assertions pass.
+
+The literal migration identity and grantor must be derived from and pinned to the approved execution environment; `postgres` above records the locally verified form and is not an unverified hosted assumption. Grantor-specific removal must preserve the separately accepted managed control-plane edge. Stage 2I performs no ownership transfer and grants the owner no database-level `CREATE`.
+
+#### 5.8.5 Fail-closed postconditions and hosted Preview gate
+
+The migration must abort on false, unknown, duplicate, or ambiguous evidence. Before commit it must prove:
+
+- exact owner attributes and no effective database-level `CREATE`;
+- the exact accepted managed creator edge, the absence of the temporary migration edge, and no unexpected member, membership direction, grantor, `ADMIN`, `SET`, or `INHERIT` option;
+- exact owner identity for the private schema and every contained relation, sequence, and function;
+- no ownership-transfer operation in the reviewed migration;
+- global owner default privileges remove `PUBLIC` execution for future functions;
+- effective `PUBLIC` function/default privileges are inspected through ACL expansion, including `aclexplode(...)` rows whose grantee is OID `0`, rather than by treating `PUBLIC` as a login role;
+- every named application or workload role fails the applicable effective schema, relation, sequence, and function privilege checks;
+- every `SECURITY DEFINER` function has the exact safe `search_path`, fully qualified references, an explicit per-signature `PUBLIC` revocation, and no generic supplied actor-ID authority path;
+- no private object appears in a Data API exposed schema;
+- `service_role` has no direct private-object path despite its RLS-bypass capability; and
+- rollback or failure is followed by a new-session reconciliation that proves zero partial owner, membership, schema, object, default-ACL, or grant residue attributable to the failed attempt.
+
+Hosted Supabase Preview verification is a mandatory pre-merge gate. It must run the exact reviewed migration and independently record executor identities, PostgreSQL version, owner attributes, managed-edge grantor and options, temporary grant and grantor-specific removal, default and object ACLs, application-role denials, direct-final ownership, safe function configuration, rollback/failure behavior, and fresh-session reconciliation. Any difference from the approved control-plane contract fails closed and returns the implementation for review. Local success does not authorize Preview, merge, deployment, or production use.
 
 ### 5.9 Authentication identity lifecycle
 
@@ -1200,7 +1285,7 @@ Absence of a current Storage, workload, webhook, or scheduled-job path is record
 
 ## 15. Stage 2I future implementation file boundary
 
-Subject to separate implementation authorization **and approval of the exact canonicalization dependency**, the proposed Stage 2I boundary is exactly these 17 files:
+Subject to separate implementation authorization, the proposed Stage 2I boundary is exactly these 17 files:
 
 - `supabase/migrations/20260723120000_stage2i_principal_authority_shadow.sql`
 - `supabase/migrations/20260723121000_stage2i_authority_compatibility_hooks.sql`
@@ -1221,6 +1306,8 @@ Subject to separate implementation authorization **and approval of the exact can
 - `supabase/vendor_quote_submission_verify.ps1`
 
 No listed file is authorized by this documentation candidate.
+
+`supabase/roles.sql` is not part of the boundary and must not be introduced as the Stage 2I owner-provisioning mechanism.
 
 The migration names are provisional candidates derived from the current local migration order. Immediately before file creation, an authorized implementation preflight must re-check the exact branch, HEAD, complete migration ordering, and duplicate timestamp prefixes. Any required rename or additional migration reopens the exact boundary for review.
 
@@ -1367,8 +1454,14 @@ The four decisions are recorded now, but operational evidence is required at dif
 | Control | Policy recorded | Operational proof required before |
 | --- | ---: | --- |
 | Manifest custody contract | Yes | Stage 2A production manifest preparation |
-| Exact canonicalization dependency | Tarball preflight passed; lockfile procedure and approval pending | Stage 2I package or tooling change |
-| Private-schema object ownership and creator-role matrix | Direction only | Stage 2I SQL creation |
+| Exact canonicalization dependency | `canonicalize@3.0.0` approved only as an exact Stage 2I development dependency; disposable npm `10.9.8` no-churn mutation verified; not applied | Stage 2I package or tooling change |
+| Private-schema ownership pattern | Pattern B direct final-owner creation approved; local comparison and disposable `roles.sql` evidence passed; no ownership transfers | Exact Stage 2I migration review and hosted Preview |
+| Managed creator relationship | PostgreSQL/Supabase automatic control-plane edge accepted locally only when its complete attributes match the approved contract | Hosted Preview must discover and validate the actual grantor and options |
+| Stage 2I `roles.sql` mechanism | Rejected for this owner-provisioning use; no `roles.sql` is planned | Any future proposal to use `roles.sql` |
+| Owner establishment | Closed-world create-or-exact-validate algorithm and fail-closed race handling specified | Exact Stage 2I migration review and hosted Preview |
+| Owner global default ACL | Global `PUBLIC EXECUTE` removal required before function creation, plus per-signature revocation | Exact Stage 2I migration review and hosted Preview |
+| Temporary migration membership | Transactional `ADMIN FALSE`, `SET TRUE`, `INHERIT FALSE`; exact-grantor removal before commit | Exact Stage 2I migration review and hosted Preview |
+| Control-plane identity boundary | Trusted administration sessions and untrusted application/workload identities defined; current provider controls not overclaimed | Hosted Preview and separately approved operational control evidence |
 | Exact migration filenames and ordering | Collision-free at local commit `c4f382b`; recheck required | Stage 2I migration creation |
 | Shared shadow-fixture helper | Included in proposed boundary | Stage 2I script creation |
 | Local firewall/loopback containment and rollback | Prior evidence only | Every authorized local runtime pass |
@@ -1395,7 +1488,15 @@ These sources validate external behavior. They do not delegate ALLRENTZ product 
 - [Supabase Realtime authorization](https://supabase.com/docs/guides/realtime/authorization)
 - [Supabase sign-out behavior](https://supabase.com/docs/guides/auth/signout)
 - [Supabase row-level security](https://supabase.com/docs/guides/database/postgres/row-level-security)
+- [Supabase custom roles](https://supabase.com/docs/guides/database/postgres/custom-roles)
 - [PostgreSQL row security](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)
+- [PostgreSQL role attributes](https://www.postgresql.org/docs/current/role-attributes.html)
+- [PostgreSQL role membership](https://www.postgresql.org/docs/current/role-membership.html)
+- [PostgreSQL `GRANT`](https://www.postgresql.org/docs/current/sql-grant.html)
+- [PostgreSQL `REVOKE`](https://www.postgresql.org/docs/current/sql-revoke.html)
+- [PostgreSQL default privileges](https://www.postgresql.org/docs/current/sql-alterdefaultprivileges.html)
+- [PostgreSQL `pg_auth_members`](https://www.postgresql.org/docs/current/catalog-pg-auth-members.html)
+- [PostgreSQL `pg_default_acl`](https://www.postgresql.org/docs/current/catalog-pg-default-acl.html)
 - [PostgreSQL date/time functions](https://www.postgresql.org/docs/current/functions-datetime.html)
 - [RFC 8785 — JSON Canonicalization Scheme](https://www.rfc-editor.org/rfc/rfc8785)
 - [Stripe idempotent requests](https://docs.stripe.com/api/idempotent_requests)
@@ -1411,21 +1512,28 @@ These sources validate external behavior. They do not delegate ALLRENTZ product 
 | Four policy decisions in this document | **INCORPORATED; OPERATIONAL PROVIDERS AND NAMED PEOPLE PENDING** |
 | `ALLRENTZ-AUTH-002` revision `0.2` | **APPROVED AND LOCALLY COMMITTED AT `c4f382b`** |
 | `ALLRENTZ-AUTH-002` revision `0.3` | **APPROVED CORRECTED IMPLEMENTATION-PLANNING BASELINE** |
-| `ALLRENTZ-AUTH-002` revision `0.4` | **APPROVED STATUS/EVIDENCE CORRECTION UNDER `ALLRENTZ-AUTH-002-STATUS-0.4-20260723`** |
+| `ALLRENTZ-AUTH-002` revision `0.4` | **SUPERSEDED BY REVISION 0.5; PRESERVED AT COMMIT `848952fc5c97127e72e72f7abd5bd360c81cf806`** |
+| `ALLRENTZ-AUTH-002` revision `0.5` | **CURRENT APPROVED IMPLEMENTATION-PLANNING BASELINE; APPROVAL PINNED TO CANDIDATE SHA-256 `598ABA1AB5D33AF44A994A89B042C092AC88B7CECB33377610FFBB4F007742C9`** |
 | Canonicalization dependency | **`canonicalize@3.0.0` APPROVED AS AN EXACT STAGE 2I `devDependency`; NOT YET APPLIED** |
 | Lockfile generator | **npm `10.9.8` APPROVED FOR THIS MUTATION ONLY; DISPOSABLE NO-CHURN PROCEDURE VERIFIED** |
-| Local PostgreSQL ownership capability | **LOCALLY VERIFIED ON POSTGRESQL `17.6`; NOT INDEPENDENTLY OR HOSTED-PREVIEW VERIFIED** |
-| Database-level owner `CREATE` privilege | **SOURCE AND POST-TRANSFER DISPOSITION PENDING BEFORE IMPLEMENTATION** |
-| Current approved planning baseline | **REVISION 0.4** |
+| Local PostgreSQL ownership capability | **PATTERN B LOCALLY VERIFIED ON POSTGRESQL `17.6`; NOT INDEPENDENTLY OR HOSTED-PREVIEW VERIFIED** |
+| Managed automatic creator relationship | **ACCEPTED AS A DATABASE CONTROL-PLANE INVARIANT; LOCAL GRANTOR/OPTIONS VERIFIED; HOSTED CONTRACT PENDING** |
+| Stage 2I `roles.sql` owner provisioning | **REJECTED; NO `roles.sql` MECHANISM PLANNED** |
+| Database-level owner `CREATE` privilege | **PROHIBITED AND NOT REQUIRED BY PATTERN B** |
+| Ownership transfers | **PROHIBITED AND NOT REQUIRED BY PATTERN B** |
+| Hosted Supabase Preview gate | **REQUIRED BEFORE MERGE; NOT YET AUTHORIZED OR EXECUTED** |
+| Current approved planning baseline | **REVISION 0.5; REVISION 0.4 PRESERVED AT `848952FC5C97127E72E72F7ABD5BD360C81CF806`** |
 | Stage 2I implementation | **NOT AUTHORIZED** |
 | Stage 2A implementation | **NOT AUTHORIZED** |
 | Governance-vault creation | **NOT AUTHORIZED** |
 | Further local or hosted Supabase execution | **NOT AUTHORIZED** |
 | Branch, commit, push, PR, merge, or deployment | **NOT AUTHORIZED** |
 
-Authorization `ALLRENTZ-AUTH-002-STATUS-0.4-20260723` permits only the revision `0.4` documentation status/evidence correction in:
+The current status-only authorization permits only the revision `0.5` approval transition in:
 
 - `docs/README.md`; and
 - `docs/engineering/stage-2i-stage-2a-principal-authority-implementation-specification.md`.
 
-The authorization ends after the complete two-file diff, scoped whitespace validation, file/diff hashes, empty-index confirmation, and excluded-artifact preservation report. It authorizes no staging or commit. No package or lockfile mutation, branch, runtime execution, push, PR, merge, deployment, Preview access, production access, or implementation action follows from this planning-baseline correction. Approval of the dependency decision does not authorize its installation or Stage 2I. Every Stage 2I or Stage 2A implementation tranche still requires separate exact-scope authorization.
+Revision `0.5` is approved from candidate SHA-256 `598ABA1AB5D33AF44A994A89B042C092AC88B7CECB33377610FFBB4F007742C9`. Revision `0.4` is superseded but preserved at commit `848952fc5c97127e72e72f7abd5bd360c81cf806`. Any later staging or commit requires separate authorization.
+
+The current authorization ends after the complete status-only two-file diff, scoped whitespace validation, individual file hashes, combined approved-document hash, empty-index confirmation, and excluded-artifact preservation report. It authorizes no staging or commit. No package or lockfile mutation, branch, runtime execution, push, PR, merge, deployment, Preview access, production access, or implementation action follows from this status transition. Approval of the dependency decision does not authorize its installation or Stage 2I. Every Stage 2I or Stage 2A implementation tranche still requires separate exact-scope authorization.
