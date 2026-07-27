@@ -2,30 +2,31 @@
 title: ALLRENTZ Stage 2I and Stage 2A Principal Authority Implementation Specification
 domain: engineering
 specification_id: ALLRENTZ-AUTH-002
-revision: 0.5
+revision: 0.6
 lifecycle_status: active
 governance_state: approved
 authorized_scope: implementation planning only; no schema, code, runtime, deployment, or production execution
-authorization_reference: ALLRENTZ Product Owner approval of revision 0.5 candidate SHA-256 598ABA1AB5D33AF44A994A89B042C092AC88B7CECB33377610FFBB4F007742C9 in the controlled Codex session on 2026-07-23
-current_approved_baseline: revision 0.5 approved from candidate SHA-256 598ABA1AB5D33AF44A994A89B042C092AC88B7CECB33377610FFBB4F007742C9
-supersedes: revision 0.4 at commit 848952fc5c97127e72e72f7abd5bd360c81cf806
-decision_status: revision 0.5 approved as the implementation-planning baseline; Pattern B, the accepted managed control-plane invariant, and the required hosted Preview gate are recorded; Stage 2I implementation remains unauthorized
-validation_status: approved candidate SHA-256 matched before the status transition; complete status-only diff, final hashes, empty-index, and excluded-artifact-preservation evidence required before any staging
+authorization_reference: ALLRENTZ Product Owner approval and documentation-only commit authorization in the controlled Codex session on 2026-07-27
+current_approved_baseline: revision 0.6 approved by the ALLRENTZ Product Owner on 2026-07-27
+supersedes: revision 0.5 at commit 65b6772b4a5e4638b31dedcd42b4eee1cfe1d651
+decision_status: revision 0.6 approved as the implementation-planning baseline; pinned dependency/toolchain evidence, exact replay commands, and the separately authorized CI-hardening prerequisite are recorded; Stage 2I implementation remains unauthorized
+validation_status: complete documentation diff, final hashes, empty-index confirmation, scoped whitespace validation, package-file preservation, and excluded-artifact preservation passed before the approved documentation-only commit
 created_on: 2026-07-23
-approved_on: 2026-07-23
+candidate_opened_on: 2026-07-26
+approved_on: 2026-07-27
 approved_by: ALLRENTZ Product Owner
 authority: subordinate to /ALLRENTZ_CONSTITUTION.md, docs/doctrine/ALLRENTZ_ARCHITECTURAL_FOUNDATION.md, and ALLRENTZ-AUTH-001 v1.0
 related: docs/engineering/stage-2-authority-architecture-specification.md, docs/engineering/authority-first-loop.md
-last_reviewed: 2026-07-23
+last_reviewed: 2026-07-27
 ---
 
 # ALLRENTZ Stage 2I and Stage 2A Principal Authority Implementation Specification
 
 ## 1. Decision and authorization boundary
 
-This approved revision `0.5` is the implementation-planning baseline and supersedes revision `0.4` at commit `848952fc5c97127e72e72f7abd5bd360c81cf806`. Approval is pinned to candidate SHA-256 `598ABA1AB5D33AF44A994A89B042C092AC88B7CECB33377610FFBB4F007742C9`. The status-only transition does not alter the candidate's substantive architecture or implementation boundary.
+This approved revision `0.6` pins the disposable dependency/toolchain evidence, defines the clean-replay and hosted Preview command contracts, records the separately authorized CI-hardening prerequisite, and corrects stale candidate language. It does not change the selected authority architecture or authorize Stage 2I implementation.
 
-Revision `0.5` converts the ratified `ALLRENTZ-AUTH-001` architecture into a bounded implementation plan for:
+Revision `0.6` supersedes revision `0.5` at commit `65b6772b4a5e4638b31dedcd42b4eee1cfe1d651` as the current approved implementation-planning baseline. It converts the ratified `ALLRENTZ-AUTH-001` architecture into a bounded implementation plan for:
 
 1. Stage 2I shadow authority initialization foundations; and
 2. Stage 2A principal-access expansion, cutover, and acceptance.
@@ -366,7 +367,7 @@ A later bounded comparison proved that Pattern B can:
 - deny private authority to application and provider workload roles; and
 - remove the explicit temporary migration membership before commit.
 
-Pattern B therefore provides the smaller persistent privilege surface and the clearer fail-closed migration contract. This candidate records Pattern B as the selected Stage 2I ownership model.
+Pattern B therefore provides the smaller persistent privilege surface and the clearer fail-closed migration contract. Revision `0.5` records Pattern B as the selected Stage 2I ownership model.
 
 A separate disposable Supabase CLI `2.45.5` `roles.sql` experiment established:
 
@@ -611,13 +612,149 @@ Authorization `ALLRENTZ-AUTH-002-STATUS-0.4-20260723` approves `canonicalize@3.0
 
 The 2026-07-23 preflight confirmed the published `3.0.0` tarball integrity, six-file contents, Apache-2.0 license, ESM export, Node `>=18` engine, absence of runtime/optional/peer dependencies, absence of install lifecycle scripts, byte-for-byte correspondence of published files with source tag `v3.0.0`, and 35 passing upstream tests. Targeted behavior checks also confirmed that the dependency is a serializer, not the ALLRENTZ restricted-profile validator; the governed wrapper and conformance vectors remain mandatory.
 
-The approved lockfile generator for this mutation is exactly npm `10.9.8`, not a permanent repository-wide npm standard. A disposable-copy simulation from the approved baseline produced only:
+The separately authorized 2026-07-26 evidence resolution downloaded the two exact registry tarballs into a unique operating-system temporary directory, verified their registry integrity before use, unpacked npm without installing it, invoked npm only as `node <verified-unpacked-path>/package/bin/npm-cli.js`, and removed the disposable directory after reconciliation. No `npx`, `npm exec`, global installation, repository package operation, or application lifecycle script was used.
+
+The canonicalization artifact is pinned as:
+
+| Evidence | Exact value |
+| --- | --- |
+| Metadata URL | `https://registry.npmjs.org/canonicalize/3.0.0` |
+| Tarball URL / lockfile `resolved` | `https://registry.npmjs.org/canonicalize/-/canonicalize-3.0.0.tgz` |
+| Registry SRI / lockfile `integrity` | `sha512-yYLfHyDMIXRyRqsKBRLX023riFLpXY2YOfdtqKXZRZy9qsfOJ9U+4F9YZL7MEzL5+ziN2x2nlBvY/Voi3EBljA==` |
+| Registry SHA-1 | `a8073c48c1835631e1829d759078d2bbf48487fc` |
+| Tarball SHA-256 | `F6C9B99A28B884A32053994735004ADD11474DDED38EC342414E53F7FB1E1F19` |
+
+The exact npm generator artifact and interpreter are pinned as:
+
+| Evidence | Exact value |
+| --- | --- |
+| npm metadata URL | `https://registry.npmjs.org/npm/10.9.8` |
+| npm tarball URL | `https://registry.npmjs.org/npm/-/npm-10.9.8.tgz` |
+| npm registry SRI | `sha512-fYwb6ODSmHkqrJQQaCxY3M2lPf/mpgC7ik0HSzzIwG5CGtabRp4bNqikatvCoT42b5INQSqudVH0R7yVmC9hVg==` |
+| npm registry SHA-1 | `61c71897ecbee5bb1ee17e2fe50ebff07828fa9a` |
+| npm tarball SHA-256 | `3E68F9B5FCAF1A94BA0E37E6A565C920B2BE6BD98998C50970385D6A692AF780` |
+| Unpacked CLI relative path | `package/bin/npm-cli.js` |
+| Unpacked CLI SHA-256 | `8E5F6F3429F8CDBE693CDC29904E9D5A7B127A494BD15C804BD54C7403BFCBE7` |
+| Node executable | `C:\Program Files\nodejs\node.exe` |
+| Node version and generator host | `v22.19.0`; `win32` / `x64` |
+| Node executable SHA-256 | `995A3FB3CEFAD590CD3F4B321532A4B9582FB9C6575320ED2E3E894CAAC3E362` |
+
+The approved lockfile generator for this mutation is exactly npm `10.9.8`, not a permanent repository-wide npm standard. The disposable-copy simulation from the approved baseline produced only:
 
 - the exact root `devDependency`;
 - the exact root lockfile dependency declaration; and
 - the exact `node_modules/canonicalize` record with immutable resolution and integrity metadata.
 
-It removed zero unrelated entries. This result is classified **VERIFIED IN A DISPOSABLE COPY; NOT YET APPLIED TO THE REPOSITORY**. By contrast, npm `11.6.0` removed 27 unrelated optional/esbuild entries and is not authorized to generate this mutation. Later implementation must use exact-save semantics, reject any additional semantic lockfile change, and run `npm ci` under the same dependency-tree-affecting configuration. `npm ci` must leave `package.json` and `package-lock.json` byte-for-byte unchanged. The package and lockfile may enter the repository only under the separately approved Stage 2I implementation boundary.
+The resulting `node_modules/canonicalize` lock record is exactly:
+
+```json
+{
+  "version": "3.0.0",
+  "resolved": "https://registry.npmjs.org/canonicalize/-/canonicalize-3.0.0.tgz",
+  "integrity": "sha512-yYLfHyDMIXRyRqsKBRLX023riFLpXY2YOfdtqKXZRZy9qsfOJ9U+4F9YZL7MEzL5+ziN2x2nlBvY/Voi3EBljA==",
+  "dev": true,
+  "license": "Apache-2.0",
+  "bin": {
+    "canonicalize": "bin/canonicalize.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
+```
+
+It removed zero unrelated entries. A deep semantic comparison confirmed that all other manifest and lockfile content was unchanged. A subsequent frozen `npm ci` left the generated manifest and lockfile byte-for-byte unchanged and installed `canonicalize` version `3.0.0`. This result is classified **VERIFIED IN A DISPOSABLE COPY; NOT YET APPLIED TO THE REPOSITORY**. By contrast, npm `11.6.0` removed 27 unrelated optional/esbuild entries and is not authorized to generate this mutation.
+
+Generation and frozen verification must clear inherited `NPM_CONFIG_*`, `NODE_ENV`, and `NODE_OPTIONS`; use empty disposable user and global npmrc files; use a disposable cache; and pin the same dependency-tree-affecting options. The verified generator platform is `win32` / `x64`; platform, CPU, libc, historical `before`, workspace, and omission overrides are prohibited. An implementation run on another generator platform requires a fresh disposable no-churn proof. With all other configuration sources empty, the exact common option set is:
+
+```powershell
+$npmTreeOptions = @(
+  '--registry=https://registry.npmjs.org/'
+  "--cache=$disposableCache"
+  "--userconfig=$emptyUserNpmrc"
+  "--globalconfig=$emptyGlobalNpmrc"
+  '--install-strategy=hoisted'
+  '--legacy-peer-deps=false'
+  '--strict-peer-deps=false'
+  '--include=dev'
+  '--include=optional'
+  '--include=peer'
+  '--workspaces=false'
+  '--include-workspace-root=false'
+  '--install-links=true'
+  '--prefer-dedupe=false'
+  '--package-lock=true'
+  '--lockfile-version=3'
+  '--format-package-lock=true'
+  '--omit-lockfile-registry-resolved=false'
+  '--ignore-scripts=true'
+  '--audit=false'
+  '--fund=false'
+  '--color=false'
+  '--loglevel=error'
+)
+```
+
+After the npm and Node digests above have been revalidated, the only authorized generator and frozen-install forms are:
+
+```powershell
+Get-ChildItem Env:NPM_CONFIG_* | Remove-Item
+Remove-Item Env:NODE_ENV,Env:NODE_OPTIONS -ErrorAction SilentlyContinue
+
+& $nodeExe $npmCli install canonicalize@3.0.0 `
+  '--package-lock-only=true' `
+  '--save-dev=true' `
+  '--save-exact=true' `
+  @npmTreeOptions
+
+& $nodeExe $npmCli ci @npmTreeOptions
+```
+
+The generator runs only in a disposable copy first. Acceptance requires the same three-entry semantic delta and zero unrelated additions, removals, or rewrites. The repository mutation, if separately authorized, must reproduce that exact result. `npm ci` must leave `package.json` and `package-lock.json` byte-for-byte unchanged. The package and lockfile may enter the repository only under the separately approved Stage 2I implementation boundary.
+
+#### 7.2.1 Revision 0.6 candidate evidence and digest contract
+
+The revision `0.6` candidate evidence was reviewed on branch `fix/profile-authority-stage1-containment` at HEAD `65b6772b4a5e4638b31dedcd42b4eee1cfe1d651` with Git `2.51.0.windows.1`. The candidate content diff is exactly:
+
+- `docs/README.md`; and
+- `docs/engineering/stage-2i-stage-2a-principal-authority-implementation-specification.md`.
+
+`git diff --name-only` returned exactly those two candidate paths, and the Git index was empty. This statement describes the candidate content diff, not an otherwise clean working tree. `git status --porcelain=v2` also retained the intentionally excluded tracked `CLAUDE.md` change and the intentionally excluded untracked `AGENTS.md`, `docs/allrentz-handoff/`, `supabase/gate2_setup.sql`, and `supabase/gate2_tests.ps1` artifacts. Their approved preservation fingerprints remained unchanged, and none is part of this candidate.
+
+Each individual document digest is SHA-256 over that file's raw bytes, without line-ending or encoding normalization. The external approval record—not either self-hashed document—must bind the two individual digests and the combined digest.
+
+The combined digest is SHA-256 over UTF-8 bytes without a byte-order mark representing the following two manifest lines in this exact order:
+
+```text
+docs/README.md|<uppercase README raw-file SHA-256><LF>
+docs/engineering/stage-2i-stage-2a-principal-authority-implementation-specification.md|<uppercase specification raw-file SHA-256>
+```
+
+The separator between path and digest is one ASCII vertical bar (`|`). The separator between records is one LF byte (`0A`). There is no final newline. Paths use forward slashes and are case-sensitive. The calculation is reproducible with:
+
+```powershell
+$documentPaths = @(
+  'docs/README.md'
+  'docs/engineering/stage-2i-stage-2a-principal-authority-implementation-specification.md'
+)
+$digestManifest = foreach ($documentPath in $documentPaths) {
+  $rawFileDigest = (Get-FileHash -Algorithm SHA256 -LiteralPath $documentPath).Hash.ToUpperInvariant()
+  "$documentPath|$rawFileDigest"
+}
+$digestBytes = [System.Text.UTF8Encoding]::new($false).GetBytes(
+  [string]::Join("`n", $digestManifest)
+)
+$sha256 = [System.Security.Cryptography.SHA256]::Create()
+try {
+  $combinedDigest = (
+    [System.BitConverter]::ToString($sha256.ComputeHash($digestBytes))
+  ).Replace('-', '')
+} finally {
+  $sha256.Dispose()
+}
+```
+
+The final digest values are intentionally not embedded into either hashed document because doing so would change the documents and make their own approval digests self-referential. They belong in the separate product-owner approval record together with the revision, branch, HEAD, and exact two-file path set.
 
 The protected package contains logical equivalents of:
 
@@ -1305,7 +1442,7 @@ Subject to separate implementation authorization, the proposed Stage 2I boundary
 - `supabase/b6_3_vqr_pending_review_verify.ps1`
 - `supabase/vendor_quote_submission_verify.ps1`
 
-No listed file is authorized by this documentation candidate.
+No listed file is authorized by this implementation-planning specification.
 
 `supabase/roles.sql` is not part of the boundary and must not be introduced as the Stage 2I owner-provisioning mechanism.
 
@@ -1364,13 +1501,124 @@ Explicitly excluded:
 
 ## 17. Stage 2I acceptance
 
-Stage 2I verification remains local and disposable. Fixture identity is never accepted from user-controlled profile, Auth metadata, or other authority-bearing application data, and no production cleanup RPC is created. The local harness uses exact known synthetic identifiers, one unique run correlation, and an out-of-band local fixture inventory after proving loopback/container targeting.
+Stage 2I behavioral verification remains local and disposable. Hosted Preview verification is a separate, read-only catalog and control-plane evidence mode and never creates fixtures or calls a cleanup path. Fixture identity is never accepted from user-controlled profile, Auth metadata, or other authority-bearing application data, and no production cleanup RPC is created. The local harness uses exact known synthetic identifiers, one unique run correlation, and an out-of-band local fixture inventory after proving loopback/container targeting.
 
 Each affected script must preserve its existing assertions and pass accounting while adding separately labeled shadow assertions. Pre-run orphan reconciliation, fixture creation, verification, cleanup, and cleanup-only recovery run through `try`/`finally` behavior. Cleanup uses an explicit dependency order and exact fixture identifiers. Unexpected rows, relationships, events, effective grants, memberships, qualifications, or non-fixture event linkage fail the run and preserve sanitized evidence for review. Success requires zero remaining synthetic state across every affected table, not only the primary fixture objects.
 
 The execution evidence records the actual PostgreSQL version, Supabase CLI and local runtime versions, Docker image identifiers, Node version, PowerShell version, TypeScript version, and `supabase-js` version. The specification fixes compatibility requirements, not unevidenced patch versions. Immediately before future local runtime execution, the runbook must revalidate firewall/loopback containment and record the restoration procedure; the previously observed firewall-enforced state must not be misreported as process-level loopback binding.
 
 Demo identities are non-human, non-operational, and ineligible for administrator initialization or approval quorum. If any browser-visible demo credential reaches protected non-simulated data, the run stops as an immediate containment blocker.
+
+### 17.1 Separate CI-hardening prerequisite
+
+Before the Stage 2I implementation PR may pass, a separately authorized, independently reviewed CI-hardening prerequisite must be completed and verified outside the exact 17-file Stage 2I implementation boundary. It must:
+
+- pin every referenced GitHub Action to a reviewed full-length commit SHA;
+- pin the Linux Node and npm toolchain to the exact approved versions and verify the npm artifact digest before execution;
+- prohibit `npx` and any other remotely resolved package-command path;
+- run the frozen Linux dependency replay, unit tests, TypeScript typecheck, lint, and production build against the exact PR head;
+- machine-enforce the exact Stage 2I path allowlist for the authorized Stage 2I PR;
+- record the Linux runner image metadata, operating system, architecture, Node, npm, Git, PowerShell where used, package and lockfile digests, dependency identity, and verification results; and
+- run GitHub dependency review when the repository plan supports it, or require an equivalent recorded vulnerability and license review when it does not.
+
+The prerequisite must be introduced and proven separately so a CI-control defect cannot be confused with an authority implementation defect. It must not add an application runtime dependency, production service, credential, signing key, or new authority source. Signed provenance, SBOM attestation, in-toto, Sigstore, offline artifact custody, and higher SLSA-level claims remain deferred until ALLRENTZ produces a governed release artifact or a separately approved risk decision requires them.
+
+The CI-hardening prerequisite may modify its own separately authorized workflow boundary. That workflow change does not enter or silently expand the 17-file Stage 2I implementation boundary. Stage 2I implementation remains unauthorized until the prerequisite passes its bounded review and is committed through its own approval.
+
+### 17.2 Exact dependency and clean-replay commands
+
+The exact verified npm `10.9.8` CLI and common options from section 7.2 are used for every package operation. After the separately authorized repository mutation, frozen dependency replay and ordinary code verification use:
+
+```powershell
+$packageJsonBefore = (Get-FileHash -Algorithm SHA256 -LiteralPath '.\package.json').Hash
+$packageLockBefore = (Get-FileHash -Algorithm SHA256 -LiteralPath '.\package-lock.json').Hash
+
+& $nodeExe $npmCli ci @npmTreeOptions
+
+if ((Get-FileHash -Algorithm SHA256 -LiteralPath '.\package.json').Hash -ne $packageJsonBefore) {
+  throw 'npm ci changed package.json'
+}
+if ((Get-FileHash -Algorithm SHA256 -LiteralPath '.\package-lock.json').Hash -ne $packageLockBefore) {
+  throw 'npm ci changed package-lock.json'
+}
+
+& $nodeExe $npmCli test
+& '.\node_modules\.bin\tsc.cmd' --noEmit
+& $nodeExe $npmCli run lint
+& $nodeExe $npmCli run build
+```
+
+The future `supabase/stage2i_shadow_verify.ps1` must expose a fail-closed `CleanLocalReplay` mode. That mode creates a uniquely named disposable Supabase project outside the repository, assigns unique project, port, container, network, and volume identifiers, proves the target is local, applies the exact reviewed migrations, runs the complete local suite, reconciles all synthetic fixtures, removes only its own resources, and confirms the existing local stack was unchanged. The exact invocation contract is:
+
+```powershell
+$expectedHeadSha = '<approved-40-character-implementation-head-sha>'
+$shadowMigrationSha256 = '<approved-shadow-migration-sha256>'
+$hooksMigrationSha256 = '<approved-hooks-migration-sha256>'
+if ($expectedHeadSha -notmatch '^[0-9a-f]{40}$') {
+  throw 'Expected an exact 40-character implementation HEAD SHA.'
+}
+if ((git rev-parse HEAD).Trim() -ne $expectedHeadSha) {
+  throw 'Local HEAD does not match the approved implementation SHA.'
+}
+
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -File '.\supabase\stage2i_shadow_verify.ps1' `
+  -Mode CleanLocalReplay `
+  -ExpectedRepositoryRoot (Resolve-Path '.').Path `
+  -ExpectedHeadSha $expectedHeadSha `
+  -ExpectedShadowMigrationSha256 $shadowMigrationSha256 `
+  -ExpectedHooksMigrationSha256 $hooksMigrationSha256 `
+  -ExpectedNpmTarballSha256 '3E68F9B5FCAF1A94BA0E37E6A565C920B2BE6BD98998C50970385D6A692AF780' `
+  -ExpectedCanonicalizeTarballSha256 'F6C9B99A28B884A32053994735004ADD11474DDED38EC342414E53F7FB1E1F19'
+```
+
+The mode must stop before mutation if the branch, HEAD, migration digests, tool digests, loopback/container boundary, unique resource names, clean-replay file set, or cleanup inventory is missing or ambiguous. Failure must enter cleanup-only recovery and return nonzero; success requires fresh-session zero-residue reconciliation.
+
+### 17.3 Exact hosted Preview verification commands
+
+The same future verifier must expose a hard-separated `HostedPreviewCatalog` mode. It is read-only, accepts the database URL only through the named process environment variable, never prints that value, refuses a production project reference, creates no fixture, invokes no cleanup, and validates the exact Preview project, PR head SHA, migration digests, migration history, Pattern B ownership, managed membership graph, ACLs, default ACLs, function hardening, application-role denials, and absence of partial probe residue.
+
+The required command contract, after a separate authorization has supplied the exact values through an approved secret channel, is:
+
+```powershell
+$repository = 'ALLRENTZ/allrentz-rev-1'
+$pullRequest = '<approved-pr-number>'
+$expectedPreviewProjectRef = '<approved-preview-project-ref>'
+$expectedHeadSha = '<approved-40-character-pr-head-sha>'
+$shadowMigrationSha256 = '<approved-shadow-migration-sha256>'
+$hooksMigrationSha256 = '<approved-hooks-migration-sha256>'
+
+$pr = & 'C:\Program Files\GitHub CLI\gh.exe' pr view $pullRequest `
+  --repo $repository `
+  --json headRefOid,state,isDraft,url | ConvertFrom-Json
+if ($pr.state -ne 'OPEN') {
+  throw 'Preview PR is not open.'
+}
+if ($pr.headRefOid -ne $expectedHeadSha) {
+  throw 'Preview PR head does not match the approved implementation SHA.'
+}
+
+& 'C:\Program Files\GitHub CLI\gh.exe' pr checks $pullRequest `
+  --repo $repository `
+  --watch `
+  --interval 10
+if ($LASTEXITCODE -ne 0) {
+  throw 'Hosted checks did not pass.'
+}
+
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -File '.\supabase\stage2i_shadow_verify.ps1' `
+  -Mode HostedPreviewCatalog `
+  -DatabaseUrlEnvironmentVariable 'STAGE2I_PREVIEW_DATABASE_URL' `
+  -ExpectedProjectRef $expectedPreviewProjectRef `
+  -ExpectedHeadSha $expectedHeadSha `
+  -ExpectedShadowMigrationSha256 $shadowMigrationSha256 `
+  -ExpectedHooksMigrationSha256 $hooksMigrationSha256
+```
+
+`STAGE2I_PREVIEW_DATABASE_URL` must already exist in the process environment and must never be echoed, interpolated into a logged command, persisted, or passed as a command-line value. The verifier must reject a missing URL, an unapproved host or project reference, the known production project reference, a non-Preview environment, a head or migration mismatch, unexpected executor or grantor behavior, any effective application-role authority, any write requirement, or incomplete fresh-session reconciliation. Passing this command does not authorize merge, deployment, or production access.
+
+The Linux CI dependency replay and hosted Supabase Preview database verification are separate mandatory gates; neither substitutes for the other. The CI record must capture the exact operating system, architecture, Node version, npm version, npm tarball digest, dependency-tree-affecting options, `npm ci` result, installed `canonicalize` version and integrity, and before/after `package.json` and `package-lock.json` digests. It must use the same verified npm `10.9.8` tarball and frozen option contract, fail on any manifest or lockfile mutation, and run against the exact PR head SHA. A Linux result is not inferred from the verified Windows disposable run.
 
 Stage 2I passes only when:
 
@@ -1454,7 +1702,7 @@ The four decisions are recorded now, but operational evidence is required at dif
 | Control | Policy recorded | Operational proof required before |
 | --- | ---: | --- |
 | Manifest custody contract | Yes | Stage 2A production manifest preparation |
-| Exact canonicalization dependency | `canonicalize@3.0.0` approved only as an exact Stage 2I development dependency; disposable npm `10.9.8` no-churn mutation verified; not applied | Stage 2I package or tooling change |
+| Exact canonicalization dependency | `canonicalize@3.0.0` approved only as an exact Stage 2I development dependency; exact registry URL, SRI, and tarball SHA-256 pinned; disposable npm `10.9.8` no-churn mutation verified; not applied | Stage 2I package or tooling change |
 | Private-schema ownership pattern | Pattern B direct final-owner creation approved; local comparison and disposable `roles.sql` evidence passed; no ownership transfers | Exact Stage 2I migration review and hosted Preview |
 | Managed creator relationship | PostgreSQL/Supabase automatic control-plane edge accepted locally only when its complete attributes match the approved contract | Hosted Preview must discover and validate the actual grantor and options |
 | Stage 2I `roles.sql` mechanism | Rejected for this owner-provisioning use; no `roles.sql` is planned | Any future proposal to use `roles.sql` |
@@ -1473,7 +1721,7 @@ The four decisions are recorded now, but operational evidence is required at dif
 | Final Realtime retain/contain outcome | No | Stage 2A acceptance |
 | Optional WORM hardening | Deferred | Separately approved governance hardening |
 
-No further broad research cycle is required to review this candidate. The canonicalization dependency decision, ownership feasibility, vendor setup, human eligibility, repository diff review, local runtime evidence, and any hosted inventory remain bounded execution gates—not assumptions.
+No further broad research cycle is required for this approved planning baseline. The canonicalization dependency decision, ownership feasibility, vendor setup, human eligibility, repository diff review, local runtime evidence, and any hosted inventory remain bounded execution gates—not assumptions.
 
 ## 20. Non-normative primary references
 
@@ -1513,27 +1761,29 @@ These sources validate external behavior. They do not delegate ALLRENTZ product 
 | `ALLRENTZ-AUTH-002` revision `0.2` | **APPROVED AND LOCALLY COMMITTED AT `c4f382b`** |
 | `ALLRENTZ-AUTH-002` revision `0.3` | **APPROVED CORRECTED IMPLEMENTATION-PLANNING BASELINE** |
 | `ALLRENTZ-AUTH-002` revision `0.4` | **SUPERSEDED BY REVISION 0.5; PRESERVED AT COMMIT `848952fc5c97127e72e72f7abd5bd360c81cf806`** |
-| `ALLRENTZ-AUTH-002` revision `0.5` | **CURRENT APPROVED IMPLEMENTATION-PLANNING BASELINE; APPROVAL PINNED TO CANDIDATE SHA-256 `598ABA1AB5D33AF44A994A89B042C092AC88B7CECB33377610FFBB4F007742C9`** |
+| `ALLRENTZ-AUTH-002` revision `0.5` | **SUPERSEDED BY REVISION 0.6; PRESERVED AT COMMIT `65b6772b4a5e4638b31dedcd42b4eee1cfe1d651`** |
+| `ALLRENTZ-AUTH-002` revision `0.6` | **CURRENT APPROVED IMPLEMENTATION-PLANNING BASELINE; DEPENDENCY/TOOLCHAIN EVIDENCE, EXACT REPLAY COMMANDS, AND THE SEPARATE CI-HARDENING PREREQUISITE RECORDED** |
 | Canonicalization dependency | **`canonicalize@3.0.0` APPROVED AS AN EXACT STAGE 2I `devDependency`; NOT YET APPLIED** |
-| Lockfile generator | **npm `10.9.8` APPROVED FOR THIS MUTATION ONLY; DISPOSABLE NO-CHURN PROCEDURE VERIFIED** |
+| Lockfile generator | **npm `10.9.8` APPROVED FOR THIS MUTATION ONLY; SOURCE, SRI, TAR/CLI DIGESTS, TREE OPTIONS, AND DISPOSABLE NO-CHURN PROCEDURE VERIFIED** |
 | Local PostgreSQL ownership capability | **PATTERN B LOCALLY VERIFIED ON POSTGRESQL `17.6`; NOT INDEPENDENTLY OR HOSTED-PREVIEW VERIFIED** |
 | Managed automatic creator relationship | **ACCEPTED AS A DATABASE CONTROL-PLANE INVARIANT; LOCAL GRANTOR/OPTIONS VERIFIED; HOSTED CONTRACT PENDING** |
 | Stage 2I `roles.sql` owner provisioning | **REJECTED; NO `roles.sql` MECHANISM PLANNED** |
 | Database-level owner `CREATE` privilege | **PROHIBITED AND NOT REQUIRED BY PATTERN B** |
 | Ownership transfers | **PROHIBITED AND NOT REQUIRED BY PATTERN B** |
+| Separate CI-hardening prerequisite | **AUTHORIZED FOR BOUNDED IMPLEMENTATION AND VERIFICATION; COMMIT AND PUSH NOT YET AUTHORIZED** |
 | Hosted Supabase Preview gate | **REQUIRED BEFORE MERGE; NOT YET AUTHORIZED OR EXECUTED** |
-| Current approved planning baseline | **REVISION 0.5; REVISION 0.4 PRESERVED AT `848952FC5C97127E72E72F7ABD5BD360C81CF806`** |
+| Current approved planning baseline | **REVISION 0.6; REVISION 0.5 PRESERVED AT `65B6772B4A5E4638B31DEDCD42B4EEE1CFE1D651`** |
 | Stage 2I implementation | **NOT AUTHORIZED** |
 | Stage 2A implementation | **NOT AUTHORIZED** |
 | Governance-vault creation | **NOT AUTHORIZED** |
 | Further local or hosted Supabase execution | **NOT AUTHORIZED** |
-| Branch, commit, push, PR, merge, or deployment | **NOT AUTHORIZED** |
+| Stage 2I branch, commit, push, PR, merge, or deployment | **NOT AUTHORIZED** |
 
-The current status-only authorization permits only the revision `0.5` approval transition in:
+The revision `0.6` approval and documentation-only commit authorization permits only the approved planning-baseline changes in:
 
 - `docs/README.md`; and
 - `docs/engineering/stage-2i-stage-2a-principal-authority-implementation-specification.md`.
 
-Revision `0.5` is approved from candidate SHA-256 `598ABA1AB5D33AF44A994A89B042C092AC88B7CECB33377610FFBB4F007742C9`. Revision `0.4` is superseded but preserved at commit `848952fc5c97127e72e72f7abd5bd360c81cf806`. Any later staging or commit requires separate authorization.
+Revision `0.5` was approved from candidate SHA-256 `598ABA1AB5D33AF44A994A89B042C092AC88B7CECB33377610FFBB4F007742C9` and is superseded but preserved at commit `65b6772b4a5e4638b31dedcd42b4eee1cfe1d651`. Revision `0.4` remains preserved at commit `848952fc5c97127e72e72f7abd5bd360c81cf806`.
 
-The current authorization ends after the complete status-only two-file diff, scoped whitespace validation, individual file hashes, combined approved-document hash, empty-index confirmation, and excluded-artifact preservation report. It authorizes no staging or commit. No package or lockfile mutation, branch, runtime execution, push, PR, merge, deployment, Preview access, production access, or implementation action follows from this status transition. Approval of the dependency decision does not authorize its installation or Stage 2I. Every Stage 2I or Stage 2A implementation tranche still requires separate exact-scope authorization.
+The documentation authorization ends after the complete two-file diff, scoped whitespace validation, individual file hashes, combined approved-document hash, excluded-artifact preservation check, exact staging review, and one local documentation-only commit. It authorizes no amendment, push, PR, merge, deployment, Preview access, production access, package or lockfile mutation, or Stage 2I implementation. The separately authorized CI-hardening prerequisite may be implemented and verified only in its explicit workflow boundary; its staging, commit, push, PR, or remote configuration remains separately authorized. Approval of the dependency decision does not authorize its installation. Every Stage 2I or Stage 2A implementation tranche still requires separate exact-scope authorization.

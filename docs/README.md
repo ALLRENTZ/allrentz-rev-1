@@ -2,7 +2,7 @@
 
 **Status:** Active
 **Authority:** Subordinate to `/ALLRENTZ_CONSTITUTION.md`; governed by the precedence contract below
-**Last reviewed:** 2026-07-23
+**Last reviewed:** 2026-07-27
 
 This folder is the **controlled** documentation layer for the ALLRENTZ engineering source of truth. It is version-controlled in git alongside the code it describes.
 
@@ -74,7 +74,7 @@ docs/
 | `p7-verify-doctrine.md` | Draft | derives from `/ALLRENTZ_CONSTITUTION.md` (Formal Workflow Safety and Advanced Verification Doctrine) — P7 = P7-VERIFY harness workstream |
 | `ai-governance.md` | Draft | derives from `/ALLRENTZ_CONSTITUTION.md` (AI Governance Rule) |
 | `stage-2-authority-architecture-specification.md` | Active / Ratified v1.0 — bounded inventory/planning only; implementation separately authorized | derives from `docs/doctrine/ALLRENTZ_ARCHITECTURAL_FOUNDATION.md` and verified Stage 1 containment |
-| `stage-2i-stage-2a-principal-authority-implementation-specification.md` | Active / Approved v0.5 — candidate SHA-256 `598ABA1AB5D33AF44A994A89B042C092AC88B7CECB33377610FFBB4F007742C9` approved; supersedes v0.4 at `848952fc5c97127e72e72f7abd5bd360c81cf806`; implementation separately authorized | implements the ratified `ALLRENTZ-AUTH-001` architecture without superseding it |
+| `stage-2i-stage-2a-principal-authority-implementation-specification.md` | Active / Approved v0.6 — dependency/toolchain evidence, exact replay commands, and the separately authorized CI-hardening prerequisite recorded; supersedes v0.5 at `65b6772b4a5e4638b31dedcd42b4eee1cfe1d651`; Stage 2I implementation is not authorized and requires a separate exact-scope authorization | implements the ratified `ALLRENTZ-AUTH-001` architecture without superseding it |
 
 ### strategy/
 | File | Status | Source in raw archive |
