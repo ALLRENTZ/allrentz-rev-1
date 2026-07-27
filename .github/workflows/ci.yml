@@ -9,32 +9,278 @@ on:
 permissions:
   contents: read
 
+env:
+  NODE_VERSION: 22.19.0
+  NPM_VERSION: 10.9.8
+  NPM_TARBALL_URL: https://registry.npmjs.org/npm/-/npm-10.9.8.tgz
+  NPM_TARBALL_SHA256: 3E68F9B5FCAF1A94BA0E37E6A565C920B2BE6BD98998C50970385D6A692AF780
+  NPM_CLI_SHA256: 8E5F6F3429F8CDBE693CDC29904E9D5A7B127A494BD15C804BD54C7403BFCBE7
+  STAGE2I_AUTHORIZED_HEAD_REF: stage2/principal-access-foundation
+
 jobs:
-  verify:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: high
+
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Enforce Stage 2I file boundary
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+
+          allowed=(
+            "supabase/migrations/20260723120000_stage2i_principal_authority_shadow.sql"
+            "supabase/migrations/20260723121000_stage2i_authority_compatibility_hooks.sql"
+            "package.json"
+            "package-lock.json"
+            "supabase/stage2_authority_canonicalize.mjs"
+            "supabase/fixtures/stage2_authority_manifest_vectors.json"
+            "supabase/stage2_authority_inventory.ps1"
+            "supabase/stage2_authority_manifest_verify.ps1"
+            "supabase/stage2i_shadow_verify.ps1"
+            "supabase/test_helpers/stage2_shadow_fixture_cleanup.ps1"
+            "supabase/key_migration_verify.ps1"
+            "supabase/profile_authority_verify.ps1"
+            "supabase/membership_verify.ps1"
+            "supabase/rfq_transition_verify.ps1"
+            "supabase/b6_2_vendor_authority_verify.ps1"
+            "supabase/b6_3_vqr_pending_review_verify.ps1"
+            "supabase/vendor_quote_submission_verify.ps1"
+          )
+
+          mapfile -t changed < <(
+            git diff --name-only --diff-filter=ACDMRTUXB "${BASE_SHA}...HEAD"
+          )
+
+          stage2i_marker=false
+          for path in "${changed[@]}"; do
+            case "$path" in
+              supabase/migrations/20260723120000_stage2i_principal_authority_shadow.sql|\
+              supabase/migrations/20260723121000_stage2i_authority_compatibility_hooks.sql|\
+              supabase/stage2_authority_canonicalize.mjs|\
+              supabase/fixtures/stage2_authority_manifest_vectors.json|\
+              supabase/stage2_authority_inventory.ps1|\
+              supabase/stage2_authority_manifest_verify.ps1|\
+              supabase/stage2i_shadow_verify.ps1|\
+              supabase/test_helpers/stage2_shadow_fixture_cleanup.ps1)
+                stage2i_marker=true
+                ;;
+            esac
+          done
+
+          if [[ "$stage2i_marker" == "true" && "$HEAD_REF" != "$STAGE2I_AUTHORIZED_HEAD_REF" ]]; then
+            echo "Stage 2I files require head branch: $STAGE2I_AUTHORIZED_HEAD_REF" >&2
+            exit 1
+          fi
+
+          if [[ "$HEAD_REF" != "$STAGE2I_AUTHORIZED_HEAD_REF" ]]; then
+            echo "Stage 2I boundary: not applicable to $HEAD_REF"
+            exit 0
+          fi
+
+          if [[ "${#changed[@]}" -ne "${#allowed[@]}" ]]; then
+            echo "Stage 2I requires exactly ${#allowed[@]} changed paths; found ${#changed[@]}." >&2
+            printf 'Changed: %s\n' "${changed[@]}" >&2
+            exit 1
+          fi
+
+          for required_path in "${allowed[@]}"; do
+            if ! printf '%s\n' "${changed[@]}" | grep -Fqx -- "$required_path"; then
+              echo "Missing required Stage 2I path: $required_path" >&2
+              exit 1
+            fi
+          done
+
+          for changed_path in "${changed[@]}"; do
+            if ! printf '%s\n' "${allowed[@]}" | grep -Fqx -- "$changed_path"; then
+              echo "Unauthorized Stage 2I path: $changed_path" >&2
+              exit 1
+            fi
+          done
+
+          printf 'Authorized Stage 2I path: %s\n' "${changed[@]}"
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 22
-          cache: npm
+          node-version: ${{ env.NODE_VERSION }}
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Record execution environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "event=$GITHUB_EVENT_NAME"
+          echo "repository=$GITHUB_REPOSITORY"
+          echo "event_sha=$GITHUB_SHA"
+          echo "expected_head_sha=${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "checked_out_sha=$(git rev-parse HEAD)"
+          echo "runner_os=$RUNNER_OS"
+          echo "runner_arch=$RUNNER_ARCH"
+          echo "image_os=${ImageOS:-unknown}"
+          echo "image_version=${ImageVersion:-unknown}"
+          uname -a
+          cat /etc/os-release
+          node --version
+          git --version
+          pwsh -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
+          sha256sum package.json package-lock.json
+
+      - name: Acquire and verify npm 10.9.8
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          npm_tarball="$RUNNER_TEMP/npm-${NPM_VERSION}.tgz"
+          npm_root="$RUNNER_TEMP/npm-${NPM_VERSION}"
+          npm_cli="$npm_root/package/bin/npm-cli.js"
+          npm_cache="$RUNNER_TEMP/npm-cache"
+          npm_userconfig="$RUNNER_TEMP/npm-userconfig"
+          npm_globalconfig="$RUNNER_TEMP/npm-globalconfig"
+
+          mkdir -p "$npm_root" "$npm_cache"
+          : > "$npm_userconfig"
+          : > "$npm_globalconfig"
+
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+            "$NPM_TARBALL_URL" \
+            --output "$npm_tarball"
+          echo "$NPM_TARBALL_SHA256  $npm_tarball" | sha256sum --check --strict
+          tar -xzf "$npm_tarball" -C "$npm_root"
+          echo "$NPM_CLI_SHA256  $npm_cli" | sha256sum --check --strict
+
+          actual_npm_version="$(node "$npm_cli" --version)"
+          if [[ "$actual_npm_version" != "$NPM_VERSION" ]]; then
+            echo "Expected npm $NPM_VERSION; found $actual_npm_version." >&2
+            exit 1
+          fi
+          echo "npm_version=$actual_npm_version"
+
+          {
+            echo "NPM_CLI=$npm_cli"
+            echo "NPM_CACHE=$npm_cache"
+            echo "NPM_USERCONFIG=$npm_userconfig"
+            echo "NPM_GLOBALCONFIG=$npm_globalconfig"
+          } >> "$GITHUB_ENV"
+
+      - name: Frozen Linux dependency replay
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          unset NODE_ENV NODE_OPTIONS
+          while IFS='=' read -r variable_name _; do
+            unset "$variable_name"
+          done < <(env | grep '^NPM_CONFIG_' || true)
+
+          sha256sum package.json package-lock.json > "$RUNNER_TEMP/package-files.before.sha256"
+
+          node "$NPM_CLI" ci \
+            --registry=https://registry.npmjs.org/ \
+            --cache="$NPM_CACHE" \
+            --userconfig="$NPM_USERCONFIG" \
+            --globalconfig="$NPM_GLOBALCONFIG" \
+            --install-strategy=hoisted \
+            --legacy-peer-deps=false \
+            --strict-peer-deps=false \
+            --include=dev \
+            --include=optional \
+            --include=peer \
+            --workspaces=false \
+            --include-workspace-root=false \
+            --install-links=true \
+            --prefer-dedupe=false \
+            --package-lock=true \
+            --lockfile-version=3 \
+            --format-package-lock=true \
+            --omit-lockfile-registry-resolved=false \
+            --ignore-scripts=true \
+            --audit=false \
+            --fund=false \
+            --color=false \
+            --loglevel=error
+
+          sha256sum --check --strict "$RUNNER_TEMP/package-files.before.sha256"
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const manifest = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          const declared = manifest.devDependencies?.canonicalize;
+
+          if (declared === undefined) {
+            console.log('canonicalize is not declared yet; CI prerequisite is in pre-Stage-2I mode.');
+            process.exit(0);
+          }
+
+          if (declared !== '3.0.0') {
+            throw new Error(`Expected canonicalize devDependency 3.0.0; found ${declared}`);
+          }
+
+          const rootDeclared = lock.packages?.['']?.devDependencies?.canonicalize;
+          const record = lock.packages?.['node_modules/canonicalize'];
+          const expected = {
+            version: '3.0.0',
+            resolved: 'https://registry.npmjs.org/canonicalize/-/canonicalize-3.0.0.tgz',
+            integrity: 'sha512-yYLfHyDMIXRyRqsKBRLX023riFLpXY2YOfdtqKXZRZy9qsfOJ9U+4F9YZL7MEzL5+ziN2x2nlBvY/Voi3EBljA==',
+            license: 'Apache-2.0',
+          };
+
+          if (rootDeclared !== '3.0.0') {
+            throw new Error(`Expected root lock declaration 3.0.0; found ${rootDeclared}`);
+          }
+          for (const [key, value] of Object.entries(expected)) {
+            if (record?.[key] !== value) {
+              throw new Error(`canonicalize lock ${key} mismatch`);
+            }
+          }
+          if (record.dev !== true) {
+            throw new Error('canonicalize must remain a development dependency');
+          }
+          console.log('canonicalize identity, integrity, scope, and license: PASS');
+          NODE
 
       - name: Run unit tests
-        run: npm test
+        run: node "$NPM_CLI" test
 
       - name: Typecheck
-        run: npx tsc -b
+        run: ./node_modules/.bin/tsc --noEmit
 
       - name: Lint
-        run: npm run lint
+        run: node "$NPM_CLI" run lint
 
       - name: Build
-        run: npm run build
+        run: node "$NPM_CLI" run build
+
+      - name: Confirm package files remain frozen
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum --check --strict "$RUNNER_TEMP/package-files.before.sha256"
