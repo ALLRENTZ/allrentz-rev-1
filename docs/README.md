@@ -2,7 +2,8 @@
 
 **Status:** Active
 **Authority:** Subordinate to `/ALLRENTZ_CONSTITUTION.md`; governed by the precedence contract below
-**Last reviewed:** 2026-07-27
+**Last reviewed:** 2026-08-03
+**Publication erratum:** `ALLRENTZ-PR8-DOC-ERRATUM-001` — publication provenance and CI-prerequisite status only; no normative decision change
 
 This folder is the **controlled** documentation layer for the ALLRENTZ engineering source of truth. It is version-controlled in git alongside the code it describes.
 
@@ -73,8 +74,8 @@ docs/
 | `authority-first-loop.md` | Draft | derives from `/ALLRENTZ_CONSTITUTION.md` (Operational Authority Order) |
 | `p7-verify-doctrine.md` | Draft | derives from `/ALLRENTZ_CONSTITUTION.md` (Formal Workflow Safety and Advanced Verification Doctrine) — P7 = P7-VERIFY harness workstream |
 | `ai-governance.md` | Draft | derives from `/ALLRENTZ_CONSTITUTION.md` (AI Governance Rule) |
-| `stage-2-authority-architecture-specification.md` | Active / Ratified v1.0 — bounded inventory/planning only; implementation separately authorized | derives from `docs/doctrine/ALLRENTZ_ARCHITECTURAL_FOUNDATION.md` and verified Stage 1 containment |
-| `stage-2i-stage-2a-principal-authority-implementation-specification.md` | Active / Approved v0.6 — dependency/toolchain evidence, exact replay commands, and the separately authorized CI-hardening prerequisite recorded; supersedes v0.5 at `65b6772b4a5e4638b31dedcd42b4eee1cfe1d651`; Stage 2I implementation is not authorized and requires a separate exact-scope authorization | implements the ratified `ALLRENTZ-AUTH-001` architecture without superseding it |
+| `stage-2-authority-architecture-specification.md` | Active / Ratified v1.0 with non-normative publication erratum `ALLRENTZ-PR8-DOC-ERRATUM-001` — bounded inventory/planning only; implementation separately authorized | derives from `docs/doctrine/ALLRENTZ_ARCHITECTURAL_FOUNDATION.md` and verified Stage 1 containment |
+| `stage-2i-stage-2a-principal-authority-implementation-specification.md` | Active / Approved v0.6 with non-normative publication erratum `ALLRENTZ-PR8-DOC-ERRATUM-001` — dependency/toolchain evidence and exact replay commands recorded; the separate CI-hardening prerequisite was merged through PR #6; supersedes v0.5 at original local commit `65b6772b4a5e4638b31dedcd42b4eee1cfe1d651`, published byte-identically at `8deefce1b6991bca606f2627e3bdd2e36df65093`; Stage 2I implementation is not authorized and requires a separate exact-scope authorization | implements the ratified `ALLRENTZ-AUTH-001` architecture without superseding it |
 
 ### strategy/
 | File | Status | Source in raw archive |

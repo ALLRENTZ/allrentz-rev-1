@@ -8,25 +8,28 @@ governance_state: approved
 authorized_scope: implementation planning only; no schema, code, runtime, deployment, or production execution
 authorization_reference: ALLRENTZ Product Owner approval and documentation-only commit authorization in the controlled Codex session on 2026-07-27
 current_approved_baseline: revision 0.6 approved by the ALLRENTZ Product Owner on 2026-07-27
-supersedes: revision 0.5 at commit 65b6772b4a5e4638b31dedcd42b4eee1cfe1d651
-decision_status: revision 0.6 approved as the implementation-planning baseline; pinned dependency/toolchain evidence, exact replay commands, and the separately authorized CI-hardening prerequisite are recorded; Stage 2I implementation remains unauthorized
+supersedes: revision 0.5 at original local commit 65b6772b4a5e4638b31dedcd42b4eee1cfe1d651, published byte-identically at 8deefce1b6991bca606f2627e3bdd2e36df65093
+decision_status: revision 0.6 approved as the implementation-planning baseline; pinned dependency/toolchain evidence and exact replay commands are recorded; the separate CI-hardening prerequisite was merged through PR #6; Stage 2I implementation remains unauthorized
 validation_status: complete documentation diff, final hashes, empty-index confirmation, scoped whitespace validation, package-file preservation, and excluded-artifact preservation passed before the approved documentation-only commit
+publication_erratum: ALLRENTZ-PR8-DOC-ERRATUM-001 — publication provenance and CI-prerequisite status only; approved revision 0.6 remains normatively unchanged
+publication_erratum_authorized_on: 2026-08-03
+publication_erratum_authorization_reference: ALLRENTZ Product Owner status-correction authorization on 2026-08-02 through 2026-08-03 and publication-erratum authorization on 2026-08-03 in controlled Codex sessions
 created_on: 2026-07-23
 candidate_opened_on: 2026-07-26
 approved_on: 2026-07-27
 approved_by: ALLRENTZ Product Owner
 authority: subordinate to /ALLRENTZ_CONSTITUTION.md, docs/doctrine/ALLRENTZ_ARCHITECTURAL_FOUNDATION.md, and ALLRENTZ-AUTH-001 v1.0
 related: docs/engineering/stage-2-authority-architecture-specification.md, docs/engineering/authority-first-loop.md
-last_reviewed: 2026-07-27
+last_reviewed: 2026-08-03
 ---
 
 # ALLRENTZ Stage 2I and Stage 2A Principal Authority Implementation Specification
 
 ## 1. Decision and authorization boundary
 
-This approved revision `0.6` pins the disposable dependency/toolchain evidence, defines the clean-replay and hosted Preview command contracts, records the separately authorized CI-hardening prerequisite, and corrects stale candidate language. It does not change the selected authority architecture or authorize Stage 2I implementation.
+This approved revision `0.6` pins the disposable dependency/toolchain evidence, defines the clean-replay and hosted Preview command contracts, records the separately completed CI-hardening prerequisite, and corrects stale candidate language. Publication erratum `ALLRENTZ-PR8-DOC-ERRATUM-001` changes only publication provenance and current CI-prerequisite status. It does not change the selected authority architecture, amend the approved implementation plan, or authorize Stage 2I implementation.
 
-Revision `0.6` supersedes revision `0.5` at commit `65b6772b4a5e4638b31dedcd42b4eee1cfe1d651` as the current approved implementation-planning baseline. It converts the ratified `ALLRENTZ-AUTH-001` architecture into a bounded implementation plan for:
+Revision `0.6` supersedes revision `0.5` at original local commit `65b6772b4a5e4638b31dedcd42b4eee1cfe1d651`, published byte-identically at commit `8deefce1b6991bca606f2627e3bdd2e36df65093`, as the current approved implementation-planning baseline. It converts the ratified `ALLRENTZ-AUTH-001` architecture into a bounded implementation plan for:
 
 1. Stage 2I shadow authority initialization foundations; and
 2. Stage 2A principal-access expansion, cutover, and acceptance.
@@ -755,6 +758,20 @@ try {
 ```
 
 The final digest values are intentionally not embedded into either hashed document because doing so would change the documents and make their own approval digests self-referential. They belong in the separate product-owner approval record together with the revision, branch, HEAD, and exact two-file path set.
+
+#### 7.2.2 Publication provenance erratum
+
+Publication erratum `ALLRENTZ-PR8-DOC-ERRATUM-001` was authorized on 2026-08-03 to reconcile the publication history after the approved work was rebased for PR #8. It preserves each original local commit as historical approval evidence and adds the verified byte-identical published commit for remote review:
+
+| Evidence | Original local commit | Published byte-identical commit |
+| --- | --- | --- |
+| Stage 1 authority containment | `35cae877704d0beb013fc54a77d160e5a4173075` | `20848efedcf53cd212cbfba1bad64c55ce2db906` |
+| `ALLRENTZ-AUTH-002` revision `0.2` | `c4f382bfdc6168345c7ca1dda6298e4e83435275` | `272dc9c40f0d485e1da1965a96b87083772b8b1a` |
+| `ALLRENTZ-AUTH-002` revision `0.4` | `848952fc5c97127e72e72f7abd5bd360c81cf806` | `3c18646d00325d5897e1074b7773fd627ba1eb55` |
+| `ALLRENTZ-AUTH-002` revision `0.5` | `65b6772b4a5e4638b31dedcd42b4eee1cfe1d651` | `8deefce1b6991bca606f2627e3bdd2e36df65093` |
+| `ALLRENTZ-AUTH-002` revision `0.6` | `13358f9c99dab75b03b8d6f297edbaa067206964` | `2b9ca273f37ada990dd8ac69083d68ee395bf249` |
+
+The original commits remain the historical authorization references; the published commits are their remote-review equivalents. Neither replaces the other. This erratum changes no normative decision, implementation scope, authority rule, or execution authorization. Its new document digests remain outside the self-hashed documents and are bound in the separately authorized completion record.
 
 The protected package contains logical equivalents of:
 
@@ -1523,7 +1540,7 @@ Before the Stage 2I implementation PR may pass, a separately authorized, indepen
 
 The prerequisite must be introduced and proven separately so a CI-control defect cannot be confused with an authority implementation defect. It must not add an application runtime dependency, production service, credential, signing key, or new authority source. Signed provenance, SBOM attestation, in-toto, Sigstore, offline artifact custody, and higher SLSA-level claims remain deferred until ALLRENTZ produces a governed release artifact or a separately approved risk decision requires them.
 
-The CI-hardening prerequisite may modify its own separately authorized workflow boundary. That workflow change does not enter or silently expand the 17-file Stage 2I implementation boundary. Stage 2I implementation remains unauthorized until the prerequisite passes its bounded review and is committed through its own approval.
+The CI-hardening prerequisite used its own separately authorized workflow boundary and was committed, pushed, and merged to `main` through PR #6 at `cb2cf1fff88df2231aa53a12060a82bc95457156`. That completed workflow change did not enter or silently expand the 17-file Stage 2I implementation boundary. Stage 2I implementation remains unauthorized and still requires its own exact-scope approval.
 
 ### 17.2 Exact dependency and clean-replay commands
 
@@ -1710,7 +1727,7 @@ The four decisions are recorded now, but operational evidence is required at dif
 | Owner global default ACL | Global `PUBLIC EXECUTE` removal required before function creation, plus per-signature revocation | Exact Stage 2I migration review and hosted Preview |
 | Temporary migration membership | Transactional `ADMIN FALSE`, `SET TRUE`, `INHERIT FALSE`; exact-grantor removal before commit | Exact Stage 2I migration review and hosted Preview |
 | Control-plane identity boundary | Trusted administration sessions and untrusted application/workload identities defined; current provider controls not overclaimed | Hosted Preview and separately approved operational control evidence |
-| Exact migration filenames and ordering | Collision-free at local commit `c4f382b`; recheck required | Stage 2I migration creation |
+| Exact migration filenames and ordering | Collision-free at original local commit `c4f382bfdc6168345c7ca1dda6298e4e83435275`, published byte-identically at `272dc9c40f0d485e1da1965a96b87083772b8b1a`; recheck required | Stage 2I migration creation |
 | Shared shadow-fixture helper | Included in proposed boundary | Stage 2I script creation |
 | Local firewall/loopback containment and rollback | Prior evidence only | Every authorized local runtime pass |
 | Actual governance/approval providers, vault, custodians, and approver identities | No | Stage 2A cutover |
@@ -1758,11 +1775,11 @@ These sources validate external behavior. They do not delegate ALLRENTZ product 
 | Controlled-docs model | **APPROVED; GOVERNANCE CORRECTIONS INCORPORATED** |
 | Stage 2I/2A architecture direction | **APPROVED** |
 | Four policy decisions in this document | **INCORPORATED; OPERATIONAL PROVIDERS AND NAMED PEOPLE PENDING** |
-| `ALLRENTZ-AUTH-002` revision `0.2` | **APPROVED AND LOCALLY COMMITTED AT `c4f382b`** |
+| `ALLRENTZ-AUTH-002` revision `0.2` | **APPROVED AT ORIGINAL LOCAL COMMIT `c4f382bfdc6168345c7ca1dda6298e4e83435275`; PUBLISHED BYTE-IDENTICALLY AT `272dc9c40f0d485e1da1965a96b87083772b8b1a`** |
 | `ALLRENTZ-AUTH-002` revision `0.3` | **APPROVED CORRECTED IMPLEMENTATION-PLANNING BASELINE** |
-| `ALLRENTZ-AUTH-002` revision `0.4` | **SUPERSEDED BY REVISION 0.5; PRESERVED AT COMMIT `848952fc5c97127e72e72f7abd5bd360c81cf806`** |
-| `ALLRENTZ-AUTH-002` revision `0.5` | **SUPERSEDED BY REVISION 0.6; PRESERVED AT COMMIT `65b6772b4a5e4638b31dedcd42b4eee1cfe1d651`** |
-| `ALLRENTZ-AUTH-002` revision `0.6` | **CURRENT APPROVED IMPLEMENTATION-PLANNING BASELINE; DEPENDENCY/TOOLCHAIN EVIDENCE, EXACT REPLAY COMMANDS, AND THE SEPARATE CI-HARDENING PREREQUISITE RECORDED** |
+| `ALLRENTZ-AUTH-002` revision `0.4` | **SUPERSEDED BY REVISION 0.5; PRESERVED AT ORIGINAL LOCAL COMMIT `848952fc5c97127e72e72f7abd5bd360c81cf806`; PUBLISHED BYTE-IDENTICALLY AT `3c18646d00325d5897e1074b7773fd627ba1eb55`** |
+| `ALLRENTZ-AUTH-002` revision `0.5` | **SUPERSEDED BY REVISION 0.6; PRESERVED AT ORIGINAL LOCAL COMMIT `65b6772b4a5e4638b31dedcd42b4eee1cfe1d651`; PUBLISHED BYTE-IDENTICALLY AT `8deefce1b6991bca606f2627e3bdd2e36df65093`** |
+| `ALLRENTZ-AUTH-002` revision `0.6` | **CURRENT APPROVED IMPLEMENTATION-PLANNING BASELINE WITH NON-NORMATIVE PUBLICATION ERRATUM `ALLRENTZ-PR8-DOC-ERRATUM-001`; DEPENDENCY/TOOLCHAIN EVIDENCE AND EXACT REPLAY COMMANDS RECORDED; SEPARATE CI-HARDENING PREREQUISITE COMPLETED THROUGH PR #6** |
 | Canonicalization dependency | **`canonicalize@3.0.0` APPROVED AS AN EXACT STAGE 2I `devDependency`; NOT YET APPLIED** |
 | Lockfile generator | **npm `10.9.8` APPROVED FOR THIS MUTATION ONLY; SOURCE, SRI, TAR/CLI DIGESTS, TREE OPTIONS, AND DISPOSABLE NO-CHURN PROCEDURE VERIFIED** |
 | Local PostgreSQL ownership capability | **PATTERN B LOCALLY VERIFIED ON POSTGRESQL `17.6`; NOT INDEPENDENTLY OR HOSTED-PREVIEW VERIFIED** |
@@ -1772,7 +1789,7 @@ These sources validate external behavior. They do not delegate ALLRENTZ product 
 | Ownership transfers | **PROHIBITED AND NOT REQUIRED BY PATTERN B** |
 | Separate CI-hardening prerequisite | **COMMITTED, PUSHED, AND MERGED TO `main` THROUGH PR #6 AT `cb2cf1fff88df2231aa53a12060a82bc95457156`** |
 | Hosted Supabase Preview gate | **REQUIRED BEFORE MERGE; NOT YET AUTHORIZED OR EXECUTED** |
-| Current approved planning baseline | **REVISION 0.6; REVISION 0.5 PRESERVED AT `65B6772B4A5E4638B31DEDCD42B4EEE1CFE1D651`** |
+| Current approved planning baseline | **REVISION 0.6 WITH NON-NORMATIVE PUBLICATION ERRATUM `ALLRENTZ-PR8-DOC-ERRATUM-001`; REVISION 0.5 PRESERVED AT ORIGINAL LOCAL COMMIT `65B6772B4A5E4638B31DEDCD42B4EEE1CFE1D651` AND PUBLISHED BYTE-IDENTICALLY AT `8DEEFCE1B6991BCA606F2627E3BDD2E36DF65093`** |
 | Stage 2I implementation | **NOT AUTHORIZED** |
 | Stage 2A implementation | **NOT AUTHORIZED** |
 | Governance-vault creation | **NOT AUTHORIZED** |
@@ -1784,6 +1801,6 @@ The revision `0.6` approval and documentation-only commit authorization permits 
 - `docs/README.md`; and
 - `docs/engineering/stage-2i-stage-2a-principal-authority-implementation-specification.md`.
 
-Revision `0.5` was approved from candidate SHA-256 `598ABA1AB5D33AF44A994A89B042C092AC88B7CECB33377610FFBB4F007742C9` and is superseded but preserved at commit `65b6772b4a5e4638b31dedcd42b4eee1cfe1d651`. Revision `0.4` remains preserved at commit `848952fc5c97127e72e72f7abd5bd360c81cf806`.
+Revision `0.5` was approved from candidate SHA-256 `598ABA1AB5D33AF44A994A89B042C092AC88B7CECB33377610FFBB4F007742C9` and is superseded but preserved at original local commit `65b6772b4a5e4638b31dedcd42b4eee1cfe1d651`, published byte-identically at `8deefce1b6991bca606f2627e3bdd2e36df65093`. Revision `0.4` remains preserved at original local commit `848952fc5c97127e72e72f7abd5bd360c81cf806`, published byte-identically at `3c18646d00325d5897e1074b7773fd627ba1eb55`.
 
-The documentation authorization ends after the complete two-file diff, scoped whitespace validation, individual file hashes, combined approved-document hash, excluded-artifact preservation check, exact staging review, and one local documentation-only commit. It authorizes no amendment, push, PR, merge, deployment, Preview access, production access, package or lockfile mutation, or Stage 2I implementation. The separately authorized CI-hardening prerequisite may be implemented and verified only in its explicit workflow boundary; its staging, commit, push, PR, or remote configuration remains separately authorized. Approval of the dependency decision does not authorize its installation. Every Stage 2I or Stage 2A implementation tranche still requires separate exact-scope authorization.
+The original revision `0.6` documentation authorization ended after the complete two-file diff, scoped whitespace validation, individual file hashes, combined approved-document hash, excluded-artifact preservation check, exact staging review, and one local documentation-only commit; it did not itself authorize amendment, push, PR, merge, deployment, Preview access, production access, package or lockfile mutation, or Stage 2I implementation. Subsequent separately granted authorizations published the documentation in PR #8 and completed the CI-hardening prerequisite through merged PR #6. Publication erratum `ALLRENTZ-PR8-DOC-ERRATUM-001` corrects only that publication provenance and current CI-prerequisite status. It does not authorize dependency installation, Stage 2I or Stage 2A implementation, merge, deployment, Preview access, remote Supabase access, or production access. Every implementation tranche still requires separate exact-scope authorization.

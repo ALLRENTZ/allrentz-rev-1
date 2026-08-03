@@ -11,7 +11,10 @@ ratified_by: ALLRENTZ Product Owner
 supersedes: none — first controlled accepted baseline
 authority: subordinate to /ALLRENTZ_CONSTITUTION.md and docs/doctrine/ALLRENTZ_ARCHITECTURAL_FOUNDATION.md
 related: docs/doctrine/ALLRENTZ_ARCHITECTURAL_FOUNDATION.md, docs/engineering/authority-first-loop.md
-last_reviewed: 2026-07-22
+publication_erratum: ALLRENTZ-PR8-DOC-ERRATUM-001 — publication provenance only; ratified revision 1.0 remains unchanged
+publication_erratum_authorized_on: 2026-08-03
+publication_erratum_authorization_reference: ALLRENTZ Product Owner status-correction authorization on 2026-08-02 through 2026-08-03 and publication-erratum authorization on 2026-08-03 in controlled Codex sessions
+last_reviewed: 2026-08-03
 ---
 
 # ALLRENTZ Stage 2 Authority Architecture Specification
@@ -26,7 +29,9 @@ This document defines the ratified Stage 2 contract for:
 
 This is an architecture specification, not implementation authorization. It does not authorize schema, migration, RLS, Edge Function, frontend, deployment, production, or remote-system changes. Each implementation stage below requires separate approval after its contract and test matrix are accepted.
 
-Stage 1 containment remains complete but deliberately limited. Commit `35cae877704d0beb013fc54a77d160e5a4173075` removed direct client writes to `profiles` and `user_roles`, retained authenticated self-read, made `profiles.role_type` and `profiles.status` non-null, and added negative runtime verification. Stage 1 did not make profile status authoritative and did not formally separate the three role concepts.
+Stage 1 containment remains complete but deliberately limited. Original local commit `35cae877704d0beb013fc54a77d160e5a4173075`, published byte-identically in PR #8 at commit `20848efedcf53cd212cbfba1bad64c55ce2db906`, removed direct client writes to `profiles` and `user_roles`, retained authenticated self-read, made `profiles.role_type` and `profiles.status` non-null, and added negative runtime verification. Stage 1 did not make profile status authoritative and did not formally separate the three role concepts.
+
+Publication erratum `ALLRENTZ-PR8-DOC-ERRATUM-001` corrects publication provenance only. It does not amend the ratified revision `1.0` decisions or authorize implementation.
 
 The controlling implementation boundary is therefore:
 
