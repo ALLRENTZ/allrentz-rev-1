@@ -1770,7 +1770,7 @@ These sources validate external behavior. They do not delegate ALLRENTZ product 
 | Stage 2I `roles.sql` owner provisioning | **REJECTED; NO `roles.sql` MECHANISM PLANNED** |
 | Database-level owner `CREATE` privilege | **PROHIBITED AND NOT REQUIRED BY PATTERN B** |
 | Ownership transfers | **PROHIBITED AND NOT REQUIRED BY PATTERN B** |
-| Separate CI-hardening prerequisite | **AUTHORIZED FOR BOUNDED IMPLEMENTATION AND VERIFICATION; COMMIT AND PUSH NOT YET AUTHORIZED** |
+| Separate CI-hardening prerequisite | **COMMITTED, PUSHED, AND MERGED TO `main` THROUGH PR #6 AT `cb2cf1fff88df2231aa53a12060a82bc95457156`** |
 | Hosted Supabase Preview gate | **REQUIRED BEFORE MERGE; NOT YET AUTHORIZED OR EXECUTED** |
 | Current approved planning baseline | **REVISION 0.6; REVISION 0.5 PRESERVED AT `65B6772B4A5E4638B31DEDCD42B4EEE1CFE1D651`** |
 | Stage 2I implementation | **NOT AUTHORIZED** |
