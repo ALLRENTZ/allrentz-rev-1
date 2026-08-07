@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   CUSTOMER_TRANSITIONS,
+  isTransitionReasonValid,
   VALID_TRANSITIONS,
   VENDOR_TRANSITIONS,
 } from './transitionPolicy'
@@ -38,5 +39,12 @@ describe('RFQ transition ownership', () => {
       expect(CUSTOMER_TRANSITIONS.has(transition)).toBe(false)
       expect(VENDOR_TRANSITIONS.has(transition)).toBe(false)
     }
+  })
+
+  it('requires recorded reasons for cancellation and rejection decisions', () => {
+    expect(isTransitionReasonValid('cancelled', null)).toBe(false)
+    expect(isTransitionReasonValid('cancelled', '   ')).toBe(false)
+    expect(isTransitionReasonValid('rejected', 'Commercial terms not accepted')).toBe(true)
+    expect(isTransitionReasonValid('on_rent', null)).toBe(true)
   })
 })

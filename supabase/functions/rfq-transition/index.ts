@@ -8,6 +8,7 @@ import {
 } from './keys.ts'
 import {
   CUSTOMER_TRANSITIONS,
+  isTransitionReasonValid,
   VALID_STATUSES,
   VALID_TRANSITIONS,
   VENDOR_TRANSITIONS,
@@ -116,7 +117,7 @@ Deno.serve(async (req: Request) => {
 
   const rfqId = body['rfq_id']
   const newStatus = body['new_status']
-  const reason = typeof body['reason'] === 'string' ? body['reason'] : null
+  const reason = typeof body['reason'] === 'string' ? body['reason'].trim() || null : null
   const vqrId = typeof body['vqr_id'] === 'string' ? body['vqr_id'] : null
 
   if (!rfqId || typeof rfqId !== 'string') {
@@ -127,6 +128,9 @@ Deno.serve(async (req: Request) => {
   }
   if (newStatus === 'quote_accepted' && !vqrId) {
     return jsonError(400, 'vqr_id is required for quote_accepted transition')
+  }
+  if (!isTransitionReasonValid(newStatus, reason)) {
+    return jsonError(400, `reason is required for ${newStatus} transition`)
   }
 
   // ── Step 3: Fetch RFQ ──────────────────────────────────────────────────────

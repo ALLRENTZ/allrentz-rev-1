@@ -3,6 +3,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Bell, Calendar, DollarSign, Package, Truck, AlertCircle, CheckCircle, Clock, MapPin, FileText, Zap, Settings, Edit } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +30,11 @@ const CustomerDashboard = () => {
   const [rejectingRfqId, setRejectingRfqId] = useState<string | null>(null);
   const [cancellingRfqId, setCancellingRfqId] = useState<string | null>(null);
   const [requestingOffRentRfqId, setRequestingOffRentRfqId] = useState<string | null>(null);
+  const [pendingDecision, setPendingDecision] = useState<{
+    rfqId: string;
+    newStatus: 'cancelled' | 'rejected';
+  } | null>(null);
+  const [decisionReason, setDecisionReason] = useState('');
 
   const authority = getOperationalAuthority({ user, authLoading, profile });
   const isDemoUser = profile?.is_demo === true;
@@ -121,49 +135,52 @@ const CustomerDashboard = () => {
     }
   };
 
-  const handleRejectQuote = async (rfqId: string) => {
+  const handleDecision = async () => {
+    if (!pendingDecision) {
+      return;
+    }
     if (!requireOperationalProfile({ user, authLoading, profile, toast })) {
       return;
     }
-    setRejectingRfqId(rfqId);
-    try {
-      const { error } = await supabase.functions.invoke('rfq-transition', {
-        body: { rfq_id: rfqId, new_status: 'rejected' },
-      });
-      if (error) throw error;
-      toast({ title: 'Quote rejected', description: 'The RFQ has been closed.' });
-      await fetchRentalRequests();
-    } catch (err: any) {
+    const reason = decisionReason.trim();
+    if (!reason) {
       toast({
-        title: 'Reject failed',
-        description: err?.message || 'Unable to reject quote. Please try again.',
+        title: 'Reason required',
+        description: 'Record why this request is being cancelled or rejected.',
         variant: 'destructive',
       });
-    } finally {
-      setRejectingRfqId(null);
+      return;
     }
-  };
 
-  const handleCancelRfq = async (rfqId: string) => {
-    if (!requireOperationalProfile({ user, authLoading, profile, toast })) {
-      return;
-    }
-    setCancellingRfqId(rfqId);
+    const isCancellation = pendingDecision.newStatus === 'cancelled';
+    const setInFlightId = isCancellation ? setCancellingRfqId : setRejectingRfqId;
+    setInFlightId(pendingDecision.rfqId);
     try {
       const { error } = await supabase.functions.invoke('rfq-transition', {
-        body: { rfq_id: rfqId, new_status: 'cancelled' },
+        body: {
+          rfq_id: pendingDecision.rfqId,
+          new_status: pendingDecision.newStatus,
+          reason,
+        },
       });
       if (error) throw error;
-      toast({ title: 'RFQ cancelled', description: 'The rental request has been cancelled.' });
+      toast({
+        title: isCancellation ? 'RFQ cancelled' : 'Quote rejected',
+        description: isCancellation
+          ? 'The rental request has been cancelled with its reason recorded.'
+          : 'The quote was rejected with its reason recorded.',
+      });
+      setPendingDecision(null);
+      setDecisionReason('');
       await fetchRentalRequests();
     } catch (err: any) {
       toast({
-        title: 'Cancel failed',
-        description: err?.message || 'Unable to cancel RFQ. Please try again.',
+        title: isCancellation ? 'Cancel failed' : 'Reject failed',
+        description: err?.message || 'Unable to record this decision. Please try again.',
         variant: 'destructive',
       });
     } finally {
-      setCancellingRfqId(null);
+      setInFlightId(null);
     }
   };
 
@@ -443,7 +460,7 @@ const CustomerDashboard = () => {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => handleCancelRfq(request.id)}
+                                    onClick={() => setPendingDecision({ rfqId: request.id, newStatus: 'cancelled' })}
                                     disabled={cancellingRfqId === request.id || rejectingRfqId === request.id || acceptingVqrId === vqr.id}
                                   >
                                     {cancellingRfqId === request.id ? 'Cancelling...' : 'Cancel RFQ'}
@@ -451,7 +468,7 @@ const CustomerDashboard = () => {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => handleRejectQuote(request.id)}
+                                    onClick={() => setPendingDecision({ rfqId: request.id, newStatus: 'rejected' })}
                                     disabled={rejectingRfqId === request.id || cancellingRfqId === request.id || acceptingVqrId === vqr.id}
                                   >
                                     {rejectingRfqId === request.id ? 'Rejecting...' : 'Reject Quote'}
@@ -526,6 +543,51 @@ const CustomerDashboard = () => {
           </div>
         </div>
       </div>
+      <Dialog
+        open={pendingDecision !== null}
+        onOpenChange={(open) => {
+          if (!open && !cancellingRfqId && !rejectingRfqId) {
+            setPendingDecision(null);
+            setDecisionReason('');
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {pendingDecision?.newStatus === 'cancelled' ? 'Cancel rental request' : 'Reject vendor quote'}
+            </DialogTitle>
+            <DialogDescription>
+              This reason becomes part of the governed rental history.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={decisionReason}
+            onChange={(event) => setDecisionReason(event.target.value)}
+            placeholder="Enter the decision reason"
+            rows={4}
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPendingDecision(null);
+                setDecisionReason('');
+              }}
+              disabled={Boolean(cancellingRfqId || rejectingRfqId)}
+            >
+              Keep Request
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDecision}
+              disabled={Boolean(cancellingRfqId || rejectingRfqId)}
+            >
+              {cancellingRfqId || rejectingRfqId ? 'Recording...' : 'Record Decision'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

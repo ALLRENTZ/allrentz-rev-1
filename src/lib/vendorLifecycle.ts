@@ -37,4 +37,4 @@ export const getVendorLifecycleAction = (status: string) =>
   VENDOR_LIFECYCLE_ACTIONS[status] ?? null;
 
 export const getVendorLifecycleLabel = (status: string) =>
-  VENDOR_LIFECYCLE_LABELS[status] ?? status.replaceAll('_', ' ');
+  VENDOR_LIFECYCLE_LABELS[status] ?? status.replace(/_/g, ' ');

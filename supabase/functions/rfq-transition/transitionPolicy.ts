@@ -9,6 +9,11 @@ export const VALID_STATUSES = new Set([
   'off_rent', 'completed', 'cancelled', 'rejected',
 ])
 
+export const REASON_REQUIRED_STATUSES = new Set(['cancelled', 'rejected'])
+
+export const isTransitionReasonValid = (newStatus: string, reason: string | null) =>
+  !REASON_REQUIRED_STATUSES.has(newStatus) || Boolean(reason?.trim())
+
 export const VALID_TRANSITIONS = new Set([
   'draft:submitted',
   'draft:cancelled',
