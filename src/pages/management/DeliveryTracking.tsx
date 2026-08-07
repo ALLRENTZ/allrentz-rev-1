@@ -62,6 +62,10 @@ const DeliveryTracking = () => {
           </p>
         </div>
 
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Sample scenario data only — this page is not yet connected to authoritative rental or delivery records.
+        </div>
+
         {/* Deliveries */}
         <div className="space-y-6">
           {deliveries.map((delivery) => (

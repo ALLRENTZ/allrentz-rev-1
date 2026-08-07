@@ -69,9 +69,9 @@ function App() {
                       }
                     />
                     <Route path="/security-center" element={<SecurityProvider><SecurityCenter /></SecurityProvider>} />
-                    <Route path="/delivery-tracking" element={<DeliveryTracking />} />
-                    <Route path="/documents-management" element={<DocumentsManagement />} />
-                    <Route path="/turnaround-management" element={<TurnaroundManagement />} />
+                    <Route path="/delivery-tracking" element={<ProtectedRoute requiredRole="customer"><DeliveryTracking /></ProtectedRoute>} />
+                    <Route path="/documents-management" element={<ProtectedRoute requiredRole="customer"><DocumentsManagement /></ProtectedRoute>} />
+                    <Route path="/turnaround-management" element={<ProtectedRoute requiredRole="customer"><TurnaroundManagement /></ProtectedRoute>} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </main>
