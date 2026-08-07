@@ -31,4 +31,12 @@ describe('RFQ transition ownership', () => {
     expect(CUSTOMER_TRANSITIONS.has('off_rent:completed')).toBe(false)
     expect(VENDOR_TRANSITIONS.has('off_rent:completed')).toBe(false)
   })
+
+  it('does not let a vendor unilaterally cancel after order confirmation', () => {
+    for (const transition of ['vendor_confirmed:cancelled', 'mobilizing:cancelled']) {
+      expect(VALID_TRANSITIONS.has(transition)).toBe(true)
+      expect(CUSTOMER_TRANSITIONS.has(transition)).toBe(false)
+      expect(VENDOR_TRANSITIONS.has(transition)).toBe(false)
+    }
+  })
 })

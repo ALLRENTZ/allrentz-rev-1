@@ -54,9 +54,7 @@ export const VENDOR_TRANSITIONS = new Set([
   'pending_vendor_review:cancelled',
   'quote_accepted:vendor_confirmed',
   'vendor_confirmed:mobilizing',
-  'vendor_confirmed:cancelled',
   'mobilizing:in_transit',
-  'mobilizing:cancelled',
   'off_rent_requested:demobilizing',
   'demobilizing:off_rent',
 ])
@@ -71,3 +69,8 @@ export const VENDOR_TRANSITIONS = new Set([
 // Canonical closure requires completed reconciliation and bilateral closeout;
 // a vendor cannot unilaterally close the rental. Until a dedicated closeout
 // workflow exists, only the existing admin override can perform this transition.
+
+// vendor_confirmed:cancelled and mobilizing:cancelled are valid exception paths
+// but intentionally absent from both actor allowlists. Post-order cancellation
+// requires recorded terms or elevated administrative cancellation authority;
+// it cannot be a unilateral vendor action.
