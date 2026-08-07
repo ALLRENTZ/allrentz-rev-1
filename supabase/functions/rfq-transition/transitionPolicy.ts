@@ -49,8 +49,6 @@ export const CUSTOMER_TRANSITIONS = new Set([
   'vendor_quote_received:quote_accepted',
   'vendor_quote_received:cancelled',
   'vendor_quote_received:rejected',
-  'quote_accepted:cancelled',
-  'quote_accepted:rejected',
   'on_rent:off_rent_requested',
 ])
 
@@ -79,3 +77,8 @@ export const VENDOR_TRANSITIONS = new Set([
 // but intentionally absent from both actor allowlists. Post-order cancellation
 // requires recorded terms or elevated administrative cancellation authority;
 // it cannot be a unilateral vendor action.
+
+// quote_accepted:cancelled and quote_accepted:rejected are valid exception
+// paths but intentionally absent from both actor allowlists. Quote acceptance
+// creates the rental order boundary; termination after that point requires
+// governed cancellation terms or an elevated administrative exception.

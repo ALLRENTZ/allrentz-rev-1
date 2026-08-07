@@ -52,4 +52,12 @@ describe('RFQ transition ownership', () => {
     expect(CUSTOMER_TRANSITIONS.has('pending_vendor_review:cancelled')).toBe(true)
     expect(VENDOR_TRANSITIONS.has('pending_vendor_review:cancelled')).toBe(false)
   })
+
+  it('does not treat accepted-order termination as an ordinary customer decision', () => {
+    for (const transition of ['quote_accepted:cancelled', 'quote_accepted:rejected']) {
+      expect(VALID_TRANSITIONS.has(transition)).toBe(true)
+      expect(CUSTOMER_TRANSITIONS.has(transition)).toBe(false)
+      expect(VENDOR_TRANSITIONS.has(transition)).toBe(false)
+    }
+  })
 })
