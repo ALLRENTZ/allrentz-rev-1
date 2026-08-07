@@ -2,3 +2,6 @@ project_id = "encqbibzgoarvtcivgra"
 
 [functions.rfq-transition]
 verify_jwt = false
+
+[functions.rfq-field-acceptance]
+verify_jwt = false

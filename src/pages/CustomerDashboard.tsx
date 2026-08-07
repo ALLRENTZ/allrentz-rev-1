@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
@@ -30,6 +31,16 @@ const CustomerDashboard = () => {
   const [rejectingRfqId, setRejectingRfqId] = useState<string | null>(null);
   const [cancellingRfqId, setCancellingRfqId] = useState<string | null>(null);
   const [requestingOffRentRfqId, setRequestingOffRentRfqId] = useState<string | null>(null);
+  const [recordingAcceptanceRfqId, setRecordingAcceptanceRfqId] = useState<string | null>(null);
+  const [pendingAcceptanceRfqId, setPendingAcceptanceRfqId] = useState<string | null>(null);
+  const [conditionNotes, setConditionNotes] = useState('');
+  const [evidenceReferences, setEvidenceReferences] = useState('');
+  const [acceptanceConfirmations, setAcceptanceConfirmations] = useState({
+    quantities: false,
+    accessories: false,
+    documentation: false,
+    terms: false,
+  });
   const [pendingDecision, setPendingDecision] = useState<{
     rfqId: string;
     newStatus: 'cancelled' | 'rejected';
@@ -207,6 +218,82 @@ const CustomerDashboard = () => {
       });
     } finally {
       setRequestingOffRentRfqId(null);
+    }
+  };
+
+  const resetFieldAcceptance = () => {
+    setPendingAcceptanceRfqId(null);
+    setConditionNotes('');
+    setEvidenceReferences('');
+    setAcceptanceConfirmations({
+      quantities: false,
+      accessories: false,
+      documentation: false,
+      terms: false,
+    });
+  };
+
+  const handleRecordFieldAcceptance = async () => {
+    if (!pendingAcceptanceRfqId) return;
+    if (!requireOperationalProfile({ user, authLoading, profile, toast })) return;
+
+    const references = evidenceReferences
+      .split('\n')
+      .map((reference) => reference.trim())
+      .filter(Boolean);
+    if (conditionNotes.trim().length < 5 || references.length === 0) {
+      toast({
+        title: 'Delivery evidence required',
+        description: 'Record the received condition and at least one photo, manifest, or delivery evidence reference.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (conditionNotes.trim().length > 4000 || references.length > 20 || references.some((reference) => reference.length > 500)) {
+      toast({
+        title: 'Delivery evidence is too large',
+        description: 'Use at most 4,000 condition characters and 20 evidence references of 500 characters each.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (Object.values(acceptanceConfirmations).some((confirmed) => !confirmed)) {
+      toast({
+        title: 'Confirm every acceptance item',
+        description: 'Quantity, accessories, documentation, and rental terms must all be acknowledged.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setRecordingAcceptanceRfqId(pendingAcceptanceRfqId);
+    try {
+      const { error } = await supabase.functions.invoke('rfq-field-acceptance', {
+        body: {
+          rfq_id: pendingAcceptanceRfqId,
+          condition_notes: conditionNotes.trim(),
+          evidence_references: references,
+          quantities_confirmed: acceptanceConfirmations.quantities,
+          accessories_confirmed: acceptanceConfirmations.accessories,
+          documentation_confirmed: acceptanceConfirmations.documentation,
+          terms_acknowledged: acceptanceConfirmations.terms,
+        },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Field acceptance recorded',
+        description: 'The evidence is recorded and the rental is now on rent.',
+      });
+      resetFieldAcceptance();
+      await fetchRentalRequests();
+    } catch (err: any) {
+      toast({
+        title: 'Field acceptance failed',
+        description: err?.message || 'Unable to record delivery acceptance. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setRecordingAcceptanceRfqId(null);
     }
   };
 
@@ -434,6 +521,23 @@ const CustomerDashboard = () => {
                             </Button>
                           </div>
                         )}
+                        {request.operational_status === 'in_transit' && authority.canUseOperationalData && (
+                          <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                            <p className="text-sm font-medium text-blue-900">Delivery awaiting field acceptance</p>
+                            <p className="mt-1 text-xs text-blue-700">
+                              Confirm condition, quantity, accessories, documents, and delivery evidence before the rental clock starts.
+                            </p>
+                            <div className="mt-3 flex justify-end">
+                              <Button
+                                size="sm"
+                                onClick={() => setPendingAcceptanceRfqId(request.id)}
+                                disabled={recordingAcceptanceRfqId === request.id}
+                              >
+                                {recordingAcceptanceRfqId === request.id ? 'Recording...' : 'Record Field Acceptance'}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                         {request.operational_status === 'vendor_quote_received' && isDemoUser && request.vendor_name && (
                           <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
                             <p className="text-sm font-semibold text-teal-900">
@@ -597,6 +701,78 @@ const CustomerDashboard = () => {
               disabled={Boolean(cancellingRfqId || rejectingRfqId)}
             >
               {cancellingRfqId || rejectingRfqId ? 'Recording...' : 'Record Decision'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={pendingAcceptanceRfqId !== null}
+        onOpenChange={(open) => {
+          if (!open && !recordingAcceptanceRfqId) resetFieldAcceptance();
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Record delivery field acceptance</DialogTitle>
+            <DialogDescription>
+              This evidence becomes part of the governed rental history and starts the on-rent clock.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium" htmlFor="condition-notes">Received condition</label>
+              <Textarea
+                id="condition-notes"
+                value={conditionNotes}
+                onChange={(event) => setConditionNotes(event.target.value)}
+                placeholder="Describe equipment condition, damage observations, and setup status"
+                rows={4}
+                maxLength={4000}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium" htmlFor="evidence-references">Delivery evidence references</label>
+              <Textarea
+                id="evidence-references"
+                value={evidenceReferences}
+                onChange={(event) => setEvidenceReferences(event.target.value)}
+                placeholder="Enter one photo, manifest, or delivery evidence ID/URL per line"
+                rows={3}
+              />
+            </div>
+            <div className="space-y-3 rounded-lg border p-3">
+              {[
+                ['quantities', 'Received quantity matches the accepted rental order'],
+                ['accessories', 'Required accessories and attachments are present'],
+                ['documentation', 'Delivery and operating documentation was received'],
+                ['terms', 'Rental terms and the on-rent billing start are acknowledged'],
+              ].map(([key, label]) => (
+                <label key={key} className="flex items-start gap-3 text-sm">
+                  <Checkbox
+                    checked={acceptanceConfirmations[key as keyof typeof acceptanceConfirmations]}
+                    onCheckedChange={(checked) => setAcceptanceConfirmations((current) => ({
+                      ...current,
+                      [key]: checked === true,
+                    }))}
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={resetFieldAcceptance}
+              disabled={Boolean(recordingAcceptanceRfqId)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRecordFieldAcceptance}
+              disabled={Boolean(recordingAcceptanceRfqId)}
+            >
+              {recordingAcceptanceRfqId ? 'Recording...' : 'Accept Delivery and Start Rental'}
             </Button>
           </DialogFooter>
         </DialogContent>

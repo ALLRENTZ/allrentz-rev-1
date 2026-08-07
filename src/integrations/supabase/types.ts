@@ -476,6 +476,72 @@ export type Database = {
         }
         Relationships: []
       }
+      rental_field_acceptances: {
+        Row: {
+          accepted_at: string
+          accepted_by: string
+          accessories_confirmed: boolean
+          audit_event_id: string
+          condition_notes: string
+          correlation_id: string
+          created_at: string
+          documentation_confirmed: boolean
+          evidence_references: string[]
+          id: string
+          is_simulated: boolean
+          quantities_confirmed: boolean
+          rfq_id: string
+          terms_acknowledged: boolean
+        }
+        Insert: {
+          accepted_at?: string
+          accepted_by: string
+          accessories_confirmed: boolean
+          audit_event_id: string
+          condition_notes: string
+          correlation_id: string
+          created_at?: string
+          documentation_confirmed: boolean
+          evidence_references: string[]
+          id?: string
+          is_simulated?: boolean
+          quantities_confirmed: boolean
+          rfq_id: string
+          terms_acknowledged: boolean
+        }
+        Update: {
+          accepted_at?: string
+          accepted_by?: string
+          accessories_confirmed?: boolean
+          audit_event_id?: string
+          condition_notes?: string
+          correlation_id?: string
+          created_at?: string
+          documentation_confirmed?: boolean
+          evidence_references?: string[]
+          id?: string
+          is_simulated?: boolean
+          quantities_confirmed?: boolean
+          rfq_id?: string
+          terms_acknowledged?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_field_acceptances_audit_event_id_fkey"
+            columns: ["audit_event_id"]
+            isOneToOne: false
+            referencedRelation: "audit_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_field_acceptances_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: true
+            referencedRelation: "rental_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rental_requests: {
         Row: {
           closed_at: string | null
@@ -1086,6 +1152,19 @@ export type Database = {
           correlation_id: string
           quote_id: string
         }[]
+      }
+      record_rental_field_acceptance: {
+        Args: {
+          p_accessories_confirmed: boolean
+          p_actor_id: string
+          p_condition_notes: string
+          p_documentation_confirmed: boolean
+          p_evidence_references: string[]
+          p_quantities_confirmed: boolean
+          p_rfq_id: string
+          p_terms_acknowledged: boolean
+        }
+        Returns: string
       }
       transition_rfq_status: {
         Args: {
