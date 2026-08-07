@@ -59,7 +59,6 @@ export const VENDOR_TRANSITIONS = new Set([
   'mobilizing:cancelled',
   'off_rent_requested:demobilizing',
   'demobilizing:off_rent',
-  'off_rent:completed',
 ])
 
 // in_transit:on_rent is valid, but it is intentionally absent from both actor
@@ -67,3 +66,8 @@ export const VENDOR_TRANSITIONS = new Set([
 // on recorded field acceptance evidence, not a unilateral customer or vendor
 // action. Until that workflow exists, only the existing admin override can
 // perform the transition.
+
+// off_rent:completed is also valid but absent from both actor allowlists.
+// Canonical closure requires completed reconciliation and bilateral closeout;
+// a vendor cannot unilaterally close the rental. Until a dedicated closeout
+// workflow exists, only the existing admin override can perform this transition.

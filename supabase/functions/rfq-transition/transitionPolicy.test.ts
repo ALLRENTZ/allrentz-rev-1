@@ -25,4 +25,10 @@ describe('RFQ transition ownership', () => {
     expect(CUSTOMER_TRANSITIONS.has('in_transit:on_rent')).toBe(false)
     expect(VENDOR_TRANSITIONS.has('in_transit:on_rent')).toBe(false)
   })
+
+  it('does not let a vendor unilaterally complete rental closeout', () => {
+    expect(VALID_TRANSITIONS.has('off_rent:completed')).toBe(true)
+    expect(CUSTOMER_TRANSITIONS.has('off_rent:completed')).toBe(false)
+    expect(VENDOR_TRANSITIONS.has('off_rent:completed')).toBe(false)
+  })
 })
