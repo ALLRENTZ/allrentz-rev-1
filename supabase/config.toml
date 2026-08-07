@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.rfq-field-acceptance]
 verify_jwt = false
+
+[functions.rfq-off-rent]
+verify_jwt = false

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
@@ -31,6 +32,11 @@ const CustomerDashboard = () => {
   const [rejectingRfqId, setRejectingRfqId] = useState<string | null>(null);
   const [cancellingRfqId, setCancellingRfqId] = useState<string | null>(null);
   const [requestingOffRentRfqId, setRequestingOffRentRfqId] = useState<string | null>(null);
+  const [pendingOffRentRfqId, setPendingOffRentRfqId] = useState<string | null>(null);
+  const [requestedStopAt, setRequestedStopAt] = useState('');
+  const [pickupAvailableFrom, setPickupAvailableFrom] = useState('');
+  const [pickupAvailableUntil, setPickupAvailableUntil] = useState('');
+  const [offRentNotes, setOffRentNotes] = useState('');
   const [recordingAcceptanceRfqId, setRecordingAcceptanceRfqId] = useState<string | null>(null);
   const [pendingAcceptanceRfqId, setPendingAcceptanceRfqId] = useState<string | null>(null);
   const [conditionNotes, setConditionNotes] = useState('');
@@ -195,20 +201,57 @@ const CustomerDashboard = () => {
     }
   };
 
-  const handleRequestOffRent = async (rfqId: string) => {
+  const resetOffRentRequest = () => {
+    setPendingOffRentRfqId(null);
+    setRequestedStopAt('');
+    setPickupAvailableFrom('');
+    setPickupAvailableUntil('');
+    setOffRentNotes('');
+  };
+
+  const handleRequestOffRent = async () => {
+    if (!pendingOffRentRfqId) return;
     if (!requireOperationalProfile({ user, authLoading, profile, toast })) {
       return;
     }
-    setRequestingOffRentRfqId(rfqId);
+    const requestedStop = Date.parse(requestedStopAt);
+    const pickupFrom = Date.parse(pickupAvailableFrom);
+    const pickupUntil = Date.parse(pickupAvailableUntil);
+    if (![requestedStop, pickupFrom, pickupUntil].every(Number.isFinite)) {
+      toast({
+        title: 'Pickup timing required',
+        description: 'Record the requested stop time and the complete pickup availability window.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (pickupFrom < requestedStop || pickupUntil <= pickupFrom) {
+      toast({
+        title: 'Pickup timing is invalid',
+        description: 'Pickup availability must begin at or after the requested stop and end after it begins.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setRequestingOffRentRfqId(pendingOffRentRfqId);
     try {
-      const { error } = await supabase.functions.invoke('rfq-transition', {
-        body: { rfq_id: rfqId, new_status: 'off_rent_requested' },
+      const { error } = await supabase.functions.invoke('rfq-off-rent', {
+        body: {
+          action: 'request',
+          rfq_id: pendingOffRentRfqId,
+          requested_stop_at: new Date(requestedStop).toISOString(),
+          pickup_available_from: new Date(pickupFrom).toISOString(),
+          pickup_available_until: new Date(pickupUntil).toISOString(),
+          notes: offRentNotes,
+        },
       });
       if (error) throw error;
       toast({
         title: 'Off-rent requested',
         description: 'Your request was recorded. Billing stops only after the contractual stop-rent determination.',
       });
+      resetOffRentRequest();
       await fetchRentalRequests();
     } catch (err: any) {
       toast({
@@ -514,7 +557,7 @@ const CustomerDashboard = () => {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleRequestOffRent(request.id)}
+                              onClick={() => setPendingOffRentRfqId(request.id)}
                               disabled={requestingOffRentRfqId === request.id}
                             >
                               {requestingOffRentRfqId === request.id ? 'Requesting...' : 'Request Off-Rent'}
@@ -701,6 +744,71 @@ const CustomerDashboard = () => {
               disabled={Boolean(cancellingRfqId || rejectingRfqId)}
             >
               {cancellingRfqId || rejectingRfqId ? 'Recording...' : 'Record Decision'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={pendingOffRentRfqId !== null}
+        onOpenChange={(open) => {
+          if (!open && !requestingOffRentRfqId) resetOffRentRequest();
+        }}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Request governed off-rent</DialogTitle>
+            <DialogDescription>
+              Record when use should stop and when the equipment is available for pickup. This request does not itself stop billing.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div>
+              <label className="text-sm font-medium" htmlFor="requested-stop-at">Requested stop time</label>
+              <Input
+                id="requested-stop-at"
+                type="datetime-local"
+                value={requestedStopAt}
+                onChange={(event) => setRequestedStopAt(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium" htmlFor="pickup-available-from">Pickup available from</label>
+                <Input
+                  id="pickup-available-from"
+                  type="datetime-local"
+                  value={pickupAvailableFrom}
+                  onChange={(event) => setPickupAvailableFrom(event.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium" htmlFor="pickup-available-until">Pickup available until</label>
+                <Input
+                  id="pickup-available-until"
+                  type="datetime-local"
+                  value={pickupAvailableUntil}
+                  onChange={(event) => setPickupAvailableUntil(event.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium" htmlFor="off-rent-notes">Site and pickup notes</label>
+              <Textarea
+                id="off-rent-notes"
+                value={offRentNotes}
+                onChange={(event) => setOffRentNotes(event.target.value)}
+                placeholder="Gate contact, access restrictions, decontamination status, or other pickup instructions"
+                rows={4}
+                maxLength={4000}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={resetOffRentRequest} disabled={Boolean(requestingOffRentRfqId)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRequestOffRent} disabled={Boolean(requestingOffRentRfqId)}>
+              {requestingOffRentRfqId ? 'Recording...' : 'Submit Off-Rent Request'}
             </Button>
           </DialogFooter>
         </DialogContent>

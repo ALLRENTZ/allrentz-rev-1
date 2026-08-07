@@ -49,7 +49,6 @@ export const CUSTOMER_TRANSITIONS = new Set([
   'vendor_quote_received:quote_accepted',
   'vendor_quote_received:cancelled',
   'vendor_quote_received:rejected',
-  'on_rent:off_rent_requested',
 ])
 
 export const VENDOR_TRANSITIONS = new Set([
@@ -57,8 +56,12 @@ export const VENDOR_TRANSITIONS = new Set([
   'quote_accepted:vendor_confirmed',
   'vendor_confirmed:mobilizing',
   'mobilizing:in_transit',
-  'off_rent_requested:demobilizing',
 ])
+
+// on_rent:off_rent_requested and off_rent_requested:demobilizing remain valid
+// lifecycle transitions but are absent from both generic actor allowlists.
+// Dedicated service-role-only operations record the required pickup/request or
+// acknowledgment evidence before advancing either state atomically.
 
 // in_transit:on_rent is valid, but it is intentionally absent from both actor
 // allowlists. The canonical on-rent timestamp is system-owned and must be based

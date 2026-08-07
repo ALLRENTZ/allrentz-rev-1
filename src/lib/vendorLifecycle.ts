@@ -31,6 +31,9 @@ const VENDOR_LIFECYCLE_LABELS: Record<string, string> = {
   vendor_confirmed: 'Vendor confirmed',
   mobilizing: 'Mobilizing',
   in_transit: 'In transit — awaiting field acceptance',
+  on_rent: 'On rent',
+  off_rent_requested: 'Off-rent requested — pickup acknowledgment required',
+  demobilizing: 'Pickup coordination in progress — stop-rent determination pending',
 };
 
 export const getVendorLifecycleAction = (status: string) =>

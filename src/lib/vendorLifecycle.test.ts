@@ -21,4 +21,11 @@ describe('vendor lifecycle actions', () => {
     expect(getVendorLifecycleAction('in_transit')).toBeNull();
     expect(getVendorLifecycleLabel('in_transit')).toContain('awaiting field acceptance');
   });
+
+  it('keeps off-rent acknowledgment out of the generic vendor action map', () => {
+    expect(getVendorLifecycleAction('off_rent_requested')).toBeNull();
+    expect(VENDOR_TRANSITIONS.has('off_rent_requested:demobilizing')).toBe(false);
+    expect(getVendorLifecycleLabel('off_rent_requested')).toContain('acknowledgment required');
+    expect(getVendorLifecycleLabel('demobilizing')).toContain('stop-rent determination pending');
+  });
 });

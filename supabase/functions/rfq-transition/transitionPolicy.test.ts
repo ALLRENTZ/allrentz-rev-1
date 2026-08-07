@@ -11,13 +11,14 @@ describe('RFQ transition ownership', () => {
     expect(VALID_TRANSITIONS.has('on_rent:off_rent_requested')).toBe(true)
   })
 
-  it('assigns the off-rent request to the customer', () => {
-    expect(CUSTOMER_TRANSITIONS.has('on_rent:off_rent_requested')).toBe(true)
+  it('reserves the off-rent request for the governed evidence operation', () => {
+    expect(CUSTOMER_TRANSITIONS.has('on_rent:off_rent_requested')).toBe(false)
     expect(VENDOR_TRANSITIONS.has('on_rent:off_rent_requested')).toBe(false)
   })
 
-  it('retains vendor-owned off-rent acknowledgment', () => {
-    expect(VENDOR_TRANSITIONS.has('off_rent_requested:demobilizing')).toBe(true)
+  it('reserves vendor acknowledgment for the governed evidence operation', () => {
+    expect(CUSTOMER_TRANSITIONS.has('off_rent_requested:demobilizing')).toBe(false)
+    expect(VENDOR_TRANSITIONS.has('off_rent_requested:demobilizing')).toBe(false)
   })
 
   it('does not let a vendor determine the contractual stop-rent timestamp', () => {

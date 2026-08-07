@@ -542,6 +542,143 @@ export type Database = {
           },
         ]
       }
+      rental_off_rent_acknowledgments: {
+        Row: {
+          acknowledged_at: string
+          acknowledged_by: string
+          audit_event_id: string
+          correlation_id: string
+          created_at: string
+          id: string
+          is_simulated: boolean
+          off_rent_request_id: string
+          pickup_window_end: string
+          pickup_window_start: string
+          rfq_id: string
+          vendor_notes: string | null
+          vendor_organization_id: string
+        }
+        Insert: {
+          acknowledged_at?: string
+          acknowledged_by: string
+          audit_event_id: string
+          correlation_id: string
+          created_at?: string
+          id?: string
+          is_simulated?: boolean
+          off_rent_request_id: string
+          pickup_window_end: string
+          pickup_window_start: string
+          rfq_id: string
+          vendor_notes?: string | null
+          vendor_organization_id: string
+        }
+        Update: {
+          acknowledged_at?: string
+          acknowledged_by?: string
+          audit_event_id?: string
+          correlation_id?: string
+          created_at?: string
+          id?: string
+          is_simulated?: boolean
+          off_rent_request_id?: string
+          pickup_window_end?: string
+          pickup_window_start?: string
+          rfq_id?: string
+          vendor_notes?: string | null
+          vendor_organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_off_rent_acknowledgments_audit_event_id_fkey"
+            columns: ["audit_event_id"]
+            isOneToOne: false
+            referencedRelation: "audit_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_off_rent_acknowledgments_off_rent_request_id_fkey"
+            columns: ["off_rent_request_id"]
+            isOneToOne: true
+            referencedRelation: "rental_off_rent_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_off_rent_acknowledgments_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: true
+            referencedRelation: "rental_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_off_rent_acknowledgments_vendor_organization_id_fkey"
+            columns: ["vendor_organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_off_rent_requests: {
+        Row: {
+          audit_event_id: string
+          correlation_id: string
+          created_at: string
+          customer_notes: string | null
+          id: string
+          is_simulated: boolean
+          pickup_available_from: string
+          pickup_available_until: string
+          requested_at: string
+          requested_by: string
+          requested_stop_at: string
+          rfq_id: string
+        }
+        Insert: {
+          audit_event_id: string
+          correlation_id: string
+          created_at?: string
+          customer_notes?: string | null
+          id?: string
+          is_simulated?: boolean
+          pickup_available_from: string
+          pickup_available_until: string
+          requested_at?: string
+          requested_by: string
+          requested_stop_at: string
+          rfq_id: string
+        }
+        Update: {
+          audit_event_id?: string
+          correlation_id?: string
+          created_at?: string
+          customer_notes?: string | null
+          id?: string
+          is_simulated?: boolean
+          pickup_available_from?: string
+          pickup_available_until?: string
+          requested_at?: string
+          requested_by?: string
+          requested_stop_at?: string
+          rfq_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_off_rent_requests_audit_event_id_fkey"
+            columns: ["audit_event_id"]
+            isOneToOne: false
+            referencedRelation: "audit_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_off_rent_requests_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: true
+            referencedRelation: "rental_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rental_requests: {
         Row: {
           closed_at: string | null
@@ -1163,6 +1300,27 @@ export type Database = {
           p_quantities_confirmed: boolean
           p_rfq_id: string
           p_terms_acknowledged: boolean
+        }
+        Returns: string
+      }
+      record_rental_off_rent_acknowledgment: {
+        Args: {
+          p_actor_id: string
+          p_pickup_window_end: string
+          p_pickup_window_start: string
+          p_rfq_id: string
+          p_vendor_notes?: string
+        }
+        Returns: string
+      }
+      record_rental_off_rent_request: {
+        Args: {
+          p_actor_id: string
+          p_customer_notes?: string
+          p_pickup_available_from: string
+          p_pickup_available_until: string
+          p_requested_stop_at: string
+          p_rfq_id: string
         }
         Returns: string
       }
