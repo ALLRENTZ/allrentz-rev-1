@@ -20,6 +20,7 @@ const CustomerDashboard = () => {
   const [acceptingVqrId, setAcceptingVqrId] = useState<string | null>(null);
   const [rejectingRfqId, setRejectingRfqId] = useState<string | null>(null);
   const [cancellingRfqId, setCancellingRfqId] = useState<string | null>(null);
+  const [requestingOffRentRfqId, setRequestingOffRentRfqId] = useState<string | null>(null);
 
   const authority = getOperationalAuthority({ user, authLoading, profile });
   const isDemoUser = profile?.is_demo === true;
@@ -163,6 +164,32 @@ const CustomerDashboard = () => {
       });
     } finally {
       setCancellingRfqId(null);
+    }
+  };
+
+  const handleRequestOffRent = async (rfqId: string) => {
+    if (!requireOperationalProfile({ user, authLoading, profile, toast })) {
+      return;
+    }
+    setRequestingOffRentRfqId(rfqId);
+    try {
+      const { error } = await supabase.functions.invoke('rfq-transition', {
+        body: { rfq_id: rfqId, new_status: 'off_rent_requested' },
+      });
+      if (error) throw error;
+      toast({
+        title: 'Off-rent requested',
+        description: 'Your request was recorded. Billing stops only after the contractual stop-rent determination.',
+      });
+      await fetchRentalRequests();
+    } catch (err: any) {
+      toast({
+        title: 'Off-rent request failed',
+        description: err?.message || 'Unable to request off-rent. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setRequestingOffRentRfqId(null);
     }
   };
 
@@ -363,6 +390,18 @@ const CustomerDashboard = () => {
                           <div className="mt-3 flex items-center space-x-2 text-sm text-gray-600">
                             <MapPin className="h-4 w-4" />
                             <span>{request.delivery_address}</span>
+                          </div>
+                        )}
+                        {request.operational_status === 'on_rent' && authority.canUseOperationalData && (
+                          <div className="mt-4 flex justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRequestOffRent(request.id)}
+                              disabled={requestingOffRentRfqId === request.id}
+                            >
+                              {requestingOffRentRfqId === request.id ? 'Requesting...' : 'Request Off-Rent'}
+                            </Button>
                           </div>
                         )}
                         {request.operational_status === 'vendor_quote_received' && isDemoUser && request.vendor_name && (
