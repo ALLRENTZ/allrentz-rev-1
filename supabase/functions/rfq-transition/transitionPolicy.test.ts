@@ -60,4 +60,10 @@ describe('RFQ transition ownership', () => {
       expect(VENDOR_TRANSITIONS.has(transition)).toBe(false)
     }
   })
+
+  it('reserves vendor-review routing for platform matching or operations', () => {
+    expect(VALID_TRANSITIONS.has('submitted:pending_vendor_review')).toBe(true)
+    expect(CUSTOMER_TRANSITIONS.has('submitted:pending_vendor_review')).toBe(false)
+    expect(VENDOR_TRANSITIONS.has('submitted:pending_vendor_review')).toBe(false)
+  })
 })

@@ -53,7 +53,6 @@ export const CUSTOMER_TRANSITIONS = new Set([
 ])
 
 export const VENDOR_TRANSITIONS = new Set([
-  'submitted:pending_vendor_review',
   'pending_vendor_review:vendor_quote_received',
   'quote_accepted:vendor_confirmed',
   'vendor_confirmed:mobilizing',
@@ -82,3 +81,8 @@ export const VENDOR_TRANSITIONS = new Set([
 // paths but intentionally absent from both actor allowlists. Quote acceptance
 // creates the rental order boundary; termination after that point requires
 // governed cancellation terms or an elevated administrative exception.
+
+// submitted:pending_vendor_review is valid but absent from both actor
+// allowlists. Moving an RFQ into vendor review belongs to platform matching or
+// operations; the Edge Function has no pre-review vendor invitation authority
+// that could safely grant this transition to an arbitrary vendor member.
