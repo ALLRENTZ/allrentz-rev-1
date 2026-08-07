@@ -57,8 +57,13 @@ export const VENDOR_TRANSITIONS = new Set([
   'vendor_confirmed:cancelled',
   'mobilizing:in_transit',
   'mobilizing:cancelled',
-  'in_transit:on_rent',
   'off_rent_requested:demobilizing',
   'demobilizing:off_rent',
   'off_rent:completed',
 ])
+
+// in_transit:on_rent is valid, but it is intentionally absent from both actor
+// allowlists. The canonical on-rent timestamp is system-owned and must be based
+// on recorded field acceptance evidence, not a unilateral customer or vendor
+// action. Until that workflow exists, only the existing admin override can
+// perform the transition.

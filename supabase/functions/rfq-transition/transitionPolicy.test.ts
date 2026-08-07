@@ -19,4 +19,10 @@ describe('RFQ transition ownership', () => {
     expect(VENDOR_TRANSITIONS.has('off_rent_requested:demobilizing')).toBe(true)
     expect(VENDOR_TRANSITIONS.has('demobilizing:off_rent')).toBe(true)
   })
+
+  it('does not let a customer or vendor determine the system-owned on-rent state', () => {
+    expect(VALID_TRANSITIONS.has('in_transit:on_rent')).toBe(true)
+    expect(CUSTOMER_TRANSITIONS.has('in_transit:on_rent')).toBe(false)
+    expect(VENDOR_TRANSITIONS.has('in_transit:on_rent')).toBe(false)
+  })
 })
