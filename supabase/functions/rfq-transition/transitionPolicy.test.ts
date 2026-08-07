@@ -47,4 +47,9 @@ describe('RFQ transition ownership', () => {
     expect(isTransitionReasonValid('rejected', 'Commercial terms not accepted')).toBe(true)
     expect(isTransitionReasonValid('on_rent', null)).toBe(true)
   })
+
+  it('assigns pending-review RFQ cancellation to the customer', () => {
+    expect(CUSTOMER_TRANSITIONS.has('pending_vendor_review:cancelled')).toBe(true)
+    expect(VENDOR_TRANSITIONS.has('pending_vendor_review:cancelled')).toBe(false)
+  })
 })

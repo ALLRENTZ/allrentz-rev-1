@@ -45,6 +45,7 @@ export const CUSTOMER_TRANSITIONS = new Set([
   'draft:submitted',
   'draft:cancelled',
   'submitted:cancelled',
+  'pending_vendor_review:cancelled',
   'vendor_quote_received:quote_accepted',
   'vendor_quote_received:cancelled',
   'vendor_quote_received:rejected',
@@ -56,7 +57,6 @@ export const CUSTOMER_TRANSITIONS = new Set([
 export const VENDOR_TRANSITIONS = new Set([
   'submitted:pending_vendor_review',
   'pending_vendor_review:vendor_quote_received',
-  'pending_vendor_review:cancelled',
   'quote_accepted:vendor_confirmed',
   'vendor_confirmed:mobilizing',
   'mobilizing:in_transit',

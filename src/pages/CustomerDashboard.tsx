@@ -409,6 +409,19 @@ const CustomerDashboard = () => {
                             <span>{request.delivery_address}</span>
                           </div>
                         )}
+                        {['draft', 'submitted', 'pending_vendor_review'].includes(request.operational_status) &&
+                          authority.canUseOperationalData && (
+                            <div className="mt-4 flex justify-end">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setPendingDecision({ rfqId: request.id, newStatus: 'cancelled' })}
+                                disabled={cancellingRfqId === request.id}
+                              >
+                                {cancellingRfqId === request.id ? 'Cancelling...' : 'Cancel RFQ'}
+                              </Button>
+                            </div>
+                          )}
                         {request.operational_status === 'on_rent' && authority.canUseOperationalData && (
                           <div className="mt-4 flex justify-end">
                             <Button
