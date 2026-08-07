@@ -58,7 +58,6 @@ export const VENDOR_TRANSITIONS = new Set([
   'vendor_confirmed:mobilizing',
   'mobilizing:in_transit',
   'off_rent_requested:demobilizing',
-  'demobilizing:off_rent',
 ])
 
 // in_transit:on_rent is valid, but it is intentionally absent from both actor
@@ -71,6 +70,11 @@ export const VENDOR_TRANSITIONS = new Set([
 // Canonical closure requires completed reconciliation and bilateral closeout;
 // a vendor cannot unilaterally close the rental. Until a dedicated closeout
 // workflow exists, only the existing admin override can perform this transition.
+
+// demobilizing:off_rent is valid but absent from both actor allowlists. The
+// vendor owns acknowledgment and pickup activity; the contractual stop-rent
+// timestamp is a system determination based on the recorded rule and evidence.
+// Vendor pickup activity cannot unilaterally establish the billing stop.
 
 // vendor_confirmed:cancelled and mobilizing:cancelled are valid exception paths
 // but intentionally absent from both actor allowlists. Post-order cancellation
