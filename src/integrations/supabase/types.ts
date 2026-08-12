@@ -442,8 +442,8 @@ export type Database = {
           is_demo: boolean
           onboarding_completed: boolean | null
           profile_completion_score: number | null
-          role_type: Database["public"]["Enums"]["app_role"] | null
-          status: string | null
+          role_type: Database["public"]["Enums"]["app_role"]
+          status: string
           updated_at: string | null
         }
         Insert: {
@@ -456,8 +456,8 @@ export type Database = {
           is_demo?: boolean
           onboarding_completed?: boolean | null
           profile_completion_score?: number | null
-          role_type?: Database["public"]["Enums"]["app_role"] | null
-          status?: string | null
+          role_type?: Database["public"]["Enums"]["app_role"]
+          status?: string
           updated_at?: string | null
         }
         Update: {
@@ -470,8 +470,8 @@ export type Database = {
           is_demo?: boolean
           onboarding_completed?: boolean | null
           profile_completion_score?: number | null
-          role_type?: Database["public"]["Enums"]["app_role"] | null
-          status?: string | null
+          role_type?: Database["public"]["Enums"]["app_role"]
+          status?: string
           updated_at?: string | null
         }
         Relationships: []
