@@ -6,6 +6,18 @@ import { Plus, MapPin, Calendar, FileText, Bell, Settings, DollarSign, CheckCirc
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
+import { getVendorLifecycleAction, getVendorLifecycleLabel } from '@/lib/vendorLifecycle';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const VendorDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -19,14 +31,28 @@ const VendorDashboard = () => {
     toast.error(title, { description });
   };
   const [pendingRfqs, setPendingRfqs] = useState<any[]>([]);
-  const [acceptedRfqs, setAcceptedRfqs] = useState<any[]>([]);
+  const [lifecycleRfqs, setLifecycleRfqs] = useState<any[]>([]);
   const [vendorOrgId, setVendorOrgId] = useState<string | null>(null);
   const [quotingRealId, setQuotingRealId] = useState<string | null>(null);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [transitioningId, setTransitioningId] = useState<string | null>(null);
+  const [pendingOffRentAcknowledgmentId, setPendingOffRentAcknowledgmentId] = useState<string | null>(null);
+  const [acknowledgingOffRentId, setAcknowledgingOffRentId] = useState<string | null>(null);
+  const [pickupWindowStart, setPickupWindowStart] = useState('');
+  const [pickupWindowEnd, setPickupWindowEnd] = useState('');
+  const [pickupNotes, setPickupNotes] = useState('');
   const [realQuoteForm, setRealQuoteForm] = useState({ daily_rate: '', vendor_notes: '', compliance_confirmed: false });
   const [pendingRfqsError, setPendingRfqsError] = useState(false);
-  const [acceptedRfqsError, setAcceptedRfqsError] = useState(false);
+  const [lifecycleRfqsError, setLifecycleRfqsError] = useState(false);
+
+  const toLocalDateTimeInput = (value: string | null | undefined) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+      .toISOString()
+      .slice(0, 16);
+  };
 
   const equipmentInventory = [
     {
@@ -120,19 +146,42 @@ const VendorDashboard = () => {
     setPendingRfqs(data || []);
   };
 
-  const fetchAcceptedRfqs = async () => {
+  const fetchLifecycleRfqs = async () => {
     const { data, error } = await supabase
       .from('rental_requests')
-      .select('id, operational_status, start_date, end_date, delivery_address, special_requirements, equipment(title, category)')
-      .eq('operational_status', 'quote_accepted')
+      .select(`
+        id,
+        operational_status,
+        start_date,
+        end_date,
+        delivery_address,
+        special_requirements,
+        equipment(title, category),
+        rental_off_rent_requests(
+          requested_at,
+          requested_stop_at,
+          pickup_available_from,
+          pickup_available_until,
+          customer_notes
+        )
+      `)
+      .in('operational_status', [
+        'quote_accepted',
+        'vendor_confirmed',
+        'mobilizing',
+        'in_transit',
+        'on_rent',
+        'off_rent_requested',
+        'demobilizing',
+      ])
       .order('created_at', { ascending: false });
     if (error) {
-      setAcceptedRfqsError(true);
-      toast.error('Failed to load accepted quotes: ' + (error.message || 'Unknown error'));
+      setLifecycleRfqsError(true);
+      toast.error('Failed to load active fulfillment: ' + (error.message || 'Unknown error'));
       return;
     }
-    setAcceptedRfqsError(false);
-    setAcceptedRfqs(data || []);
+    setLifecycleRfqsError(false);
+    setLifecycleRfqs(data || []);
   };
 
   const fetchVendorOrg = async () => {
@@ -203,34 +252,90 @@ const VendorDashboard = () => {
     setQuotingRealId(null);
     setRealQuoteForm({ daily_rate: '', vendor_notes: '', compliance_confirmed: false });
     fetchPendingRfqs();
-    fetchAcceptedRfqs();
+    fetchLifecycleRfqs();
   };
 
-  const handleConfirmRfq = async (rfqId: string) => {
+  const handleAdvanceRfq = async (rfqId: string, currentStatus: string) => {
     if (!requireOperationalProfile({ user, authLoading, profile, toast: showBlockedToast })) {
       return;
     }
-    setConfirmingId(rfqId);
+    const action = getVendorLifecycleAction(currentStatus);
+    if (!action) {
+      toast.error('No vendor action is authorized for this lifecycle state.');
+      return;
+    }
+    setTransitioningId(rfqId);
     try {
       const { error } = await supabase.functions.invoke('rfq-transition', {
-        body: { rfq_id: rfqId, new_status: 'vendor_confirmed' },
+        body: { rfq_id: rfqId, new_status: action.nextStatus },
       });
       if (error) {
-        toast.error('Confirmation failed: ' + (error.message || 'Unknown error'));
+        toast.error('Lifecycle update failed: ' + (error.message || 'Unknown error'));
         return;
       }
-      toast.success('Deployment confirmed.');
-      fetchAcceptedRfqs();
+      toast.success(action.successMessage);
+      fetchLifecycleRfqs();
       fetchPendingRfqs();
     } finally {
-      setConfirmingId(null);
+      setTransitioningId(null);
+    }
+  };
+
+  const resetOffRentAcknowledgment = () => {
+    setPendingOffRentAcknowledgmentId(null);
+    setPickupWindowStart('');
+    setPickupWindowEnd('');
+    setPickupNotes('');
+  };
+
+  const openOffRentAcknowledgment = (rfq: any) => {
+    const request = Array.isArray(rfq.rental_off_rent_requests)
+      ? rfq.rental_off_rent_requests[0]
+      : rfq.rental_off_rent_requests;
+    setPendingOffRentAcknowledgmentId(rfq.id);
+    setPickupWindowStart(toLocalDateTimeInput(request?.pickup_available_from));
+    setPickupWindowEnd(toLocalDateTimeInput(request?.pickup_available_until));
+    setPickupNotes('');
+  };
+
+  const handleAcknowledgeOffRent = async () => {
+    if (!pendingOffRentAcknowledgmentId) return;
+    if (!requireOperationalProfile({ user, authLoading, profile, toast: showBlockedToast })) return;
+
+    const pickupStart = Date.parse(pickupWindowStart);
+    const pickupEnd = Date.parse(pickupWindowEnd);
+    if (!Number.isFinite(pickupStart) || !Number.isFinite(pickupEnd) || pickupEnd <= pickupStart) {
+      toast.error('Record a valid vendor pickup window before acknowledging the request.');
+      return;
+    }
+
+    setAcknowledgingOffRentId(pendingOffRentAcknowledgmentId);
+    try {
+      const { error } = await supabase.functions.invoke('rfq-off-rent', {
+        body: {
+          action: 'acknowledge',
+          rfq_id: pendingOffRentAcknowledgmentId,
+          pickup_window_start: new Date(pickupStart).toISOString(),
+          pickup_window_end: new Date(pickupEnd).toISOString(),
+          notes: pickupNotes,
+        },
+      });
+      if (error) {
+        toast.error('Off-rent acknowledgment failed: ' + (error.message || 'Unknown error'));
+        return;
+      }
+      toast.success('Off-rent request acknowledged and pickup coordination recorded.');
+      resetOffRentAcknowledgment();
+      fetchLifecycleRfqs();
+    } finally {
+      setAcknowledgingOffRentId(null);
     }
   };
 
   useEffect(() => {
     if (authority.canUseOperationalData) {
       fetchPendingRfqs();
-      fetchAcceptedRfqs();
+      fetchLifecycleRfqs();
       fetchVendorOrg();
     }
   }, [authority.canUseOperationalData]);
@@ -590,36 +695,77 @@ const VendorDashboard = () => {
             {activeTab === 'requests' && (
               <div className="industrial-card p-6">
                 <h2 className="text-xl font-bold text-allrentz-gray mb-6">Quote Requests</h2>
-                {authority.canUseOperationalData && acceptedRfqs.length > 0 && (
+                {authority.canUseOperationalData && (
                   <div className="mb-6">
-                    <h3 className="font-semibold text-allrentz-gray mb-3">Accepted Quotes — Awaiting Confirmation</h3>
+                    <h3 className="font-semibold text-allrentz-gray mb-3">Active Fulfillment</h3>
+                    {lifecycleRfqsError ? (
+                      <p className="text-sm text-red-600 py-2">Unable to load active fulfillment. Please refresh or contact support.</p>
+                    ) : lifecycleRfqs.length === 0 ? (
+                      <p className="text-sm text-gray-500 py-2">No accepted rentals are awaiting fulfillment.</p>
+                    ) : (
                     <div className="space-y-3">
-                      {acceptedRfqs.map((rfq) => (
+                      {lifecycleRfqs.map((rfq) => {
+                        const action = getVendorLifecycleAction(rfq.operational_status);
+                        const offRentRequest = Array.isArray(rfq.rental_off_rent_requests)
+                          ? rfq.rental_off_rent_requests[0]
+                          : rfq.rental_off_rent_requests;
+                        return (
                         <div key={rfq.id} className="border border-green-200 bg-green-50 rounded-lg p-4">
                           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                             <div className="flex-1">
                               <h4 className="font-semibold text-allrentz-gray">{rfq.equipment?.title || 'Equipment Request'}</h4>
                               {rfq.equipment?.category && <p className="text-sm text-gray-500">{rfq.equipment.category}</p>}
+                              <p className="text-sm font-medium text-green-800 mt-1">
+                                {getVendorLifecycleLabel(rfq.operational_status)}
+                              </p>
                               <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mt-2">
                                 {rfq.delivery_address && <div><span className="font-medium">Location: </span>{rfq.delivery_address}</div>}
                                 {rfq.start_date && <div><span className="font-medium">Start: </span>{new Date(rfq.start_date).toLocaleDateString()}</div>}
                                 {rfq.end_date && <div><span className="font-medium">End: </span>{new Date(rfq.end_date).toLocaleDateString()}</div>}
                               </div>
                               {rfq.special_requirements && <p className="text-sm text-gray-600 mt-1">{rfq.special_requirements}</p>}
+                              {rfq.operational_status === 'off_rent_requested' && offRentRequest && (
+                                <div className="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                                  <p className="font-medium">Customer pickup availability</p>
+                                  <p className="mt-1">
+                                    Requested stop: {new Date(offRentRequest.requested_stop_at).toLocaleString()}
+                                  </p>
+                                  <p>
+                                    Window: {new Date(offRentRequest.pickup_available_from).toLocaleString()} –{' '}
+                                    {new Date(offRentRequest.pickup_available_until).toLocaleString()}
+                                  </p>
+                                  {offRentRequest.customer_notes && (
+                                    <p className="mt-1 text-amber-800">{offRentRequest.customer_notes}</p>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                            <div className="mt-3 lg:mt-0">
+                            {action && <div className="mt-3 lg:mt-0">
                               <button
-                                onClick={() => handleConfirmRfq(rfq.id)}
-                                disabled={confirmingId === rfq.id}
+                                onClick={() => handleAdvanceRfq(rfq.id, rfq.operational_status)}
+                                disabled={transitioningId === rfq.id}
                                 className="industrial-button text-sm py-1 px-4 disabled:opacity-50"
                               >
-                                {confirmingId === rfq.id ? 'Confirming...' : 'Confirm Deployment'}
+                                {transitioningId === rfq.id ? action.pendingLabel : action.label}
                               </button>
-                            </div>
+                            </div>}
+                            {rfq.operational_status === 'off_rent_requested' && (
+                              <div className="mt-3 lg:mt-0">
+                                <button
+                                  onClick={() => openOffRentAcknowledgment(rfq)}
+                                  disabled={acknowledgingOffRentId === rfq.id}
+                                  className="industrial-button text-sm py-1 px-4 disabled:opacity-50"
+                                >
+                                  {acknowledgingOffRentId === rfq.id ? 'Recording...' : 'Acknowledge Pickup Request'}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
+                    )}
                   </div>
                 )}
                 {authority.canUseOperationalData && (
@@ -996,6 +1142,62 @@ const VendorDashboard = () => {
           </div>
         </div>
       </div>
+      <Dialog
+        open={pendingOffRentAcknowledgmentId !== null}
+        onOpenChange={(open) => {
+          if (!open && !acknowledgingOffRentId) resetOffRentAcknowledgment();
+        }}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Acknowledge off-rent pickup</DialogTitle>
+            <DialogDescription>
+              Record the vendor pickup window. This acknowledgment starts demobilization but does not determine the contractual stop-rent time.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium" htmlFor="vendor-pickup-start">Pickup window start</label>
+                <Input
+                  id="vendor-pickup-start"
+                  type="datetime-local"
+                  value={pickupWindowStart}
+                  onChange={(event) => setPickupWindowStart(event.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium" htmlFor="vendor-pickup-end">Pickup window end</label>
+                <Input
+                  id="vendor-pickup-end"
+                  type="datetime-local"
+                  value={pickupWindowEnd}
+                  onChange={(event) => setPickupWindowEnd(event.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium" htmlFor="vendor-pickup-notes">Pickup coordination notes</label>
+              <Textarea
+                id="vendor-pickup-notes"
+                value={pickupNotes}
+                onChange={(event) => setPickupNotes(event.target.value)}
+                placeholder="Driver coordination, equipment preparation, or pickup constraints"
+                rows={4}
+                maxLength={4000}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={resetOffRentAcknowledgment} disabled={Boolean(acknowledgingOffRentId)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAcknowledgeOffRent} disabled={Boolean(acknowledgingOffRentId)}>
+              {acknowledgingOffRentId ? 'Recording...' : 'Record Acknowledgment'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -2,3 +2,12 @@ project_id = "encqbibzgoarvtcivgra"
 
 [functions.rfq-transition]
 verify_jwt = false
+
+[functions.rfq-field-acceptance]
+verify_jwt = false
+
+[functions.rfq-off-rent]
+verify_jwt = false
+
+[functions.rental-stop]
+verify_jwt = true

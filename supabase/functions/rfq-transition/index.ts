@@ -6,96 +6,13 @@ import {
   selectPublishableKey,
   selectSecretKey,
 } from './keys.ts'
-
-// ── Transition allowlists ──────────────────────────────────────────────────────
-//
-// These are optimization copies. The DB function transition_rfq_status() is the
-// authoritative source of truth. Any update to these sets must be made in the
-// same PR as the corresponding DB migration.
-
-const VALID_STATUSES = new Set([
-  'draft', 'submitted', 'pending_vendor_review', 'vendor_quote_received',
-  'quote_accepted', 'vendor_confirmed', 'mobilizing', 'in_transit',
-  'on_rent', 'off_rent_requested', 'demobilizing',
-  'off_rent', 'completed', 'cancelled', 'rejected',
-])
-
-const VALID_TRANSITIONS = new Set([
-  'draft:submitted',
-  'draft:cancelled',
-  'submitted:pending_vendor_review',
-  'submitted:cancelled',
-  'pending_vendor_review:vendor_quote_received',
-  'pending_vendor_review:cancelled',
-  'vendor_quote_received:quote_accepted',
-  'vendor_quote_received:cancelled',
-  'vendor_quote_received:rejected',
-  'quote_accepted:vendor_confirmed',
-  'quote_accepted:cancelled',
-  'quote_accepted:rejected',
-  'vendor_confirmed:mobilizing',
-  'vendor_confirmed:cancelled',
-  'mobilizing:in_transit',
-  'mobilizing:cancelled',
-  'in_transit:on_rent',
-  'on_rent:off_rent_requested',
-  'off_rent_requested:demobilizing',
-  'demobilizing:off_rent',
-  'off_rent:completed',
-])
-
-// rental_extended is intentionally excluded from VALID_STATUSES and VALID_TRANSITIONS.
-//
-// Governance rationale:
-//   rental_extended is a valid app_rfq_status enum value in the DB schema but
-//   represents a commercial renegotiation event, not a standard lifecycle
-//   transition. A rental extension requires:
-//     - New terms (revised end date, adjusted rates, deposit changes)
-//     - Bilateral agreement — both customer and vendor must consent
-//     - A dedicated extension request and approval workflow
-//
-//   The unilateral authority model used here (customer-owns, vendor-owns,
-//   admin-override) is not appropriate for a rental extension. Including
-//   rental_extended in VALID_TRANSITIONS without a proper extension workflow
-//   would create an unauthorized transition path with no commercial guard.
-//
-//   When a rental extension workflow is designed, it must include:
-//     - An explicit extension request (revised scope, dates, terms)
-//     - Vendor confirmation of availability and revised pricing
-//     - Customer acceptance of revised terms
-//     - Audit trail for the extension event separate from the standard lifecycle
-//
-//   Until that workflow exists, any attempt to transition to rental_extended
-//   returns 400 (unrecognized status) at Step 3 of this function.
-
-// Customer-owned transitions: pre-acceptance, acceptance decisions, cancellations
-const CUSTOMER_TRANSITIONS = new Set([
-  'draft:submitted',
-  'draft:cancelled',
-  'submitted:cancelled',
-  'vendor_quote_received:quote_accepted',
-  'vendor_quote_received:cancelled',
-  'vendor_quote_received:rejected',
-  'quote_accepted:cancelled',
-  'quote_accepted:rejected',
-])
-
-// Vendor-owned transitions: review, confirmation, mobilization, rental lifecycle
-const VENDOR_TRANSITIONS = new Set([
-  'submitted:pending_vendor_review',
-  'pending_vendor_review:vendor_quote_received',
-  'pending_vendor_review:cancelled',
-  'quote_accepted:vendor_confirmed',
-  'vendor_confirmed:mobilizing',
-  'vendor_confirmed:cancelled',
-  'mobilizing:in_transit',
-  'mobilizing:cancelled',
-  'in_transit:on_rent',
-  'on_rent:off_rent_requested',
-  'off_rent_requested:demobilizing',
-  'demobilizing:off_rent',
-  'off_rent:completed',
-])
+import {
+  CUSTOMER_TRANSITIONS,
+  isTransitionReasonValid,
+  VALID_STATUSES,
+  VALID_TRANSITIONS,
+  VENDOR_TRANSITIONS,
+} from './transitionPolicy.ts'
 
 // ── Response helpers ───────────────────────────────────────────────────────────
 
@@ -200,7 +117,7 @@ Deno.serve(async (req: Request) => {
 
   const rfqId = body['rfq_id']
   const newStatus = body['new_status']
-  const reason = typeof body['reason'] === 'string' ? body['reason'] : null
+  const reason = typeof body['reason'] === 'string' ? body['reason'].trim() || null : null
   const vqrId = typeof body['vqr_id'] === 'string' ? body['vqr_id'] : null
 
   if (!rfqId || typeof rfqId !== 'string') {
@@ -211,6 +128,9 @@ Deno.serve(async (req: Request) => {
   }
   if (newStatus === 'quote_accepted' && !vqrId) {
     return jsonError(400, 'vqr_id is required for quote_accepted transition')
+  }
+  if (!isTransitionReasonValid(newStatus, reason)) {
+    return jsonError(400, `reason is required for ${newStatus} transition`)
   }
 
   // ── Step 3: Fetch RFQ ──────────────────────────────────────────────────────

@@ -1,10 +1,13 @@
 ---
 title: ALLRENTZ Architectural Foundation
 domain: doctrine
-status: active
+lifecycle_status: active
+governance_state: approved
+authorized_scope: governing product and engineering doctrine; no runtime or contractual rule authorization
+authorization_reference: Patrick McGriff, bounded documentation-only governing-product integration, 2026-08-12
 authority: subordinate to /ALLRENTZ_CONSTITUTION.md; controls product and engineering implementation decisions
-related: /ALLRENTZ_CONSTITUTION.md, docs/doctrine/ALLRENTZ_HIGH_CONTROL_AGENT_GOVERNANCE.md, docs/engineering/authority-first-loop.md, docs/engineering/ai-governance.md
-last_reviewed: 2026-07-21
+related: /ALLRENTZ_CONSTITUTION.md, docs/doctrine/ALLRENTZ_HIGH_CONTROL_AGENT_GOVERNANCE.md, docs/product/rental-lifecycle-framework.md, docs/engineering/stop-rent-authority-implementation-contract.md, docs/engineering/authority-first-loop.md, docs/engineering/ai-governance.md
+last_reviewed: 2026-08-12
 ---
 
 # ALLRENTZ Architectural Foundation
@@ -14,6 +17,100 @@ This doctrine is the non-negotiable architectural foundation for ALLRENTZ. It op
 ALLRENTZ is the governed execution and authority layer for industrial rental operations. It is not merely a marketplace, listing platform, quote inbox, generic workflow tool, or frontend-led application.
 
 ALLRENTZ governs not only workflow, but also the **meaning, source, quality, relationships, authority, state, evidence, version, and permitted use** of every material business object. It exists to create trusted operational understanding, controlled execution, and accountability throughout the industrial rental lifecycle.
+
+## Governing product role
+
+**APPROVED DOCTRINE** — ALLRENTZ is the customer-centered, multi-vendor governance and execution platform for industrial rental operations. The customer controls one operating workspace across fragmented rental supply; vendors participate through governed relationships rather than isolated portals or informal message chains. Accepted terms, authorized actors, verified evidence, and deterministic backend commands—not market convention, a screen label, or a party's preference—control consequential authority.
+
+The governing product promise is:
+
+> Source the controlling facts, determine authority, execute the authorized action, reconcile the commercial result, and improve the next rental without weakening the evidence chain.
+
+This promise is implemented through five control pillars:
+
+1. **Source** — preserve accepted terms, operational facts, evidence, provenance, versions, and uncertainty.
+2. **Determine** — apply published, scoped, deterministic rules to authorized objects and fail closed when coverage or evidence is incomplete.
+3. **Execute** — perform the permitted state change through one atomic backend command and immutable audit event.
+4. **Reconcile** — compare operational determinations, custody and condition evidence, invoices, credits, disputes, and closeout outcomes without rewriting history.
+5. **Improve** — measure governed outcomes and use verified patterns to improve sourcing, terms, readiness, logistics, and vendor performance.
+
+The pillars are a control model, not permission to claim that every supporting object or workflow is already implemented. Current implementation boundaries are recorded separately in `docs/engineering/stop-rent-authority-implementation-contract.md`.
+
+## Nine rental clock-control principles
+
+The following are **APPROVED DOCTRINE** and required target architecture. Approval
+of these principles does not represent their target objects or states as already
+implemented.
+
+1. **Separate state tracks** — Billing, request, rule coverage, vendor response,
+   pickup, custody, condition, compliance, reconciliation, dispute, and correction
+   remain independently governed. No single status may silently control all tracks.
+2. **Immutable material authority history** — Material events, evidence,
+   evaluation attempts, determinations, disputes, and corrections are append-only
+   or immutably versioned. Ordinary workflows never overwrite or delete what
+   originally occurred. Security, privacy, and legally required disposition use a
+   governed redaction or tombstone process that preserves an auditable record
+   without retaining prohibited content.
+3. **Contract traceability** — Every financial rule and determination traces to
+   governed source bytes or reference, digest, document and version, stable clause
+   locator and canonical excerpt, amendments, precedence result, applicable object
+   scope, approved rule/evaluator versions, reviewer authority, and supporting
+   evidence.
+4. **Distinct fail-closed outcomes** — Rule coverage, evaluation, determination,
+   and dispute are separate tracks. Rule coverage may be covered, unknown, or
+   blocked; an evaluation attempt may complete or block; an authoritative
+   determination exists only after successful evaluation; and a dispute is
+   recorded independently. The system never collapses these meanings into one
+   ambiguous status.
+5. **Append-only corrections** — A governed correction creates a new superseding
+   record with reason, evidence, approval, and lineage. The original authoritative
+   record remains preserved and visible to authorized reviewers.
+6. **Pickup and custody separation** — Pickup request, scheduling, attempt,
+   physical pickup, custody transfer, yard receipt, condition inspection, and
+   billing cessation are distinct facts. None determines another without the
+   accepted contractual rule and canonical backend action.
+7. **AI without authority** — AI may extract, classify, compare, flag, and explain
+   candidate information. It cannot publish rules, establish scope, choose a
+   financial timestamp, change a determination, or resolve a dispute.
+8. **Governed shadow mode** — Every new financial evaluator first runs in a
+   non-authoritative comparison mode against a governed reference set approved by
+   the required product, contract, finance, and legal authorities. Shadow execution
+   cannot mutate lifecycle state, determinations, invoices, accounting records, or
+   financial outcomes. Production activation requires separately approved release
+   thresholds, negative tests, drift controls, monitoring, rollback criteria, and
+   evaluator-version lineage.
+9. **Invoice reconciliation** — Every final invoice charge within the governed
+   scope is compared with accepted terms, applicable rule, system determination,
+   rental scope, rate terms, evidence, and supported exceptions. Rental accrual,
+   tax, transport, damage, cleaning, missing-component, and other charge families
+   remain separately classified. A reconciliation result cannot rewrite the
+   determination that it consumes.
+
+### Approval boundary
+
+This doctrine approves the required behavior and design direction only. It does
+not approve a specific contract interpretation, a universal stop-rent trigger, a
+new `demobilizing → off_rent` pathway, granular rental-object activation, a
+financial evaluator, a billing calculation, production billing automation, or a
+legal interpretation. It cannot expand the existing guarded database mechanism.
+
+The following remain blocked until supported by governed evidence and separately
+approved authority:
+
+- **contractual rules** — the controlling accepted documents, clause precedence,
+  applicability, exceptions, and rule publisher;
+- **granular object authority** — rental order, line, serialized unit, quantity
+  allocation, kit instance, and component identities and relationships;
+- **evaluator activation** — deterministic specification, governed reference set,
+  verification thresholds, release decision, monitoring, and rollback;
+- **billing calculations** — rate source, period, cutoff, rounding, time zone,
+  minimums, taxes/fees, exception treatment, and reproducible examples; and
+- **legal interpretations** — enforceability, jurisdiction, notice, evidence,
+  amendments, disputes, retention, and legally controlling meaning.
+
+When an applicable published rule is absent, rule coverage remains `UNKNOWN`, the
+evaluation attempt must fail closed as blocked, and no determination or lifecycle
+transition may occur.
 
 ---
 
@@ -60,6 +157,21 @@ The practical implementation sequence is:
 > **Business meaning → Data contract → Authority → Validation → Canonical state → Atomic backend action → Evidence and audit → Role-scoped interface → AI assistance**
 
 Do not build a frontend action before the underlying object, authority, validation, state, and audit model are understood. AI may assist with matching, normalization, comparison, extraction, recommendations, and summaries only after these foundations are reliable. AI output may never create authority or operational truth by itself.
+
+### Restricted AI role
+
+**APPROVED DOCTRINE** — AI may extract candidate clauses, classify documents, map evidence, identify discrepancies, draft explanations, and recommend review priorities. Every AI-produced value remains an untrusted proposal carrying source references, model/version provenance, confidence or uncertainty, and a required human or deterministic validation path.
+
+AI must not:
+
+- publish or activate a contractual rule;
+- accept terms or establish object scope;
+- select an authoritative stop-rent or billing timestamp;
+- resolve an ambiguity, dispute, exception, custody event, or financial adjustment;
+- create a hidden override or substitute for organization, relationship, RLS, approval, evidence, or backend-command authority; or
+- convert a research finding or product hypothesis into operational truth.
+
+If deterministic authority cannot be established without AI judgment, the result is `UNKNOWN` or blocked—not an inferred action.
 
 ---
 
@@ -145,6 +257,25 @@ A material feature is not complete until repository evidence demonstrates:
 - structured safe denials;
 - positive and negative authority, isolation, validation, and state tests; and
 - a clearly owned next authorized action.
+
+## Governed product outcomes
+
+**APPROVED DOCTRINE** — Product success must be measured by controlled outcomes, not by clicks, page views, AI usage, or workflow volume alone. Governed metrics must retain the object scope, source events, calculation version, comparison period, exclusion rules, and uncertainty needed to reproduce the result.
+
+The target outcome families are:
+
+- time from authorized need to comparable quote coverage;
+- quote coverage and comparison completeness;
+- approval and dispatch cycle time;
+- rentals with complete accepted-term, evidence, and determination provenance;
+- requested-stop-to-determination and determination-to-pickup duration, with delay attribution kept separate from billing authority;
+- invoice lines automatically reconciled, exception rate, dispute cycle time, and verified credits;
+- vendor acknowledgment, pickup, evidence, invoice-accuracy, and resolution performance; and
+- prevented or corrected unsupported accrual, reported only when a reproducible counterfactual and approved accounting definition exist.
+
+**PRODUCT HYPOTHESIS** — These outcome families can create compounding customer value and defensibility by connecting commercial authority to operational execution across vendors.
+
+**UNKNOWN** — Baselines, targets, formulas, owners, materiality thresholds, and financial attribution rules remain unapproved until the metric catalog and its source contracts are governed. Marketing claims such as “savings,” “leakage prevented,” or “billing eliminated” must not be published from estimates or AI classifications.
 
 The final governing standard is:
 

@@ -2,7 +2,7 @@
 
 **Status:** Active
 **Authority:** Subordinate to `/ALLRENTZ_CONSTITUTION.md`; governed by the precedence contract below
-**Last reviewed:** 2026-08-03
+**Last reviewed:** 2026-08-12
 **Publication erratum:** `ALLRENTZ-PR8-DOC-ERRATUM-001` — publication provenance and CI-prerequisite status only; no normative decision change
 
 This folder is the **controlled** documentation layer for the ALLRENTZ engineering source of truth. It is version-controlled in git alongside the code it describes.
@@ -57,15 +57,15 @@ docs/
 ## Index
 
 ### doctrine/
-| File | Status | Authority source |
+| File | Lifecycle / governance and scope | Authority source |
 |---|---|---|
-| `ALLRENTZ_ARCHITECTURAL_FOUNDATION.md` | Active | subordinate to `/ALLRENTZ_CONSTITUTION.md`; controls product and engineering implementation decisions |
+| `ALLRENTZ_ARCHITECTURAL_FOUNDATION.md` | Active / Approved — governing product and engineering doctrine; no runtime or contractual-rule authorization | subordinate to `/ALLRENTZ_CONSTITUTION.md`; controls product and engineering implementation decisions |
 | `ALLRENTZ_HIGH_CONTROL_AGENT_GOVERNANCE.md` | Active | subordinate to `/ALLRENTZ_CONSTITUTION.md`; referenced from `/CLAUDE.md` |
 
 ### product/
-| File | Status | Source in raw archive |
+| File | Lifecycle / governance and scope | Source |
 |---|---|---|
-| `rental-lifecycle-framework.md` | Draft — migrate | `Projects\…Strategy…\RENTAL_LIFECYCLE_FRAMEWORK.md` |
+| `rental-lifecycle-framework.md` | Active / Candidate — approved doctrine and target architecture; no rule publication, runtime activation, or object-scope authorization | integrated governing-product review; implementation boundary linked to the engineering contract |
 | `product-test.md` | Stub — needs input | unknown — Pat to confirm intended source |
 
 ### engineering/
@@ -74,12 +74,14 @@ docs/
 | `authority-first-loop.md` | Draft | derives from `/ALLRENTZ_CONSTITUTION.md` (Operational Authority Order) |
 | `p7-verify-doctrine.md` | Draft | derives from `/ALLRENTZ_CONSTITUTION.md` (Formal Workflow Safety and Advanced Verification Doctrine) — P7 = P7-VERIFY harness workstream |
 | `ai-governance.md` | Draft | derives from `/ALLRENTZ_CONSTITUTION.md` (AI Governance Rule) |
+| `stop-rent-authority-implementation-contract.md` | Active / Approved | static implementation description at `ec6227931509a4f10cc4d046281836f307b724bc`; no new rule, object, runtime, deployment, or production authority |
 | `stage-2-authority-architecture-specification.md` | Active / Ratified v1.0 with non-normative publication erratum `ALLRENTZ-PR8-DOC-ERRATUM-001` — bounded inventory/planning only; implementation separately authorized | derives from `docs/doctrine/ALLRENTZ_ARCHITECTURAL_FOUNDATION.md` and verified Stage 1 containment |
 | `stage-2i-stage-2a-principal-authority-implementation-specification.md` | Active / Approved v0.6 with non-normative publication erratum `ALLRENTZ-PR8-DOC-ERRATUM-001` — dependency/toolchain evidence and exact replay commands recorded; the separate CI-hardening prerequisite was merged through PR #6; supersedes v0.5 at original local commit `65b6772b4a5e4638b31dedcd42b4eee1cfe1d651`, published byte-identically at `8deefce1b6991bca606f2627e3bdd2e36df65093`; Stage 2I implementation is not authorized and requires a separate exact-scope authorization | implements the ratified `ALLRENTZ-AUTH-001` architecture without superseding it |
 
 ### strategy/
 | File | Status | Source in raw archive |
 |---|---|---|
+| `off-rent-governance-benchmark.md` | Active / Candidate — research only; no contractual or billing authority | reviewed public sources retrieved 2026-08-12; citations and evidence classifications are contained in the document |
 | `market-positioning.md` | Draft — migrate | `Projects\…Strategy…\SOUL.md`, `…Strategic_Review_GamePlan_May2026.docx` |
 | `competitor-notes.md` | Draft — migrate | `Projects\…Strategy…\ALLRENTZ_Competitor_Pass3_May2026.docx`; `Documentos\ALLRENTZ\New 9.3.2025\ALLRENTZ Competitor Synthesis and Action Plan.docx` |
 

@@ -119,6 +119,10 @@ const DocumentsManagement = () => {
           </p>
         </div>
 
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Sample scenario data only — document actions on this page are not yet connected to authoritative rental records or storage.
+        </div>
+
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="industrial-card">

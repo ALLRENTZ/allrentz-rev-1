@@ -162,6 +162,10 @@ const TurnaroundManagement = () => {
           <p className="text-gray-600 mt-2">Plan, coordinate, and optimize refinery turnaround operations</p>
         </div>
 
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Sample scenario data only — this page is not yet connected to authoritative turnaround, rental, or deployment records.
+        </div>
+
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
