@@ -45,11 +45,17 @@ Only the existing guarded determination path described in `docs/engineering/stop
 | Granular rental scope | The active stop-rent command remains RFQ-wide. | Adopt the target object boundary below, then implement conservation, lineage, authorization and negative tests before activation. | Target decision is **APPROVED DOCTRINE**; runtime use is **BLOCKED PENDING OBJECT AUTHORITY**. |
 | Invoice reconciliation | The stop determination has no invoice matching or correction command. | Reconcile immutable invoice versions and lines to accepted terms, governed scope, determination and evidence; append exceptions and corrections. | **PRODUCT HYPOTHESIS**; **BLOCKED** pending financial object authority. |
 
+### First-slice scope decision
+
+**APPROVED DOCTRINE** — The first `PickupTask` implementation is RFQ-wide only. It may bind one eligible governed off-rent request, its accepted vendor relationship, the controlling customer organization, and the same simulation scope. It must reject line, quantity-allocation, serialized-unit, kit, component, partial-return, split-task, and multi-leg scope inputs.
+
+This sequencing decision permits visible pickup coordination without inventing granular rental authority. The first slice may project aggregate logistics progress, but it cannot claim quantity conservation, unit-level custody, kit completeness, partial completion, or financial effect. Those capabilities remain **BLOCKED PENDING OBJECT AUTHORITY** until the target hierarchy and its invariants are implemented and proven.
+
 ## PickupTask target product contract
 
 ### Object, purpose, and ownership
 
-**APPROVED DOCTRINE** — `PickupTask` is a non-financial logistics object for one vendor-operated movement of one or more authorized rental-scope allocations from an origin to a destination. It is not a rental-stop case, billing clock, invoice, determination, or custody conclusion.
+**APPROVED DOCTRINE** — In the target architecture, `PickupTask` is a non-financial logistics object for one controlled movement leg of authorized rental scope from an origin to a destination. It is not a rental-stop case, billing clock, invoice, determination, or custody conclusion. The first RFQ-wide slice permits one accepted-vendor-operated movement only; third-party haulers, task splitting, and multi-leg chains remain **UNKNOWN** and blocked.
 
 Every task must map to:
 
@@ -78,9 +84,11 @@ Do not compress scheduling, execution, custody, condition, exceptions and financ
 | Custody | `not_recorded → origin_handoff_recorded → in_transit_recorded → destination_receipt_recorded` | Evidence-backed assertions; legal custody transfer remains **REQUIRES LEGAL REVIEW**. |
 | Condition | `not_inspected → origin_condition_recorded → destination_condition_recorded → review_required_or_clear` | Evidence and human review; no automatic damage liability. |
 | Exception | `none → open → action_required → resolved` | Independent operational exception history. Resolution never edits historical events. |
-| Task closure | `open → closure_ready → closed` | Administrative completion after required tracks; never a billing or off-rent trigger. |
+| Task closure | `open → closure_ready → closed_complete`, `closed_partial`, `closed_failed`, `canceled`, or `superseded` | Explicit terminal operational outcome after required tracks; never a billing or off-rent trigger. `closed_partial` is blocked in the first RFQ-wide slice. |
 
 Status transitions must be backend-owned, role-gated, state-gated, simulation-isolated, idempotent and atomically audited. A correction appends a superseding event with a reason and lineage; it does not update or delete the original assertion.
+
+Closure requires every frozen manifest entry to have a recorded operational disposition such as `collected`, `not_found`, `refused`, `inaccessible`, `damaged`, `substituted`, or `canceled`. Required exceptions must be resolved or assigned an explicitly authorized non-financial disposition before terminal closure. Closure cannot silently discard an item, event, exception, or evidence conflict, and it never changes contractual or billing authority.
 
 ### Authorized actions and views
 
@@ -98,7 +106,7 @@ Customer-visible progress must show the event source and time, distinguish sched
 
 ### Scope manifest
 
-Each task requires an immutable versioned manifest. A manifest entry identifies exactly one approved scope type and quantity. Changing scope creates a new version with predecessor lineage and conservation checks; it does not mutate a completed or in-flight manifest.
+Each task requires an immutable versioned manifest. The manifest freezes no later than the earliest of assignment, dispatch, or the first operational event. A manifest entry identifies exactly one approved scope type and quantity. After freeze, a scope change must supersede or split the task through explicit predecessor lineage; it cannot mutate an assigned, dispatched, in-flight, or completed task. Conservation checks are mandatory before granular scope is activated. Multi-leg transport and third-party haulage require a separately approved ownership and handoff model.
 
 Minimum fields are:
 
@@ -127,6 +135,17 @@ Every operational assertion must be an append-only evidence event containing:
 - predecessor or supersession reference for a correction.
 
 Attachments are evidence, not conclusions. Capture metadata must preserve provenance and privacy boundaries. Geolocation, signatures, photographs and telematics require retention, consent, access, redaction and dispute policies that are currently **UNKNOWN** and may **REQUIRE LEGAL REVIEW**.
+
+Before evidence upload is implemented, the controlled design must define:
+
+- device-capture time, authoritative system-received time, clock source, offset, confidence, and offline sequence separately;
+- immutable original bytes and digest, with redacted or transformed derivatives linked to the original rather than replacing it;
+- authenticated upload authorization, file-type allowlisting, size limits, protected storage, malware scanning and quarantine;
+- audit events for access, download, redaction, quarantine release, retention action, and legal hold;
+- signer identity, organization, asserted capacity, intent, attestation text/version, and signature time; and
+- custody assertions using explicit outcomes such as `asserted`, `confirmed`, `disputed`, `rejected`, or `unknown` rather than an inferred legal conclusion.
+
+**RESEARCH FINDING** — These controls align with current public security and audit guidance for trustworthy timestamps, protected audit information, retained/retrievable records, unaltered source content, and constrained file uploads. [NIST SP 800-53 Rev. 5.1, AU-7 through AU-11](https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final), [OWASP Unrestricted File Upload](https://owasp.org/www-community/vulnerabilities/Unrestricted_File_Upload). Their application to signatures, consent, evidentiary weight, retention, and legal hold remains **REQUIRES LEGAL REVIEW**; electronic form alone does not settle those questions. [15 U.S.C. § 7001](https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title15-section7001&num=0&edition=prelim)
 
 ### Delay attribution
 
@@ -172,7 +191,13 @@ Required invariants before activation:
 
 ### Match results
 
-Each line produces one versioned result: `matched`, `underbilled`, `overbilled`, `missing_authority`, `scope_mismatch`, `rate_mismatch`, `quantity_mismatch`, `time_mismatch`, `tax_or_fee_review`, `duplicate`, or `unknown`. Every result records the compared source versions, calculation inputs, tolerance source and explanation.
+Each invoice line produces one versioned reconciliation containing:
+
+- one overall disposition: `matched`, `held`, `disputed`, `approval_ready`, or `unknown`;
+- zero or more immutable findings such as `underbilled`, `overbilled`, `missing_authority`, `scope_mismatch`, `rate_mismatch`, `quantity_mismatch`, `time_mismatch`, `tax_or_fee_review`, or `duplicate`; and
+- zero or more independently governed holds with owner, reason, status, evidence, and resolution lineage.
+
+Every reconciliation records the compared source versions, calculation inputs, tolerance source and explanation. Reconciliation, exception resolution, invoice approval, accounting export, and payment release are separate actions with separate authority. No reconciliation disposition automatically authorizes the next action.
 
 `matched` means the defined comparison passed; it does not prove legal correctness. `unknown` and missing evidence fail closed to review. AI may rank or explain candidate matches but cannot approve an invoice, alter a determination, publish a tolerance, or create a financial correction.
 
@@ -201,20 +226,24 @@ The `PickupTask` slice is not complete unless tests prove all of the following:
 3. Duplicate command retries return the original result without duplicate tasks or audit events.
 4. Customer and vendor views expose only the sanitized projection permitted for their organization and role.
 5. Progress, attempt, evidence and correction events are append-only and atomically audited.
-6. Invalid state transitions, overlapping quantity allocations, conflicting serialized assignments and incomplete kit manifests fail closed.
-7. Missing, malformed or conflicting evidence displays `UNKNOWN` or `REVIEW REQUIRED`.
-8. Task closure, collection, destination receipt, signature, photo, acknowledgment and elapsed time do not create or modify a stop determination, billable-through timestamp, lifecycle `off_rent` state or invoice.
-9. No frontend or AI output owns authoritative timestamps or state.
-10. Existing governed off-rent request, acknowledgment, determination and regression tests remain successful.
+6. The first slice rejects line, quantity-allocation, serialized-unit, kit, component, partial-return, split-task and multi-leg scope inputs.
+7. The manifest freezes before assignment, dispatch, or the first event; later scope changes fail closed rather than mutating it.
+8. Missing, malformed or conflicting evidence displays `UNKNOWN` or `REVIEW REQUIRED`.
+9. Evidence upload authorization, allowlisting, limits, quarantine, digest preservation, derivative lineage, access audit and timestamp provenance fail closed.
+10. Terminal outcomes require complete manifest dispositions and required exception resolution; `closed_partial` remains unavailable in the first RFQ-wide slice.
+11. Task closure, collection, destination receipt, signature, photo, acknowledgment and elapsed time do not create or modify a stop determination, billable-through timestamp, lifecycle `off_rent` state or invoice.
+12. No frontend or AI output owns authoritative timestamps or state.
+13. Existing governed off-rent request, acknowledgment, determination and regression tests remain successful.
 
 ## Required implementation sequence
 
 1. **SATISFIED** — PR #10 was merged, and its exact Cloudflare Pages production deployment at commit `f8c44f765287aeeb75ec95d4199a09f3387179fc` was separately verified on 2026-08-13.
-2. **REQUIRED** — approve the target command, schema, role matrix, evidence retention, privacy and object-allocation contract.
-3. **REQUIRED** — implement the backend object, append-only events, RLS, grants, indexes, audit constraints and negative policy tests before UI mutation controls.
-4. **REQUIRED** — add vendor scheduling/field actions and a sanitized customer-visible projection backed exclusively by controlled commands.
-5. **REQUIRED** — run the proportionate local migration, policy, command, unit, type, lint, build and negative-authentication ladder.
-6. **REQUIRED** — publish through a separate draft PR. Production deployment, rule publication and merge remain individually authorized actions.
+2. **REQUIRED** — approve the RFQ-wide command, schema, role matrix, terminal outcomes, manifest-freeze rule, and evidence security boundary. Do not approve granular or partial-return inputs in this slice.
+3. **REQUIRED** — implement the RFQ-wide backend object, append-only events, RLS, grants, indexes, audit constraints and negative policy tests before UI mutation controls.
+4. **REQUIRED** — add accepted-vendor scheduling and field actions plus a sanitized customer-visible projection backed exclusively by controlled commands.
+5. **REQUIRED** — prove that granular inputs, multi-leg/third-party scope, incomplete closure, unauthorized evidence access, and every financial side effect fail closed.
+6. **REQUIRED** — run the proportionate local migration, policy, command, unit, type, lint, build and negative-authentication ladder.
+7. **REQUIRED** — publish through a separate draft PR. Production deployment, rule publication and merge remain individually authorized actions.
 
 Invoice reconciliation is a later slice. It must not be bundled into the first `PickupTask` implementation merely because this document defines its target contract.
 
@@ -223,6 +252,7 @@ Invoice reconciliation is a later slice. It must not be bundled into the first `
 - **UNKNOWN** — evidence retention periods, access, export, deletion exceptions, consent and privacy boundaries.
 - **UNKNOWN** — offline field-command ordering, device trust, location precision and attachment malware controls.
 - **UNKNOWN** — dispatch ownership where a third-party hauler operates for the accepted vendor.
+- **UNKNOWN** — multi-leg task ownership, handoff acceptance, split/supersession behavior, and responsibility for third-party evidence.
 - **UNKNOWN** — accounting system, tax engine, tolerance publication, invoice ingestion and credit/debit export boundaries.
 - **REQUIRES LEGAL REVIEW** — when custody or risk transfers; signature meaning; photographic/geolocation admissibility; damage allocation; pickup-delay liability; lien, tax and jurisdictional requirements.
 - **REQUIRES LEGAL REVIEW** — every contractual rule that could use request, acknowledgment, pickup, custody, condition or return evidence in a financial determination.

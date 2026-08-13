@@ -472,14 +472,20 @@ permission to substitute temporary models.
    unknowns, readiness declarations, determinations, RLS, and contract tests.
 2. **Deterministic evaluators** — approve and implement each trigger/billing pair,
    time-zone boundaries, ceiling projections, and negative cases.
-3. **Order/line/unit model** — create the authoritative rental-order, line,
-   serialized-unit, quantity, and kit-component hierarchy; then enable partial
-   stop-rent.
-4. **Field logistics and custody** — scheduling, driver actions, pickup attempts,
-   manifests, signatures, photos, custody transfer, and yard receipt.
-5. **Return control** — comparison evidence, inspection, damage, cleaning,
+3. **RFQ-wide pickup coordination** — add one non-financial, RFQ-wide pickup task
+   for the eligible governed request, accepted vendor, customer organization, and
+   simulation scope. Reject line, quantity, serialized-unit, kit, component,
+   partial-return, split-task, multi-leg, and third-party-hauler inputs. Task state,
+   evidence, closure, custody assertions, and elapsed time have no billing effect.
+4. **Order/line/unit model** — create the authoritative rental-order, line,
+   serialized-unit, quantity, and kit-component hierarchy; then enable granular
+   logistics and partial stop-rent only through separately approved commands.
+5. **Expanded field logistics and custody** — quantity-aware scheduling, driver
+   actions, pickup attempts, frozen manifests, signatures, photos, multi-leg
+   handoffs, custody assertions, and yard receipt.
+6. **Return control** — comparison evidence, inspection, damage, cleaning,
    recertification, and rental-ready release.
-6. **Financial settlement** — ceiling lock, invoice line matching, exceptions,
+7. **Financial settlement** — ceiling lock, invoice line matching, exceptions,
    governed adjustments, disputes, closeout, and vendor-performance outputs.
 
 Before production activation, every new financial evaluator must pass the
