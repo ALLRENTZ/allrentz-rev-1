@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { validateOffRentAction } from './offRentPolicy'
+import { projectStopAuthority, validateOffRentAction } from './offRentPolicy'
 
 describe('off-rent action input policy', () => {
   it('accepts a complete customer request', () => {
@@ -41,6 +41,13 @@ describe('off-rent action input policy', () => {
     expect(result.input?.action).toBe('acknowledge')
   })
 
+  it('accepts the authenticated read-only status action without mutation fields', () => {
+    expect(validateOffRentAction({ action: 'status', rfq_id: 'rfq-1' })).toEqual({
+      valid: true,
+      input: { action: 'status', rfqId: 'rfq-1' },
+    })
+  })
+
   it('rejects a reversed vendor pickup window', () => {
     expect(validateOffRentAction({
       action: 'acknowledge',
@@ -56,7 +63,7 @@ describe('off-rent action input policy', () => {
   it('rejects unsupported actions and oversized notes', () => {
     expect(validateOffRentAction({ action: 'finish', rfq_id: 'rfq-1' })).toEqual({
       valid: false,
-      error: 'action must be request or acknowledge',
+      error: 'action must be request, acknowledge, or status',
     })
     expect(validateOffRentAction({
       action: 'acknowledge',
@@ -65,5 +72,55 @@ describe('off-rent action input policy', () => {
       pickup_window_end: '2026-08-11T17:00:00Z',
       notes: 'x'.repeat(4001),
     })).toEqual({ valid: false, error: 'notes cannot exceed 4000 characters' })
+  })
+})
+
+describe('stop authority projection', () => {
+  it('fails closed as UNKNOWN/BLOCKED without a governed determination', () => {
+    expect(projectStopAuthority({})).toMatchObject({
+      contractual_status: 'UNKNOWN',
+      billing_cutoff_status: 'BLOCKED',
+      blocker_code: 'STOP_RULE_UNKNOWN',
+      determined_at: null,
+      billable_through_at: null,
+    })
+  })
+
+  it('shows a recorded blocked evaluator outcome without inventing a billing cutoff', () => {
+    expect(projectStopAuthority({
+      attempt: {
+        outcome: 'blocked',
+        blocker_code: 'ACCEPTED_TERM_SNAPSHOT_MISSING',
+        blocker_detail: 'Accepted terms have not been bound.',
+        created_at: '2026-08-12T12:00:00Z',
+      },
+    })).toMatchObject({
+      contractual_status: 'BLOCKED',
+      billing_cutoff_status: 'BLOCKED',
+      blocker_code: 'ACCEPTED_TERM_SNAPSHOT_MISSING',
+      stop_effective_at: null,
+    })
+  })
+
+  it('shows billing timestamps only from an immutable governed determination', () => {
+    expect(projectStopAuthority({
+      determination: {
+        determined_at: '2026-08-12T13:00:00Z',
+        stop_effective_at: '2026-08-12T12:00:00Z',
+        billable_through_at: '2026-08-12T23:59:59Z',
+        explanation: 'Published terms evaluated by the active evaluator.',
+        determination_version: 1,
+      },
+    })).toEqual({
+      contractual_status: 'DETERMINED',
+      billing_cutoff_status: 'DETERMINED',
+      blocker_code: null,
+      blocker_detail: null,
+      determined_at: '2026-08-12T13:00:00Z',
+      stop_effective_at: '2026-08-12T12:00:00Z',
+      billable_through_at: '2026-08-12T23:59:59Z',
+      explanation: 'Published terms evaluated by the active evaluator.',
+      determination_version: 1,
+    })
   })
 })
