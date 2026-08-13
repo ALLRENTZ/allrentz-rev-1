@@ -7,7 +7,7 @@ authorized_scope: target product requirements and implementation sequencing only
 authorization_reference: Patrick McGriff, separate benchmark and product-requirements wave, 2026-08-13
 authority: subordinate to /ALLRENTZ_CONSTITUTION.md, docs/doctrine/ALLRENTZ_ARCHITECTURAL_FOUNDATION.md, and verified repository behavior
 related: docs/product/rental-lifecycle-framework.md, docs/strategy/off-rent-governance-benchmark.md, docs/engineering/stop-rent-authority-implementation-contract.md
-verification_baseline: repository commit 9e021e140e4e4d6eccc195dcef073701531f55b7; PR #10 review branch, not a production-deployment claim
+verification_baseline: repository commit f8c44f765287aeeb75ec95d4199a09f3387179fc; PR #10 merged and exact Cloudflare Pages production deployment verified 2026-08-13
 last_reviewed: 2026-08-13
 ---
 
@@ -15,7 +15,7 @@ last_reviewed: 2026-08-13
 
 ## Decision and authority boundary
 
-**APPROVED DOCTRINE** — The next operational product slice after PR #10 is approved and merged is a customer-visible, vendor-operated `PickupTask`. It coordinates scheduling, field progress, attempts, collection, handoff, and return-location receipt. It is explicitly separate from rental-stop and billing authority.
+**APPROVED DOCTRINE** — The next operational product slice after the merged and production-verified PR #10 is a customer-visible, vendor-operated `PickupTask`. It coordinates scheduling, field progress, attempts, collection, handoff, and return-location receipt. It is explicitly separate from rental-stop and billing authority.
 
 This document authorizes product requirements and target architecture only. It does not authorize code, schema, migrations, RLS, commands, rule publication, evaluator activation, billing calculation, deployment, or production access. Until the implementation prerequisites and a separate exact-scope authorization are satisfied, the slice is **BLOCKED**.
 
@@ -209,7 +209,7 @@ The `PickupTask` slice is not complete unless tests prove all of the following:
 
 ## Required implementation sequence
 
-1. **REQUIRED** — PR #10 must be approved and merged, and its exact production/deployment result separately verified before this slice begins.
+1. **SATISFIED** — PR #10 was merged, and its exact Cloudflare Pages production deployment at commit `f8c44f765287aeeb75ec95d4199a09f3387179fc` was separately verified on 2026-08-13.
 2. **REQUIRED** — approve the target command, schema, role matrix, evidence retention, privacy and object-allocation contract.
 3. **REQUIRED** — implement the backend object, append-only events, RLS, grants, indexes, audit constraints and negative policy tests before UI mutation controls.
 4. **REQUIRED** — add vendor scheduling/field actions and a sanitized customer-visible projection backed exclusively by controlled commands.
