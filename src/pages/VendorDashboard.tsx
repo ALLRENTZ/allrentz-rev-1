@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
 import { getVendorLifecycleAction, getVendorLifecycleLabel } from '@/lib/vendorLifecycle';
+import OffRentControlPanel from '@/components/OffRentControlPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -41,6 +42,7 @@ const VendorDashboard = () => {
   const [pickupWindowStart, setPickupWindowStart] = useState('');
   const [pickupWindowEnd, setPickupWindowEnd] = useState('');
   const [pickupNotes, setPickupNotes] = useState('');
+  const [offRentRefreshVersion, setOffRentRefreshVersion] = useState(0);
   const [realQuoteForm, setRealQuoteForm] = useState({ daily_rate: '', vendor_notes: '', compliance_confirmed: false });
   const [pendingRfqsError, setPendingRfqsError] = useState(false);
   const [lifecycleRfqsError, setLifecycleRfqsError] = useState(false);
@@ -326,7 +328,8 @@ const VendorDashboard = () => {
       }
       toast.success('Off-rent request acknowledged and pickup coordination recorded.');
       resetOffRentAcknowledgment();
-      fetchLifecycleRfqs();
+      await fetchLifecycleRfqs();
+      setOffRentRefreshVersion((version) => version + 1);
     } finally {
       setAcknowledgingOffRentId(null);
     }
@@ -761,6 +764,12 @@ const VendorDashboard = () => {
                               </div>
                             )}
                           </div>
+                          {['on_rent', 'off_rent_requested', 'demobilizing', 'off_rent'].includes(rfq.operational_status) && (
+                            <OffRentControlPanel
+                              rfqId={rfq.id}
+                              refreshKey={offRentRefreshVersion}
+                            />
+                          )}
                         </div>
                         );
                       })}

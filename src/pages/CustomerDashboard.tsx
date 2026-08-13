@@ -19,6 +19,7 @@ import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import DemoTour from '@/components/DemoTour';
+import OffRentControlPanel from '@/components/OffRentControlPanel';
 import { demoCustomerRentalRequests, demoCustomerNotifications } from '@/data/demoDashboardData';
 import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
 
@@ -37,6 +38,7 @@ const CustomerDashboard = () => {
   const [pickupAvailableFrom, setPickupAvailableFrom] = useState('');
   const [pickupAvailableUntil, setPickupAvailableUntil] = useState('');
   const [offRentNotes, setOffRentNotes] = useState('');
+  const [offRentRefreshVersion, setOffRentRefreshVersion] = useState(0);
   const [recordingAcceptanceRfqId, setRecordingAcceptanceRfqId] = useState<string | null>(null);
   const [pendingAcceptanceRfqId, setPendingAcceptanceRfqId] = useState<string | null>(null);
   const [conditionNotes, setConditionNotes] = useState('');
@@ -253,6 +255,7 @@ const CustomerDashboard = () => {
       });
       resetOffRentRequest();
       await fetchRentalRequests();
+      setOffRentRefreshVersion((version) => version + 1);
     } catch (err: any) {
       toast({
         title: 'Off-rent request failed',
@@ -564,6 +567,13 @@ const CustomerDashboard = () => {
                             </Button>
                           </div>
                         )}
+                        {['on_rent', 'off_rent_requested', 'demobilizing', 'off_rent'].includes(request.operational_status)
+                          && authority.canUseOperationalData && (
+                            <OffRentControlPanel
+                              rfqId={request.id}
+                              refreshKey={offRentRefreshVersion}
+                            />
+                          )}
                         {request.operational_status === 'in_transit' && authority.canUseOperationalData && (
                           <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
                             <p className="text-sm font-medium text-blue-900">Delivery awaiting field acceptance</p>

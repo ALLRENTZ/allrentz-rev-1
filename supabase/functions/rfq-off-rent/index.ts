@@ -6,7 +6,7 @@ import {
   selectPublishableKey,
   selectSecretKey,
 } from '../rfq-transition/keys.ts'
-import { validateOffRentAction } from './offRentPolicy.ts'
+import { projectStopAuthority, validateOffRentAction } from './offRentPolicy.ts'
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -17,6 +17,46 @@ function json(status: number, body: unknown): Response {
 
 function jsonError(status: number, message: string): Response {
   return json(status, { error: message })
+}
+
+const OFF_RENT_TIMELINE_EVENT_TYPES = new Set([
+  'off_rent_requested',
+  'off_rent_acknowledged',
+  'stoprent.determination_blocked',
+  'stoprent.rule_applied',
+  'stoprent.determined',
+])
+
+const OFF_RENT_TIMELINE_STATES = new Set([
+  'off_rent_requested',
+  'demobilizing',
+  'off_rent',
+])
+
+function eventOperationalStatus(value: unknown): string | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const status = (value as Record<string, unknown>)['operational_status']
+  return typeof status === 'string' ? status : null
+}
+
+function projectTimeline(events: Array<Record<string, unknown>>) {
+  return events.flatMap((event) => {
+    const eventType = typeof event['event_type'] === 'string' ? event['event_type'] : ''
+    const state = eventOperationalStatus(event['new_value'])
+    if (!OFF_RENT_TIMELINE_EVENT_TYPES.has(eventType)
+        && !(eventType === 'status_transition' && state && OFF_RENT_TIMELINE_STATES.has(state))) {
+      return []
+    }
+    return [{
+      id: event['id'],
+      event_type: eventType,
+      actor_role: typeof event['actor_role'] === 'string' ? event['actor_role'] : null,
+      occurred_at: event['created_at'],
+      reason: typeof event['reason'] === 'string' ? event['reason'] : null,
+      correlation_id: event['correlation_id'],
+      state,
+    }]
+  })
 }
 
 Deno.serve(async (req: Request) => {
@@ -91,6 +131,71 @@ Deno.serve(async (req: Request) => {
     auth: { autoRefreshToken: false, persistSession: false },
   })
   const input = validation.input
+
+  if (input.action === 'status') {
+    // RLS on the user-scoped client is the authorization boundary. The service
+    // client is used only after that boundary to assemble a read-only projection
+    // from immutable records that are intentionally not exposed to the Data API.
+    const { data: authorizedRfq, error: authorizationError } = await userClient
+      .from('rental_requests')
+      .select('id, operational_status, is_simulated')
+      .eq('id', input.rfqId)
+      .maybeSingle()
+
+    if (authorizationError) {
+      console.error('rfq-off-rent status authorization error:', authorizationError)
+      return jsonError(500, 'Unable to verify rental access')
+    }
+    if (!authorizedRfq) return jsonError(404, 'Required rental record not found')
+
+    const [requestResult, acknowledgmentResult, attemptResult, determinationResult, eventsResult] = await Promise.all([
+      svc.from('rental_off_rent_requests')
+        .select('requested_at, requested_stop_at, pickup_available_from, pickup_available_until, customer_notes, correlation_id')
+        .eq('rfq_id', input.rfqId)
+        .maybeSingle(),
+      svc.from('rental_off_rent_acknowledgments')
+        .select('acknowledged_at, pickup_window_start, pickup_window_end, vendor_notes, correlation_id')
+        .eq('rfq_id', input.rfqId)
+        .maybeSingle(),
+      svc.from('rental_stop_evaluation_attempts')
+        .select('outcome, blocker_code, blocker_detail, created_at')
+        .eq('rfq_id', input.rfqId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      svc.from('rental_stop_determinations')
+        .select('determined_at, stop_effective_at, billable_through_at, explanation, determination_version')
+        .eq('rfq_id', input.rfqId)
+        .order('determination_version', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      svc.from('audit_events')
+        .select('id, event_type, actor_role, created_at, reason, correlation_id, new_value')
+        .eq('related_rfq_id', input.rfqId)
+        .order('created_at', { ascending: false })
+        .limit(50),
+    ])
+
+    const readError = requestResult.error ?? acknowledgmentResult.error ?? attemptResult.error
+      ?? determinationResult.error ?? eventsResult.error
+    if (readError) {
+      console.error('rfq-off-rent status projection error:', readError)
+      return jsonError(500, 'Unable to load the off-rent control record')
+    }
+
+    return json(200, {
+      rfq_id: authorizedRfq.id,
+      operational_status: authorizedRfq.operational_status,
+      request: requestResult.data,
+      acknowledgment: acknowledgmentResult.data,
+      authority: projectStopAuthority({
+        attempt: attemptResult.data,
+        determination: determinationResult.data,
+      }),
+      timeline: projectTimeline((eventsResult.data ?? []) as Array<Record<string, unknown>>).reverse(),
+    })
+  }
+
   const rpc = input.action === 'request'
     ? svc.rpc('record_rental_off_rent_request', {
         p_rfq_id: input.rfqId,
