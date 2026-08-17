@@ -6,7 +6,10 @@ import {
   selectPublishableKey,
   selectSecretKey,
 } from '../rfq-transition/keys.ts'
-import { validatePickupTaskAction } from './pickupTaskPolicy.ts'
+import {
+  buildPickupScheduleProjection,
+  validatePickupTaskAction,
+} from './pickupTaskPolicy.ts'
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -31,7 +34,8 @@ function mapCommandError(message: string): Response {
     return jsonError(422, message)
   }
   if (message.includes('required') || message.includes('must be after')
-      || message.includes('cannot exceed') || message.includes('must contain')) {
+      || message.includes('cannot exceed') || message.includes('must contain')
+      || message.includes('must be one of') || message.includes('only permitted')) {
     return jsonError(400, message)
   }
   return jsonError(500, 'Internal error')
@@ -140,8 +144,11 @@ Deno.serve(async (req: Request) => {
         operational_status: authorizedRfq.operational_status,
         pickup_task: null,
         current_schedule_state: 'unscheduled',
-        current_window: null,
+        current_schedule_event: null,
+        confirmed_window: null,
+        pending_window: null,
         timeline: [],
+        timeline_page: { has_more: false, next_before_sequence: null },
         authority_boundary: {
           object_scope: 'rfq',
           pickup_controls_billing: false,
@@ -150,20 +157,55 @@ Deno.serve(async (req: Request) => {
       })
     }
 
-    const { data: events, error: eventsError } = await svc
+    const eventProjection = 'id, event_sequence, event_type, actor_role, pickup_window_start, pickup_window_end, reason_code, notes, created_at'
+    const { data: current, error: currentError } = await svc
       .from('rental_pickup_schedule_events')
-      .select('id, event_sequence, event_type, actor_role, pickup_window_start, pickup_window_end, notes, created_at')
+      .select(eventProjection)
       .eq('pickup_task_id', task.id)
-      .order('event_sequence', { ascending: true })
-      .limit(100)
+      .order('event_sequence', { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
-    if (eventsError) {
-      console.error('rfq-pickup-task schedule projection error:', eventsError)
+    if (currentError || !current) {
+      console.error('rfq-pickup-task current schedule projection error:', currentError)
       return jsonError(500, 'Unable to load PickupTask progress')
     }
 
-    const timeline = events ?? []
-    const current = timeline.length > 0 ? timeline[timeline.length - 1] : null
+    const { data: confirmed, error: confirmedError } = await svc
+      .from('rental_pickup_schedule_events')
+      .select(eventProjection)
+      .eq('pickup_task_id', task.id)
+      .eq('event_type', 'schedule_confirmed')
+      .order('event_sequence', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (confirmedError) {
+      console.error('rfq-pickup-task confirmed schedule projection error:', confirmedError)
+      return jsonError(500, 'Unable to load PickupTask progress')
+    }
+
+    let timelineQuery = svc
+      .from('rental_pickup_schedule_events')
+      .select(eventProjection)
+      .eq('pickup_task_id', task.id)
+      .order('event_sequence', { ascending: false })
+      .limit(101)
+    if (input.timelineBeforeSequence !== null) {
+      timelineQuery = timelineQuery.lt('event_sequence', input.timelineBeforeSequence)
+    }
+    const { data: timelineEvents, error: timelineError } = await timelineQuery
+
+    if (timelineError) {
+      console.error('rfq-pickup-task schedule timeline error:', timelineError)
+      return jsonError(500, 'Unable to load PickupTask progress')
+    }
+
+    const scheduleProjection = buildPickupScheduleProjection(
+      current,
+      confirmed,
+      timelineEvents ?? [],
+    )
     return json(200, {
       rfq_id: authorizedRfq.id,
       operational_status: authorizedRfq.operational_status,
@@ -172,12 +214,7 @@ Deno.serve(async (req: Request) => {
         object_scope: task.object_scope,
         created_at: task.created_at,
       },
-      current_schedule_state: current?.event_type ?? 'unknown',
-      current_window: current ? {
-        pickup_window_start: current.pickup_window_start,
-        pickup_window_end: current.pickup_window_end,
-      } : null,
-      timeline,
+      ...scheduleProjection,
       authority_boundary: {
         object_scope: task.object_scope,
         pickup_controls_billing: false,
@@ -192,6 +229,7 @@ Deno.serve(async (req: Request) => {
         p_actor_id: user.id,
         p_pickup_window_start: input.pickupWindowStart,
         p_pickup_window_end: input.pickupWindowEnd,
+        p_reason_code: input.reasonCode,
         p_notes: input.notes,
         p_idempotency_key: input.idempotencyKey,
       })
@@ -199,6 +237,7 @@ Deno.serve(async (req: Request) => {
         p_rfq_id: input.rfqId,
         p_actor_id: user.id,
         p_decision: input.decision,
+        p_reason_code: input.reasonCode,
         p_notes: input.notes,
         p_idempotency_key: input.idempotencyKey,
       })

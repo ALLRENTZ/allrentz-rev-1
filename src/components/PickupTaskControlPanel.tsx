@@ -3,12 +3,15 @@ import { AlertTriangle, CalendarClock, CheckCircle2, RefreshCw, ShieldCheck } fr
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { supabase } from '@/integrations/supabase/client'
 import {
   hasPendingPickupProposal,
   normalizePickupTaskRecord,
+  PICKUP_SCHEDULE_REASON_CODES,
   pickupScheduleLabel,
+  type PickupScheduleReasonCode,
   type PickupTaskControlRecord,
 } from '@/lib/pickupTaskControl'
 
@@ -23,14 +26,20 @@ function formatDate(value: string | null | undefined): string {
   return Number.isNaN(date.getTime()) ? 'Not recorded' : date.toLocaleString()
 }
 
+function reasonLabel(value: PickupScheduleReasonCode): string {
+  return value.split('_').map((part) => part[0].toUpperCase() + part.slice(1)).join(' ')
+}
+
 export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskControlPanelProps) {
   const [record, setRecord] = useState<PickupTaskControlRecord | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [loadingOlder, setLoadingOlder] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [windowStart, setWindowStart] = useState('')
   const [windowEnd, setWindowEnd] = useState('')
+  const [reasonCode, setReasonCode] = useState<PickupScheduleReasonCode | ''>('')
   const [notes, setNotes] = useState('')
 
   const loadRecord = useCallback(async () => {
@@ -54,6 +63,37 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
     setLoading(false)
   }, [rfqId])
 
+  const loadOlderEvents = async () => {
+    if (!record?.pickup_task || !record.timeline_page.next_before_sequence) return
+    setLoadingOlder(true)
+    setError(null)
+    const { data, error: invokeError } = await supabase.functions.invoke('rfq-pickup-task', {
+      body: {
+        action: 'status',
+        rfq_id: rfqId,
+        timeline_before_sequence: record.timeline_page.next_before_sequence,
+      },
+    })
+    const older = invokeError ? null : normalizePickupTaskRecord(data)
+    if (!older || older.pickup_task?.id !== record.pickup_task.id) {
+      setError('Earlier PickupTask history could not be verified and was not added.')
+    } else {
+      setRecord((currentRecord) => {
+        if (!currentRecord || currentRecord.pickup_task?.id !== older.pickup_task?.id) return currentRecord
+        const existingIds = new Set(currentRecord.timeline.map((event) => event.id))
+        return {
+          ...currentRecord,
+          timeline: [
+            ...older.timeline.filter((event) => !existingIds.has(event.id)),
+            ...currentRecord.timeline,
+          ],
+          timeline_page: older.timeline_page,
+        }
+      })
+    }
+    setLoadingOlder(false)
+  }
+
   useEffect(() => {
     void loadRecord()
   }, [loadRecord])
@@ -69,6 +109,10 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
       setError('A reason is required when proposing a replacement pickup window.')
       return
     }
+    if (record?.pickup_task && !reasonCode) {
+      setError('Select a structured reason for the replacement pickup window.')
+      return
+    }
     setSubmitting(true)
     setError(null)
     setSuccess(null)
@@ -78,6 +122,7 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
         rfq_id: rfqId,
         pickup_window_start: new Date(start).toISOString(),
         pickup_window_end: new Date(end).toISOString(),
+        reason_code: record?.pickup_task ? reasonCode : null,
         notes,
         idempotency_key: crypto.randomUUID(),
       },
@@ -88,6 +133,7 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
       setSuccess(record?.pickup_task ? 'Revised pickup window proposed.' : 'Pickup window proposed.')
       setWindowStart('')
       setWindowEnd('')
+      setReasonCode('')
       setNotes('')
       await loadRecord()
     }
@@ -99,6 +145,10 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
       setError('Add a reason so the vendor can propose a corrected pickup window.')
       return
     }
+    if (decision === 'reject' && !reasonCode) {
+      setError('Select a structured reason for requesting a revised pickup window.')
+      return
+    }
     setSubmitting(true)
     setError(null)
     setSuccess(null)
@@ -107,6 +157,7 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
         action: 'respond',
         rfq_id: rfqId,
         decision,
+        reason_code: decision === 'reject' ? reasonCode : null,
         notes,
         idempotency_key: crypto.randomUUID(),
       },
@@ -115,6 +166,7 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
       setError(invokeError.message || 'Unable to record the governed pickup response.')
     } else {
       setSuccess(decision === 'confirm' ? 'Pickup window confirmed.' : 'Pickup window returned for revision.')
+      setReasonCode('')
       setNotes('')
       await loadRecord()
     }
@@ -169,12 +221,24 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
         <Badge variant="outline" className="border-slate-300 text-slate-700">Billing authority: none</Badge>
       </div>
 
-      {record.current_window && (
-        <div className="mt-3 rounded-md bg-sky-50 p-3 text-sm text-sky-950">
-          <p className="font-medium">Current proposed pickup window</p>
+      {record.confirmed_window && (
+        <div className="mt-3 rounded-md bg-emerald-50 p-3 text-sm text-emerald-950">
+          <p className="font-medium">Last confirmed pickup window</p>
           <p className="mt-1 text-xs">
-            {formatDate(record.current_window.pickup_window_start)} – {formatDate(record.current_window.pickup_window_end)}
+            {formatDate(record.confirmed_window.pickup_window_start)} – {formatDate(record.confirmed_window.pickup_window_end)}
           </p>
+        </div>
+      )}
+
+      {record.pending_window && (
+        <div className="mt-3 rounded-md bg-sky-50 p-3 text-sm text-sky-950">
+          <p className="font-medium">Pending pickup window</p>
+          <p className="mt-1 text-xs">
+            {formatDate(record.pending_window.pickup_window_start)} – {formatDate(record.pending_window.pickup_window_end)}
+          </p>
+          {record.confirmed_window && (
+            <p className="mt-1 text-xs">The confirmed window remains in effect until this replacement is accepted.</p>
+          )}
         </div>
       )}
 
@@ -200,6 +264,21 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
               <Input id={`pickup-end-${rfqId}`} type="datetime-local" value={windowEnd} onChange={(event) => setWindowEnd(event.target.value)} />
             </div>
           </div>
+          {record.pickup_task && (
+            <div className="mt-3">
+              <label className="text-xs font-medium" htmlFor={`pickup-reason-${rfqId}`}>Revision reason</label>
+              <Select value={reasonCode} onValueChange={(value) => setReasonCode(value as PickupScheduleReasonCode)}>
+                <SelectTrigger id={`pickup-reason-${rfqId}`} className="mt-1">
+                  <SelectValue placeholder="Select a governed reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PICKUP_SCHEDULE_REASON_CODES.map((value) => (
+                    <SelectItem key={value} value={value}>{reasonLabel(value)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <label className="mt-3 block text-xs font-medium" htmlFor={`pickup-notes-${rfqId}`}>
             Coordination notes{record.pickup_task ? ' and revision reason' : ''}
           </label>
@@ -213,6 +292,19 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
       {actorMode === 'customer' && pendingCustomerResponse && (
         <div className="mt-4 rounded-md border p-3">
           <p className="text-sm font-medium text-slate-900">Respond to the proposed pickup window</p>
+          <label className="mt-3 block text-xs font-medium" htmlFor={`pickup-response-reason-${rfqId}`}>
+            Revision reason (required only when requesting revision)
+          </label>
+          <Select value={reasonCode} onValueChange={(value) => setReasonCode(value as PickupScheduleReasonCode)}>
+            <SelectTrigger id={`pickup-response-reason-${rfqId}`} className="mt-1">
+              <SelectValue placeholder="Select a governed reason" />
+            </SelectTrigger>
+            <SelectContent>
+              {PICKUP_SCHEDULE_REASON_CODES.map((value) => (
+                <SelectItem key={value} value={value}>{reasonLabel(value)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <label className="mt-3 block text-xs font-medium" htmlFor={`pickup-response-notes-${rfqId}`}>
             Response notes (required when requesting revision)
           </label>
@@ -237,10 +329,16 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
                 <p className="font-medium text-slate-800">{pickupScheduleLabel(event.event_type)}</p>
                 <p>{formatDate(event.created_at)} · {event.actor_role.replace(/_/g, ' ')}</p>
                 <p>{formatDate(event.pickup_window_start)} – {formatDate(event.pickup_window_end)}</p>
+                {event.reason_code && <p>Reason: {reasonLabel(event.reason_code)}</p>}
                 {event.notes && <p className="mt-0.5">{event.notes}</p>}
               </li>
             ))}
           </ol>
+        )}
+        {record.timeline_page.has_more && (
+          <Button className="mt-3" variant="outline" size="sm" disabled={loadingOlder} onClick={() => void loadOlderEvents()}>
+            {loadingOlder ? 'Loading…' : 'Load earlier events'}
+          </Button>
         )}
       </div>
     </section>

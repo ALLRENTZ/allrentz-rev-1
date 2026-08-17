@@ -43,11 +43,28 @@ describe('governed PickupTask database contract', () => {
 
   it('requires accepted-vendor, customer, RFQ, relationship, and simulation authority', () => {
     expect(migration).toContain("vqr.status = 'accepted'")
-    expect(migration).toContain("membership.role IN ('owner', 'admin', 'member')")
+    expect(migration).toContain("membership.role IN ('owner', 'admin')")
+    expect(migration.match(/membership\.role IN \('owner', 'admin', 'member'\)/g)).toHaveLength(1)
+    expect(migration).toContain("'vendor_scheduler', 'customer'")
     expect(migration).toContain('lacks customer pickup schedule response authority')
     expect(migration.match(/must be demobilizing or off_rent/g)?.length).toBe(2)
     expect(migration).toContain('off_rent_request_id, rfq_id, is_simulated')
     expect(migration).toContain('actor simulation scope does not match RFQ')
+  })
+
+  it('requires governed reason codes for replacement proposals and rejections', () => {
+    for (const reasonCode of [
+      'customer_access_conflict', 'vendor_capacity', 'site_restriction',
+      'weather_or_safety', 'equipment_not_ready', 'contact_issue', 'other',
+    ]) {
+      expect(migration).toContain(`'${reasonCode}'`)
+    }
+    expect(migration).toContain(
+      'A structured reason code is required when proposing a replacement pickup schedule',
+    )
+    expect(migration).toContain(
+      'A structured reason code and notes are required when rejecting a pickup schedule',
+    )
   })
 
   it('is idempotent and serializes commands on the parent RFQ', () => {

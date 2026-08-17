@@ -55,10 +55,19 @@ CREATE TABLE public.rental_pickup_schedule_events (
                      )),
   actor_id           uuid NOT NULL REFERENCES auth.users ON DELETE RESTRICT,
   actor_role         text NOT NULL CHECK (actor_role IN (
-                       'vendor_dispatch', 'customer'
+                       'vendor_scheduler', 'customer'
                      )),
   pickup_window_start timestamptz NOT NULL,
   pickup_window_end   timestamptz NOT NULL,
+  reason_code         text CHECK (reason_code IS NULL OR reason_code IN (
+                        'customer_access_conflict',
+                        'vendor_capacity',
+                        'site_restriction',
+                        'weather_or_safety',
+                        'equipment_not_ready',
+                        'contact_issue',
+                        'other'
+                      )),
   notes               text CHECK (notes IS NULL OR length(notes) <= 4000),
   idempotency_key     text NOT NULL CHECK (
                        length(idempotency_key) BETWEEN 1 AND 200
@@ -135,6 +144,7 @@ CREATE OR REPLACE FUNCTION public.propose_rental_pickup_schedule(
   p_actor_id           uuid,
   p_pickup_window_start timestamptz,
   p_pickup_window_end   timestamptz,
+  p_reason_code         text,
   p_notes               text,
   p_idempotency_key     text
 )
@@ -156,6 +166,7 @@ DECLARE
   v_audit_event_id     uuid;
   v_event_type         text;
   v_event_sequence     integer;
+  v_reason_code        text := NULLIF(btrim(p_reason_code), '');
   v_notes              text := NULLIF(btrim(p_notes), '');
   v_idempotency_key    text := NULLIF(btrim(p_idempotency_key), '');
 BEGIN
@@ -170,6 +181,12 @@ BEGIN
   END IF;
   IF v_notes IS NOT NULL AND length(v_notes) > 4000 THEN
     RAISE EXCEPTION 'Pickup schedule notes cannot exceed 4000 characters';
+  END IF;
+  IF v_reason_code IS NOT NULL AND v_reason_code NOT IN (
+    'customer_access_conflict', 'vendor_capacity', 'site_restriction',
+    'weather_or_safety', 'equipment_not_ready', 'contact_issue', 'other'
+  ) THEN
+    RAISE EXCEPTION 'Pickup schedule reason code must be one of the governed values';
   END IF;
   IF v_idempotency_key IS NULL OR length(v_idempotency_key) > 200 THEN
     RAISE EXCEPTION 'Pickup schedule idempotency key must contain 1 to 200 characters';
@@ -219,7 +236,7 @@ BEGIN
   JOIN public.organization_memberships AS membership
     ON membership.organization_id = ack.vendor_organization_id
    AND membership.user_id = p_actor_id
-   AND membership.role IN ('owner', 'admin', 'member')
+   AND membership.role IN ('owner', 'admin')
    AND membership.is_simulated = ack.is_simulated
    AND membership.archived_at IS NULL
   JOIN public.organizations AS organization
@@ -257,6 +274,7 @@ BEGIN
          )
          AND v_existing_event.pickup_window_start = p_pickup_window_start
          AND v_existing_event.pickup_window_end = p_pickup_window_end
+         AND v_existing_event.reason_code IS NOT DISTINCT FROM v_reason_code
          AND v_existing_event.notes IS NOT DISTINCT FROM v_notes THEN
         RETURN jsonb_build_object(
           'pickup_task_id', v_task.id,
@@ -282,11 +300,17 @@ BEGIN
     IF v_notes IS NULL THEN
       RAISE EXCEPTION 'A reason is required when proposing a replacement pickup schedule';
     END IF;
+    IF v_reason_code IS NULL THEN
+      RAISE EXCEPTION 'A structured reason code is required when proposing a replacement pickup schedule';
+    END IF;
 
     v_task_id := v_task.id;
     v_event_type := 'schedule_reschedule_proposed';
     v_event_sequence := v_latest_event.event_sequence + 1;
   ELSE
+    IF v_reason_code IS NOT NULL THEN
+      RAISE EXCEPTION 'A reason code is only permitted for a replacement pickup schedule';
+    END IF;
     v_event_type := 'schedule_proposed';
     v_event_sequence := 1;
   END IF;
@@ -298,14 +322,15 @@ BEGIN
     p_event_type                       := 'pickup.' || v_event_type,
     p_event_category                   := 'vendor',
     p_actor_id                         := p_actor_id,
-    p_actor_role                       := 'vendor_dispatch',
+    p_actor_role                       := 'vendor_scheduler',
     p_actor_type                       := 'user',
     p_new_value                        := jsonb_build_object(
                                              'rfq_id', p_rfq_id,
                                              'object_scope', 'rfq',
                                              'schedule_state', v_event_type,
                                              'pickup_window_start', p_pickup_window_start,
-                                             'pickup_window_end', p_pickup_window_end
+                                             'pickup_window_end', p_pickup_window_end,
+                                             'reason_code', v_reason_code
                                            ),
     p_reason                           := v_notes,
     p_source                           := 'vendor_action',
@@ -336,12 +361,12 @@ BEGIN
 
   INSERT INTO public.rental_pickup_schedule_events (
     id, pickup_task_id, rfq_id, event_sequence, event_type, actor_id,
-    actor_role, pickup_window_start, pickup_window_end, notes,
+    actor_role, pickup_window_start, pickup_window_end, reason_code, notes,
     idempotency_key, correlation_id, audit_event_id, is_simulated
   ) VALUES (
     v_event_id, v_task_id, p_rfq_id, v_event_sequence, v_event_type,
-    p_actor_id, 'vendor_dispatch', p_pickup_window_start,
-    p_pickup_window_end, v_notes, v_idempotency_key, v_correlation_id,
+    p_actor_id, 'vendor_scheduler', p_pickup_window_start,
+    p_pickup_window_end, v_reason_code, v_notes, v_idempotency_key, v_correlation_id,
     v_audit_event_id, v_rfq.is_simulated
   );
 
@@ -359,6 +384,7 @@ CREATE OR REPLACE FUNCTION public.respond_rental_pickup_schedule(
   p_rfq_id         uuid,
   p_actor_id       uuid,
   p_decision       text,
+  p_reason_code    text,
   p_notes          text,
   p_idempotency_key text
 )
@@ -376,6 +402,7 @@ DECLARE
   v_correlation_id   uuid := gen_random_uuid();
   v_audit_event_id   uuid;
   v_event_type       text;
+  v_reason_code      text := NULLIF(btrim(p_reason_code), '');
   v_notes            text := NULLIF(btrim(p_notes), '');
   v_idempotency_key  text := NULLIF(btrim(p_idempotency_key), '');
 BEGIN
@@ -388,8 +415,17 @@ BEGIN
   IF v_notes IS NOT NULL AND length(v_notes) > 4000 THEN
     RAISE EXCEPTION 'Pickup schedule response notes cannot exceed 4000 characters';
   END IF;
-  IF p_decision = 'reject' AND v_notes IS NULL THEN
-    RAISE EXCEPTION 'A reason is required when rejecting a pickup schedule';
+  IF v_reason_code IS NOT NULL AND v_reason_code NOT IN (
+    'customer_access_conflict', 'vendor_capacity', 'site_restriction',
+    'weather_or_safety', 'equipment_not_ready', 'contact_issue', 'other'
+  ) THEN
+    RAISE EXCEPTION 'Pickup schedule response reason code must be one of the governed values';
+  END IF;
+  IF p_decision = 'reject' AND (v_reason_code IS NULL OR v_notes IS NULL) THEN
+    RAISE EXCEPTION 'A structured reason code and notes are required when rejecting a pickup schedule';
+  END IF;
+  IF p_decision = 'confirm' AND v_reason_code IS NOT NULL THEN
+    RAISE EXCEPTION 'A reason code is only permitted when rejecting a pickup schedule';
   END IF;
   IF v_idempotency_key IS NULL OR length(v_idempotency_key) > 200 THEN
     RAISE EXCEPTION 'Pickup schedule idempotency key must contain 1 to 200 characters';
@@ -462,6 +498,7 @@ BEGIN
   IF FOUND THEN
     IF v_existing_event.actor_id = p_actor_id
        AND v_existing_event.event_type = v_event_type
+       AND v_existing_event.reason_code IS NOT DISTINCT FROM v_reason_code
        AND v_existing_event.notes IS NOT DISTINCT FROM v_notes THEN
       RETURN jsonb_build_object(
         'pickup_task_id', v_task.id,
@@ -504,7 +541,8 @@ BEGIN
     p_new_value                        := jsonb_build_object(
                                              'schedule_state', v_event_type,
                                              'pickup_window_start', v_latest_event.pickup_window_start,
-                                             'pickup_window_end', v_latest_event.pickup_window_end
+                                             'pickup_window_end', v_latest_event.pickup_window_end,
+                                             'reason_code', v_reason_code
                                            ),
     p_reason                           := v_notes,
     p_source                           := 'customer_action',
@@ -522,13 +560,13 @@ BEGIN
 
   INSERT INTO public.rental_pickup_schedule_events (
     id, pickup_task_id, rfq_id, event_sequence, event_type, actor_id,
-    actor_role, pickup_window_start, pickup_window_end, notes,
+    actor_role, pickup_window_start, pickup_window_end, reason_code, notes,
     idempotency_key, correlation_id, audit_event_id, is_simulated
   ) VALUES (
     v_event_id, v_task.id, p_rfq_id, v_latest_event.event_sequence + 1,
     v_event_type, p_actor_id, 'customer',
     v_latest_event.pickup_window_start, v_latest_event.pickup_window_end,
-    v_notes, v_idempotency_key, v_correlation_id, v_audit_event_id,
+    v_reason_code, v_notes, v_idempotency_key, v_correlation_id, v_audit_event_id,
     v_rfq.is_simulated
   );
 
@@ -543,17 +581,17 @@ END;
 $$;
 
 REVOKE EXECUTE ON FUNCTION public.propose_rental_pickup_schedule(
-  uuid, uuid, timestamptz, timestamptz, text, text
+  uuid, uuid, timestamptz, timestamptz, text, text, text
 ) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.propose_rental_pickup_schedule(
-  uuid, uuid, timestamptz, timestamptz, text, text
+  uuid, uuid, timestamptz, timestamptz, text, text, text
 ) TO service_role;
 
 REVOKE EXECUTE ON FUNCTION public.respond_rental_pickup_schedule(
-  uuid, uuid, text, text, text
+  uuid, uuid, text, text, text, text
 ) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.respond_rental_pickup_schedule(
-  uuid, uuid, text, text, text
+  uuid, uuid, text, text, text, text
 ) TO service_role;
 
 -- Deliberate authority boundary: no rental_requests update, no billing field,

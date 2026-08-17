@@ -3,7 +3,7 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = public, extensions;
 
-SELECT plan(37);
+SELECT plan(41);
 
 SELECT has_table('public', 'rental_pickup_tasks', 'PickupTask table exists');
 SELECT has_table('public', 'rental_pickup_schedule_events', 'pickup schedule event table exists');
@@ -50,7 +50,7 @@ SELECT ok(
 SELECT ok(
   has_function_privilege(
     'service_role',
-    'public.propose_rental_pickup_schedule(uuid,uuid,timestamptz,timestamptz,text,text)',
+    'public.propose_rental_pickup_schedule(uuid,uuid,timestamptz,timestamptz,text,text,text)',
     'EXECUTE'
   ),
   'service_role can transport the governed vendor scheduling command'
@@ -58,7 +58,7 @@ SELECT ok(
 SELECT ok(
   NOT has_function_privilege(
     'authenticated',
-    'public.propose_rental_pickup_schedule(uuid,uuid,timestamptz,timestamptz,text,text)',
+    'public.propose_rental_pickup_schedule(uuid,uuid,timestamptz,timestamptz,text,text,text)',
     'EXECUTE'
   ),
   'authenticated clients cannot call the vendor scheduling command directly'
@@ -66,7 +66,7 @@ SELECT ok(
 SELECT ok(
   has_function_privilege(
     'service_role',
-    'public.respond_rental_pickup_schedule(uuid,uuid,text,text,text)',
+    'public.respond_rental_pickup_schedule(uuid,uuid,text,text,text,text)',
     'EXECUTE'
   ),
   'service_role can transport the governed customer response command'
@@ -74,7 +74,7 @@ SELECT ok(
 SELECT ok(
   NOT has_function_privilege(
     'authenticated',
-    'public.respond_rental_pickup_schedule(uuid,uuid,text,text,text)',
+    'public.respond_rental_pickup_schedule(uuid,uuid,text,text,text,text)',
     'EXECUTE'
   ),
   'authenticated clients cannot call the customer response command directly'
@@ -107,7 +107,10 @@ INSERT INTO auth.users (
    '{"full_name":"Pickup Vendor","role":"vendor"}'::jsonb, now(), now()),
   ('00000000-0000-4000-8000-000000007103', 'authenticated', 'authenticated',
    'pickup-outsider@example.test', '{}'::jsonb,
-   '{"full_name":"Pickup Outsider","role":"vendor"}'::jsonb, now(), now());
+   '{"full_name":"Pickup Outsider","role":"vendor"}'::jsonb, now(), now()),
+  ('00000000-0000-4000-8000-000000007104', 'authenticated', 'authenticated',
+   'pickup-vendor-member@example.test', '{}'::jsonb,
+   '{"full_name":"Pickup Vendor Member","role":"vendor"}'::jsonb, now(), now());
 
 INSERT INTO public.organizations (
   id, name, org_type, slug, verified, is_simulated
@@ -123,7 +126,9 @@ INSERT INTO public.organization_memberships (
   ('00000000-0000-4000-8000-000000007201',
    '00000000-0000-4000-8000-000000007101', 'owner', false),
   ('00000000-0000-4000-8000-000000007202',
-   '00000000-0000-4000-8000-000000007102', 'owner', false);
+   '00000000-0000-4000-8000-000000007102', 'owner', false),
+  ('00000000-0000-4000-8000-000000007202',
+   '00000000-0000-4000-8000-000000007104', 'member', false);
 
 INSERT INTO public.rental_requests (
   id, customer_id, customer_organization_id, operational_status,
@@ -202,7 +207,8 @@ SELECT throws_ok(
   $$ SELECT public.propose_rental_pickup_schedule(
     '00000000-0000-4000-8000-000000007301',
     '00000000-0000-4000-8000-000000007103',
-    '2030-08-19T14:00:00Z', '2030-08-19T17:00:00Z', NULL, 'outsider-proposal'
+    '2030-08-19T14:00:00Z', '2030-08-19T17:00:00Z',
+    NULL, NULL, 'outsider-proposal'
   ) $$,
   'P0001',
   'Actor 00000000-0000-4000-8000-000000007103 lacks accepted-vendor pickup scheduling authority for RFQ 00000000-0000-4000-8000-000000007301',
@@ -214,7 +220,7 @@ SELECT lives_ok(
     '00000000-0000-4000-8000-000000007301',
     '00000000-0000-4000-8000-000000007102',
     '2030-08-19T14:00:00Z', '2030-08-19T17:00:00Z',
-    'Gate 3', 'vendor-proposal-1'
+    NULL, 'Gate 3', 'vendor-proposal-1'
   ) $$,
   'the accepted vendor can create the RFQ-wide task and propose a schedule'
 );
@@ -237,7 +243,7 @@ SELECT lives_ok(
     '00000000-0000-4000-8000-000000007301',
     '00000000-0000-4000-8000-000000007102',
     '2030-08-19T14:00:00Z', '2030-08-19T17:00:00Z',
-    'Gate 3', 'vendor-proposal-1'
+    NULL, 'Gate 3', 'vendor-proposal-1'
   ) $$,
   'an exact idempotent replay succeeds'
 );
@@ -252,7 +258,7 @@ SELECT lives_ok(
   $$ SELECT public.respond_rental_pickup_schedule(
     '00000000-0000-4000-8000-000000007301',
     '00000000-0000-4000-8000-000000007101',
-    'confirm', NULL, 'customer-response-1'
+    'confirm', NULL, NULL, 'customer-response-1'
   ) $$,
   'the owning customer can confirm the pending schedule'
 );
@@ -268,7 +274,7 @@ SELECT throws_ok(
   $$ SELECT public.respond_rental_pickup_schedule(
     '00000000-0000-4000-8000-000000007301',
     '00000000-0000-4000-8000-000000007102',
-    'confirm', NULL, 'vendor-response'
+    'confirm', NULL, NULL, 'vendor-response'
   ) $$,
   'P0001',
   'Actor 00000000-0000-4000-8000-000000007102 lacks customer pickup schedule response authority for RFQ 00000000-0000-4000-8000-000000007301',
@@ -279,7 +285,7 @@ SELECT throws_ok(
     '00000000-0000-4000-8000-000000007301',
     '00000000-0000-4000-8000-000000007101',
     '2030-08-20T14:00:00Z', '2030-08-20T17:00:00Z',
-    'customer cannot schedule', 'customer-proposal'
+    NULL, 'customer cannot schedule', 'customer-proposal'
   ) $$,
   'P0001',
   'Actor 00000000-0000-4000-8000-000000007101 lacks accepted-vendor pickup scheduling authority for RFQ 00000000-0000-4000-8000-000000007301',
@@ -289,11 +295,52 @@ SELECT throws_ok(
   $$ SELECT public.respond_rental_pickup_schedule(
     '00000000-0000-4000-8000-000000007301',
     '00000000-0000-4000-8000-000000007101',
-    'confirm', NULL, 'customer-response-2'
+    'confirm', NULL, NULL, 'customer-response-2'
   ) $$,
   'P0001',
   'Pickup task has no pending schedule proposal for RFQ 00000000-0000-4000-8000-000000007301',
   'a second customer response fails closed without a pending proposal'
+);
+
+SELECT throws_ok(
+  $$ SELECT public.propose_rental_pickup_schedule(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007104',
+    '2030-08-20T14:00:00Z', '2030-08-20T17:00:00Z',
+    'vendor_capacity', 'Generic member lacks scheduling authority', 'member-reschedule'
+  ) $$,
+  'P0001',
+  'Actor 00000000-0000-4000-8000-000000007104 lacks accepted-vendor pickup scheduling authority for RFQ 00000000-0000-4000-8000-000000007301',
+  'a generic accepted-vendor member cannot exercise scheduling authority'
+);
+
+SELECT throws_ok(
+  $$ SELECT public.propose_rental_pickup_schedule(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007102',
+    '2030-08-20T14:00:00Z', '2030-08-20T17:00:00Z',
+    NULL, 'Truck capacity changed', 'missing-reason-code'
+  ) $$,
+  'P0001',
+  'A structured reason code is required when proposing a replacement pickup schedule',
+  'a replacement proposal fails closed without a structured reason code'
+);
+
+SELECT lives_ok(
+  $$ SELECT public.propose_rental_pickup_schedule(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007102',
+    '2030-08-20T14:00:00Z', '2030-08-20T17:00:00Z',
+    'vendor_capacity', 'Truck capacity changed', 'vendor-reschedule-1'
+  ) $$,
+  'an accepted-vendor owner can propose a governed replacement schedule'
+);
+SELECT is(
+  (SELECT reason_code FROM public.rental_pickup_schedule_events
+   WHERE rfq_id = '00000000-0000-4000-8000-000000007301'
+   ORDER BY event_sequence DESC LIMIT 1),
+  'vendor_capacity',
+  'the replacement proposal records its governed reason code'
 );
 
 SELECT is(
@@ -336,7 +383,7 @@ SELECT is(
   (SELECT count(*)::integer FROM public.audit_events
    WHERE related_rfq_id = '00000000-0000-4000-8000-000000007301'
      AND event_type LIKE 'pickup.%'),
-  2,
+  3,
   'each accepted PickupTask command produces one atomic audit event'
 );
 

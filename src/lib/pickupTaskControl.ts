@@ -6,6 +6,33 @@ export type PickupScheduleState =
   | 'schedule_rejected'
   | 'unknown'
 
+export const PICKUP_SCHEDULE_REASON_CODES = [
+  'customer_access_conflict',
+  'vendor_capacity',
+  'site_restriction',
+  'weather_or_safety',
+  'equipment_not_ready',
+  'contact_issue',
+  'other',
+] as const
+
+export type PickupScheduleReasonCode = typeof PICKUP_SCHEDULE_REASON_CODES[number]
+
+export interface PickupScheduleWindow {
+  pickup_window_start: string
+  pickup_window_end: string
+}
+
+export interface PickupScheduleEvent extends PickupScheduleWindow {
+  id: string
+  event_sequence: number
+  event_type: Exclude<PickupScheduleState, 'unscheduled' | 'unknown'>
+  actor_role: 'vendor_scheduler' | 'customer'
+  reason_code: PickupScheduleReasonCode | null
+  notes: string | null
+  created_at: string
+}
+
 export interface PickupTaskControlRecord {
   rfq_id: string
   operational_status: string
@@ -15,20 +42,14 @@ export interface PickupTaskControlRecord {
     created_at: string
   } | null
   current_schedule_state: PickupScheduleState
-  current_window: {
-    pickup_window_start: string
-    pickup_window_end: string
-  } | null
-  timeline: Array<{
-    id: string
-    event_sequence: number
-    event_type: Exclude<PickupScheduleState, 'unscheduled' | 'unknown'>
-    actor_role: 'vendor_dispatch' | 'customer'
-    pickup_window_start: string
-    pickup_window_end: string
-    notes: string | null
-    created_at: string
-  }>
+  current_schedule_event: PickupScheduleEvent | null
+  confirmed_window: PickupScheduleWindow | null
+  pending_window: PickupScheduleWindow | null
+  timeline: PickupScheduleEvent[]
+  timeline_page: {
+    has_more: boolean
+    next_before_sequence: number | null
+  }
   authority_boundary: {
     object_scope: 'rfq'
     pickup_controls_billing: false
@@ -42,6 +63,7 @@ const EVENT_TYPES = new Set([
   'schedule_confirmed',
   'schedule_rejected',
 ])
+const REASON_CODES = new Set<string>(PICKUP_SCHEDULE_REASON_CODES)
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -53,6 +75,60 @@ function requiredString(value: unknown): string | null {
 
 function validDate(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(Date.parse(value))
+}
+
+function normalizeWindow(value: unknown): PickupScheduleWindow | null {
+  if (value === null) return null
+  if (!isRecord(value) || !validDate(value.pickup_window_start)
+      || !validDate(value.pickup_window_end)
+      || Date.parse(value.pickup_window_end) <= Date.parse(value.pickup_window_start)) {
+    return null
+  }
+  return {
+    pickup_window_start: value.pickup_window_start,
+    pickup_window_end: value.pickup_window_end,
+  }
+}
+
+function normalizeEvent(value: unknown): PickupScheduleEvent | null {
+  if (!isRecord(value)) return null
+  const id = requiredString(value.id)
+  const eventType = requiredString(value.event_type)
+  const actorRole = value.actor_role
+  const reasonCode = value.reason_code
+  const notes = typeof value.notes === 'string' ? value.notes : null
+  const window = normalizeWindow(value)
+  const isVendorEvent = eventType === 'schedule_proposed'
+    || eventType === 'schedule_reschedule_proposed'
+  const requiresReason = eventType === 'schedule_reschedule_proposed'
+    || eventType === 'schedule_rejected'
+  if (!id || !eventType || !EVENT_TYPES.has(eventType)
+      || (actorRole !== 'vendor_scheduler' && actorRole !== 'customer')
+      || (isVendorEvent && actorRole !== 'vendor_scheduler')
+      || (!isVendorEvent && actorRole !== 'customer')
+      || typeof value.event_sequence !== 'number' || !Number.isInteger(value.event_sequence)
+      || value.event_sequence < 1 || !window || !validDate(value.created_at)
+      || (reasonCode !== null && (typeof reasonCode !== 'string' || !REASON_CODES.has(reasonCode)))
+      || (requiresReason && (reasonCode === null || !notes?.trim()))
+      || (!requiresReason && reasonCode !== null)) {
+    return null
+  }
+  return {
+    id,
+    event_sequence: value.event_sequence,
+    event_type: eventType as PickupScheduleEvent['event_type'],
+    actor_role: actorRole,
+    ...window,
+    reason_code: reasonCode as PickupScheduleReasonCode | null,
+    notes,
+    created_at: value.created_at,
+  }
+}
+
+function windowsMatch(left: PickupScheduleWindow | null, right: PickupScheduleEvent | null): boolean {
+  if (!left || !right) return left === null && right === null
+  return left.pickup_window_start === right.pickup_window_start
+    && left.pickup_window_end === right.pickup_window_end
 }
 
 export function normalizePickupTaskRecord(value: unknown): PickupTaskControlRecord | null {
@@ -69,15 +145,21 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
   }
 
   if (value.pickup_task === null) {
-    if (state !== 'unscheduled' || value.current_window !== null
-        || !Array.isArray(value.timeline) || value.timeline.length !== 0) return null
+    if (state !== 'unscheduled' || value.current_schedule_event !== null
+        || value.confirmed_window !== null || value.pending_window !== null
+        || !Array.isArray(value.timeline) || value.timeline.length !== 0
+        || !isRecord(value.timeline_page) || value.timeline_page.has_more !== false
+        || value.timeline_page.next_before_sequence !== null) return null
     return {
       rfq_id: rfqId,
       operational_status: operationalStatus,
       pickup_task: null,
       current_schedule_state: 'unscheduled',
-      current_window: null,
+      current_schedule_event: null,
+      confirmed_window: null,
+      pending_window: null,
       timeline: [],
+      timeline_page: { has_more: false, next_before_sequence: null },
       authority_boundary: {
         object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
       },
@@ -89,48 +171,47 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
   const createdAt = requiredString(value.pickup_task.created_at)
   if (!taskId || !createdAt || !validDate(createdAt)) return null
 
-  if (!Array.isArray(value.timeline) || value.timeline.length === 0) return null
+  const current = normalizeEvent(value.current_schedule_event)
+  if (!current || state !== current.event_type) return null
+
+  const confirmedWindow = normalizeWindow(value.confirmed_window)
+  const pendingWindow = normalizeWindow(value.pending_window)
+  const pendingState = state === 'schedule_proposed' || state === 'schedule_reschedule_proposed'
+  if ((value.confirmed_window !== null && !confirmedWindow)
+      || (value.pending_window !== null && !pendingWindow)
+      || (pendingState && !windowsMatch(pendingWindow, current))
+      || (!pendingState && pendingWindow !== null)
+      || (state === 'schedule_confirmed' && !windowsMatch(confirmedWindow, current))) return null
+
+  if (!Array.isArray(value.timeline)) return null
   const timeline: PickupTaskControlRecord['timeline'] = []
   for (const entry of value.timeline) {
-    if (!isRecord(entry)) return null
-    const id = requiredString(entry.id)
-    const eventType = requiredString(entry.event_type)
-    const actorRole = entry.actor_role
-    const start = entry.pickup_window_start
-    const end = entry.pickup_window_end
-    const created = entry.created_at
-    if (!id || !eventType || !EVENT_TYPES.has(eventType)
-        || (actorRole !== 'vendor_dispatch' && actorRole !== 'customer')
-        || typeof entry.event_sequence !== 'number' || !Number.isInteger(entry.event_sequence)
-        || entry.event_sequence < 1 || !validDate(start) || !validDate(end)
-        || Date.parse(end) <= Date.parse(start) || !validDate(created)) return null
-    timeline.push({
-      id,
-      event_sequence: entry.event_sequence,
-      event_type: eventType as PickupTaskControlRecord['timeline'][number]['event_type'],
-      actor_role: actorRole,
-      pickup_window_start: start,
-      pickup_window_end: end,
-      notes: typeof entry.notes === 'string' ? entry.notes : null,
-      created_at: created,
-    })
+    const normalized = normalizeEvent(entry)
+    if (!normalized) return null
+    timeline.push(normalized)
   }
-
-  const current = timeline[timeline.length - 1]
-  if (state !== current.event_type || !isRecord(value.current_window)
-      || value.current_window.pickup_window_start !== current.pickup_window_start
-      || value.current_window.pickup_window_end !== current.pickup_window_end) return null
+  for (let index = 1; index < timeline.length; index += 1) {
+    if (timeline[index - 1].event_sequence >= timeline[index].event_sequence) return null
+  }
+  if (!isRecord(value.timeline_page) || typeof value.timeline_page.has_more !== 'boolean') return null
+  const nextBefore = value.timeline_page.next_before_sequence
+  if (nextBefore !== null
+      && (typeof nextBefore !== 'number' || !Number.isInteger(nextBefore) || nextBefore < 2)) return null
+  if (value.timeline_page.has_more !== (nextBefore !== null)) return null
 
   return {
     rfq_id: rfqId,
     operational_status: operationalStatus,
     pickup_task: { id: taskId, object_scope: 'rfq', created_at: createdAt },
     current_schedule_state: current.event_type,
-    current_window: {
-      pickup_window_start: current.pickup_window_start,
-      pickup_window_end: current.pickup_window_end,
-    },
+    current_schedule_event: current,
+    confirmed_window: confirmedWindow,
+    pending_window: pendingWindow,
     timeline,
+    timeline_page: {
+      has_more: value.timeline_page.has_more,
+      next_before_sequence: nextBefore === null ? null : Number(nextBefore),
+    },
     authority_boundary: {
       object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
     },
