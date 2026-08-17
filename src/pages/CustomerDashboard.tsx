@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import DemoTour from '@/components/DemoTour';
 import OffRentControlPanel from '@/components/OffRentControlPanel';
+import PickupTaskControlPanel from '@/components/PickupTaskControlPanel';
 import { demoCustomerRentalRequests, demoCustomerNotifications } from '@/data/demoDashboardData';
 import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
 
@@ -573,6 +574,10 @@ const CustomerDashboard = () => {
                               rfqId={request.id}
                               refreshKey={offRentRefreshVersion}
                             />
+                          )}
+                        {['demobilizing', 'off_rent'].includes(request.operational_status)
+                          && authority.canUseOperationalData && (
+                            <PickupTaskControlPanel rfqId={request.id} actorMode="customer" />
                           )}
                         {request.operational_status === 'in_transit' && authority.canUseOperationalData && (
                           <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
