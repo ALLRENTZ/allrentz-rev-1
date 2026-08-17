@@ -4,10 +4,10 @@ domain: product
 lifecycle_status: active
 governance_state: candidate
 authorized_scope: approved product doctrine and target architecture; no contractual-rule publication, runtime activation, or object-scope authorization
-authorization_reference: Patrick McGriff, bounded documentation-only governing-product integration, 2026-08-12
+authorization_reference: Patrick McGriff, bounded documentation-only governing-product integration, 2026-08-12; target object-boundary reconciliation, 2026-08-13
 authority: subordinate to /ALLRENTZ_CONSTITUTION.md and docs/doctrine/ALLRENTZ_ARCHITECTURAL_FOUNDATION.md
-related: docs/engineering/stop-rent-authority-implementation-contract.md, docs/strategy/off-rent-governance-benchmark.md
-last_reviewed: 2026-08-12
+related: docs/engineering/stop-rent-authority-implementation-contract.md, docs/strategy/off-rent-governance-benchmark.md, docs/product/pickup-custody-and-invoice-control-requirements.md
+last_reviewed: 2026-08-13
 ---
 
 # Rental Lifecycle and Clock-Control Framework
@@ -324,7 +324,11 @@ lock is implemented.
 
 ## Rental-scope boundary, partial return, and kit accountability
 
-**BLOCKED PENDING OBJECT AUTHORITY** — The target object hierarchy and decision are:
+**APPROVED DOCTRINE** — The target object hierarchy and product-design direction
+are defined below and expanded in
+`docs/product/pickup-custody-and-invoice-control-requirements.md`. This approval
+does not activate granular runtime authority; implementation remains **BLOCKED
+PENDING OBJECT AUTHORITY**.
 
 | Object | Proposed authority boundary |
 | --- | --- |
@@ -357,11 +361,12 @@ separate evidenced claim. They do not automatically create unlimited rental
 accrual.
 
 **VERIFIED IMPLEMENTATION** — The current guarded command remains RFQ-wide.
-The repository does not yet define the approved rental-order, line, serialized-
-unit, quantity-allocation, kit-instance, and kit-component authority model.
-Item-, quantity-, serialized-unit-, kit-, component-, and partial-return activation
-is therefore **BLOCKED PENDING OBJECT AUTHORITY**. A generic JSON identifier is not
-an acceptable substitute.
+The repository now defines the target product boundary, but it does not implement
+the rental-order, line, serialized-unit, quantity-allocation, kit-instance, and
+kit-component authority objects, controlled commands, conservation rules, or
+negative policy tests. Item-, quantity-, serialized-unit-, kit-, component-, and
+partial-return activation is therefore **BLOCKED PENDING OBJECT AUTHORITY**. A
+generic JSON identifier is not an acceptable substitute.
 
 ## Exception model
 
@@ -467,14 +472,20 @@ permission to substitute temporary models.
    unknowns, readiness declarations, determinations, RLS, and contract tests.
 2. **Deterministic evaluators** — approve and implement each trigger/billing pair,
    time-zone boundaries, ceiling projections, and negative cases.
-3. **Order/line/unit model** — create the authoritative rental-order, line,
-   serialized-unit, quantity, and kit-component hierarchy; then enable partial
-   stop-rent.
-4. **Field logistics and custody** — scheduling, driver actions, pickup attempts,
-   manifests, signatures, photos, custody transfer, and yard receipt.
-5. **Return control** — comparison evidence, inspection, damage, cleaning,
+3. **RFQ-wide pickup coordination** — add one non-financial, RFQ-wide pickup task
+   for the eligible governed request, accepted vendor, customer organization, and
+   simulation scope. Reject line, quantity, serialized-unit, kit, component,
+   partial-return, split-task, multi-leg, and third-party-hauler inputs. Task state,
+   evidence, closure, custody assertions, and elapsed time have no billing effect.
+4. **Order/line/unit model** — create the authoritative rental-order, line,
+   serialized-unit, quantity, and kit-component hierarchy; then enable granular
+   logistics and partial stop-rent only through separately approved commands.
+5. **Expanded field logistics and custody** — quantity-aware scheduling, driver
+   actions, pickup attempts, frozen manifests, signatures, photos, multi-leg
+   handoffs, custody assertions, and yard receipt.
+6. **Return control** — comparison evidence, inspection, damage, cleaning,
    recertification, and rental-ready release.
-6. **Financial settlement** — ceiling lock, invoice line matching, exceptions,
+7. **Financial settlement** — ceiling lock, invoice line matching, exceptions,
    governed adjustments, disputes, closeout, and vendor-performance outputs.
 
 Before production activation, every new financial evaluator must pass the

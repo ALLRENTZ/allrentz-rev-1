@@ -2,7 +2,7 @@
 
 **Status:** Active
 **Authority:** Subordinate to `/ALLRENTZ_CONSTITUTION.md`; governed by the precedence contract below
-**Last reviewed:** 2026-08-12
+**Last reviewed:** 2026-08-13
 **Publication erratum:** `ALLRENTZ-PR8-DOC-ERRATUM-001` — publication provenance and CI-prerequisite status only; no normative decision change
 
 This folder is the **controlled** documentation layer for the ALLRENTZ engineering source of truth. It is version-controlled in git alongside the code it describes.
@@ -66,6 +66,7 @@ docs/
 | File | Lifecycle / governance and scope | Source |
 |---|---|---|
 | `rental-lifecycle-framework.md` | Active / Candidate — approved doctrine and target architecture; no rule publication, runtime activation, or object-scope authorization | integrated governing-product review; implementation boundary linked to the engineering contract |
+| `pickup-custody-and-invoice-control-requirements.md` | Active / Candidate — target product requirements for pickup, custody evidence, granular object boundaries, reconciliation, and append-only correction; no implementation, rule, billing, deployment, or production authority | separate benchmark and product-requirements wave approved 2026-08-13; verified implementation boundary linked to the engineering contract |
 | `product-test.md` | Stub — needs input | unknown — Pat to confirm intended source |
 
 ### engineering/
@@ -81,7 +82,7 @@ docs/
 ### strategy/
 | File | Status | Source in raw archive |
 |---|---|---|
-| `off-rent-governance-benchmark.md` | Active / Candidate — research only; no contractual or billing authority | reviewed public sources retrieved 2026-08-12; citations and evidence classifications are contained in the document |
+| `off-rent-governance-benchmark.md` | Active / Candidate — research only; no contractual or billing authority | reviewed public sources retrieved through 2026-08-13; citations and evidence classifications are contained in the document |
 | `market-positioning.md` | Draft — migrate | `Projects\…Strategy…\SOUL.md`, `…Strategic_Review_GamePlan_May2026.docx` |
 | `competitor-notes.md` | Draft — migrate | `Projects\…Strategy…\ALLRENTZ_Competitor_Pass3_May2026.docx`; `Documentos\ALLRENTZ\New 9.3.2025\ALLRENTZ Competitor Synthesis and Action Plan.docx` |
 
