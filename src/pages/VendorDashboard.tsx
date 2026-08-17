@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
 import { getVendorLifecycleAction, getVendorLifecycleLabel } from '@/lib/vendorLifecycle';
 import OffRentControlPanel from '@/components/OffRentControlPanel';
+import PickupTaskControlPanel from '@/components/PickupTaskControlPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -769,6 +770,9 @@ const VendorDashboard = () => {
                               rfqId={rfq.id}
                               refreshKey={offRentRefreshVersion}
                             />
+                          )}
+                          {['demobilizing', 'off_rent'].includes(rfq.operational_status) && (
+                            <PickupTaskControlPanel rfqId={rfq.id} actorMode="vendor" />
                           )}
                         </div>
                         );
