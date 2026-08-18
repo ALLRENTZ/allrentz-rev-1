@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, CalendarClock, CheckCircle2, RefreshCw, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, CalendarClock, CheckCircle2, MapPin, RefreshCw, ShieldCheck, Truck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,7 @@ import {
   hasPendingPickupProposal,
   normalizePickupTaskRecord,
   PICKUP_SCHEDULE_REASON_CODES,
+  pickupDispatchLabel,
   pickupScheduleLabel,
   type PickupScheduleReasonCode,
   type PickupTaskControlRecord,
@@ -41,6 +42,7 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
   const [windowEnd, setWindowEnd] = useState('')
   const [reasonCode, setReasonCode] = useState<PickupScheduleReasonCode | ''>('')
   const [notes, setNotes] = useState('')
+  const [dispatchNotes, setDispatchNotes] = useState('')
 
   const loadRecord = useCallback(async () => {
     setLoading(true)
@@ -173,6 +175,36 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
     setSubmitting(false)
   }
 
+  const submitDispatchAction = async (
+    action: 'assign_self' | 'record_dispatch',
+    progress?: 'en_route' | 'arrived',
+  ) => {
+    setSubmitting(true)
+    setError(null)
+    setSuccess(null)
+    const { error: invokeError } = await supabase.functions.invoke('rfq-pickup-task', {
+      body: {
+        action,
+        rfq_id: rfqId,
+        ...(progress ? { progress } : {}),
+        notes: dispatchNotes,
+        idempotency_key: crypto.randomUUID(),
+      },
+    })
+    if (invokeError) {
+      setError(invokeError.message || 'Unable to record governed dispatch progress.')
+    } else {
+      setSuccess(action === 'assign_self'
+        ? 'You are assigned as the pickup field actor.'
+        : progress === 'en_route'
+          ? 'En-route progress recorded.'
+          : 'Arrival at site recorded.')
+      setDispatchNotes('')
+      await loadRecord()
+    }
+    setSubmitting(false)
+  }
+
   if (loading) {
     return <div className="mt-4 rounded-lg border bg-slate-50 p-3 text-sm text-slate-600">Loading PickupTask progress…</div>
   }
@@ -219,6 +251,9 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
         </Badge>
         <Badge variant="outline">Scope: complete RFQ</Badge>
         <Badge variant="outline" className="border-slate-300 text-slate-700">Billing authority: none</Badge>
+        <Badge variant="outline" className="border-indigo-300 text-indigo-800">
+          {pickupDispatchLabel(record.current_dispatch_state)}
+        </Badge>
       </div>
 
       {record.confirmed_window && (
@@ -313,6 +348,65 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
             <Button disabled={submitting} onClick={() => void submitCustomerResponse('confirm')}>Confirm window</Button>
             <Button variant="outline" disabled={submitting} onClick={() => void submitCustomerResponse('reject')}>Request revision</Button>
           </div>
+        </div>
+      )}
+
+      {record.pickup_task && (
+        <div className="mt-4 rounded-md border border-indigo-200 bg-indigo-50/40 p-3">
+          <div className="flex items-center gap-2">
+            <Truck className="h-4 w-4 text-indigo-700" />
+            <p className="text-sm font-medium text-slate-900">Dispatch and field progress</p>
+          </div>
+          <p className="mt-1 text-xs text-slate-600">
+            Operational reports only. Assignment, en route, and arrival never establish pickup,
+            custody, condition, off-rent, or billing authority.
+          </p>
+
+          {actorMode === 'vendor' && record.current_dispatch_state === 'not_dispatched'
+            && record.current_schedule_state === 'schedule_confirmed' && (
+            <div className="mt-3">
+              <label className="text-xs font-medium" htmlFor={`dispatch-notes-${rfqId}`}>
+                Field assignment notes (optional)
+              </label>
+              <Textarea id={`dispatch-notes-${rfqId}`} className="mt-1" value={dispatchNotes} onChange={(event) => setDispatchNotes(event.target.value)} maxLength={4000} rows={2} placeholder="Vehicle, contact, or site instructions" />
+              <Button className="mt-2" variant="outline" disabled={submitting} onClick={() => void submitDispatchAction('assign_self')}>
+                Assign myself as field actor
+              </Button>
+            </div>
+          )}
+
+          {actorMode === 'vendor' && record.caller_is_assigned_field_actor
+            && (record.current_dispatch_state === 'field_actor_assigned'
+              || record.current_dispatch_state === 'en_route_recorded') && (
+            <div className="mt-3">
+              <label className="text-xs font-medium" htmlFor={`dispatch-progress-notes-${rfqId}`}>
+                Progress notes (optional)
+              </label>
+              <Textarea id={`dispatch-progress-notes-${rfqId}`} className="mt-1" value={dispatchNotes} onChange={(event) => setDispatchNotes(event.target.value)} maxLength={4000} rows={2} placeholder="Operational update visible to the customer" />
+              <Button className="mt-2" disabled={submitting} onClick={() => void submitDispatchAction(
+                'record_dispatch',
+                record.current_dispatch_state === 'field_actor_assigned' ? 'en_route' : 'arrived',
+              )}>
+                {record.current_dispatch_state === 'field_actor_assigned'
+                  ? <><Truck className="mr-1 h-4 w-4" /> Record en route</>
+                  : <><MapPin className="mr-1 h-4 w-4" /> Record arrival at site</>}
+              </Button>
+            </div>
+          )}
+
+          {record.dispatch_timeline.length === 0 ? (
+            <p className="mt-3 text-xs text-slate-500">No field actor or dispatch progress has been recorded.</p>
+          ) : (
+            <ol className="mt-3 space-y-2 border-l border-indigo-200 pl-4">
+              {record.dispatch_timeline.map((event) => (
+                <li key={event.id} className="text-xs text-slate-600">
+                  <p className="font-medium text-slate-800">{pickupDispatchLabel(event.event_type)}</p>
+                  <p>{formatDate(event.created_at)} · {event.actor_role.replace(/_/g, ' ')}</p>
+                  {event.notes && <p className="mt-0.5">{event.notes}</p>}
+                </li>
+              ))}
+            </ol>
+          )}
         </div>
       )}
 

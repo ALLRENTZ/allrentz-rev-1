@@ -7,6 +7,7 @@ import {
   selectSecretKey,
 } from '../rfq-transition/keys.ts'
 import {
+  buildPickupDispatchProjection,
   buildPickupScheduleProjection,
   validatePickupTaskAction,
 } from './pickupTaskPolicy.ts'
@@ -25,11 +26,17 @@ function jsonError(status: number, message: string): Response {
 function mapCommandError(message: string): Response {
   if (message.includes('not found')) return jsonError(404, 'Required pickup authority record not found')
   if (message.includes('lacks accepted-vendor') || message.includes('lacks customer')
+      || message.includes('lacks assigned-vendor') || message.includes('not the assigned')
       || message.includes('simulation scope')) {
     return jsonError(403, 'Insufficient authority for this PickupTask action')
   }
   if (message.includes('must be demobilizing or off_rent')
       || message.includes('no pending schedule proposal')
+      || message.includes('requires a currently confirmed schedule')
+      || message.includes('requires a field assignment')
+      || message.includes('already has a field assignment')
+      || message.includes('reassignment is not authorized')
+      || message.includes('requires prior state')
       || message.includes('idempotency key conflicts')) {
     return jsonError(422, message)
   }
@@ -149,6 +156,10 @@ Deno.serve(async (req: Request) => {
         pending_window: null,
         timeline: [],
         timeline_page: { has_more: false, next_before_sequence: null },
+        current_dispatch_state: 'not_dispatched',
+        current_dispatch_event: null,
+        dispatch_timeline: [],
+        caller_is_assigned_field_actor: false,
         authority_boundary: {
           object_scope: 'rfq',
           pickup_controls_billing: false,
@@ -206,6 +217,20 @@ Deno.serve(async (req: Request) => {
       confirmed,
       timelineEvents ?? [],
     )
+
+    const dispatchEventProjection = 'id, event_sequence, event_type, actor_role, assigned_actor_id, notes, created_at'
+    const { data: dispatchEvents, error: dispatchError } = await svc
+      .from('rental_pickup_dispatch_events')
+      .select(dispatchEventProjection)
+      .eq('pickup_task_id', task.id)
+      .order('event_sequence', { ascending: true })
+
+    if (dispatchError) {
+      console.error('rfq-pickup-task dispatch projection error:', dispatchError)
+      return jsonError(500, 'Unable to load PickupTask progress')
+    }
+
+    const dispatchProjection = buildPickupDispatchProjection(dispatchEvents ?? [], user.id)
     return json(200, {
       rfq_id: authorizedRfq.id,
       operational_status: authorizedRfq.operational_status,
@@ -215,6 +240,7 @@ Deno.serve(async (req: Request) => {
         created_at: task.created_at,
       },
       ...scheduleProjection,
+      ...dispatchProjection,
       authority_boundary: {
         object_scope: task.object_scope,
         pickup_controls_billing: false,
@@ -233,7 +259,8 @@ Deno.serve(async (req: Request) => {
         p_notes: input.notes,
         p_idempotency_key: input.idempotencyKey,
       })
-    : svc.rpc('respond_rental_pickup_schedule', {
+    : input.action === 'respond'
+      ? svc.rpc('respond_rental_pickup_schedule', {
         p_rfq_id: input.rfqId,
         p_actor_id: user.id,
         p_decision: input.decision,
@@ -241,6 +268,20 @@ Deno.serve(async (req: Request) => {
         p_notes: input.notes,
         p_idempotency_key: input.idempotencyKey,
       })
+      : input.action === 'assign_self'
+        ? svc.rpc('assign_rental_pickup_field_actor', {
+            p_rfq_id: input.rfqId,
+            p_actor_id: user.id,
+            p_notes: input.notes,
+            p_idempotency_key: input.idempotencyKey,
+          })
+        : svc.rpc('record_rental_pickup_dispatch_progress', {
+            p_rfq_id: input.rfqId,
+            p_actor_id: user.id,
+            p_progress: input.progress,
+            p_notes: input.notes,
+            p_idempotency_key: input.idempotencyKey,
+          })
 
   const { data, error } = await rpc
   if (error) {
