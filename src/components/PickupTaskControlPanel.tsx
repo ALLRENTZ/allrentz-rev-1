@@ -9,9 +9,12 @@ import { supabase } from '@/integrations/supabase/client'
 import {
   hasPendingPickupProposal,
   normalizePickupTaskRecord,
+  PICKUP_ATTEMPT_REASON_CODES,
   PICKUP_SCHEDULE_REASON_CODES,
+  pickupAttemptLabel,
   pickupDispatchLabel,
   pickupScheduleLabel,
+  type PickupAttemptReasonCode,
   type PickupScheduleReasonCode,
   type PickupTaskControlRecord,
 } from '@/lib/pickupTaskControl'
@@ -27,7 +30,7 @@ function formatDate(value: string | null | undefined): string {
   return Number.isNaN(date.getTime()) ? 'Not recorded' : date.toLocaleString()
 }
 
-function reasonLabel(value: PickupScheduleReasonCode): string {
+function reasonLabel(value: PickupScheduleReasonCode | PickupAttemptReasonCode): string {
   return value.split('_').map((part) => part[0].toUpperCase() + part.slice(1)).join(' ')
 }
 
@@ -43,6 +46,8 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
   const [reasonCode, setReasonCode] = useState<PickupScheduleReasonCode | ''>('')
   const [notes, setNotes] = useState('')
   const [dispatchNotes, setDispatchNotes] = useState('')
+  const [attemptReasonCode, setAttemptReasonCode] = useState<PickupAttemptReasonCode | ''>('')
+  const [attemptNotes, setAttemptNotes] = useState('')
 
   const loadRecord = useCallback(async () => {
     setLoading(true)
@@ -200,6 +205,41 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
           ? 'En-route progress recorded.'
           : 'Arrival at site recorded.')
       setDispatchNotes('')
+      await loadRecord()
+    }
+    setSubmitting(false)
+  }
+
+  const submitAttemptOutcome = async (outcome: 'collection_asserted' | 'failed') => {
+    if (outcome === 'failed' && !attemptReasonCode) {
+      setError('Select a structured reason for the failed pickup attempt.')
+      return
+    }
+    if (outcome === 'failed' && attemptReasonCode === 'other' && !attemptNotes.trim()) {
+      setError('Add notes when the failed-attempt reason is Other.')
+      return
+    }
+    setSubmitting(true)
+    setError(null)
+    setSuccess(null)
+    const { error: invokeError } = await supabase.functions.invoke('rfq-pickup-task', {
+      body: {
+        action: 'record_attempt',
+        rfq_id: rfqId,
+        outcome,
+        reason_code: outcome === 'failed' ? attemptReasonCode : null,
+        notes: attemptNotes,
+        idempotency_key: crypto.randomUUID(),
+      },
+    })
+    if (invokeError) {
+      setError(invokeError.message || 'Unable to record the governed pickup attempt outcome.')
+    } else {
+      setSuccess(outcome === 'collection_asserted'
+        ? 'Collection assertion recorded. Custody and billing remain unchanged.'
+        : 'Failed pickup attempt recorded for review.')
+      setAttemptReasonCode('')
+      setAttemptNotes('')
       await loadRecord()
     }
     setSubmitting(false)
@@ -407,6 +447,65 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
               ))}
             </ol>
           )}
+
+          <div className="mt-4 border-t border-indigo-200 pt-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium text-slate-900">Attempt outcome and exception progress</p>
+              <Badge variant="outline">{pickupAttemptLabel(record.current_attempt_state)}</Badge>
+              {record.current_exception_state === 'review_required' && (
+                <Badge variant="outline" className="border-amber-300 text-amber-900">
+                  REVIEW REQUIRED
+                </Badge>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-slate-600">
+              A collection report is an actor assertion only. It does not establish custody,
+              successful return, task closure, off-rent, billing, condition, or invoice authority.
+            </p>
+
+            {record.caller_can_record_attempt && actorMode === 'vendor' && (
+              <div className="mt-3 rounded-md border bg-white p-3">
+                <label className="text-xs font-medium" htmlFor={`attempt-reason-${rfqId}`}>
+                  Failed-attempt reason
+                </label>
+                <Select value={attemptReasonCode} onValueChange={(value) => setAttemptReasonCode(value as PickupAttemptReasonCode)}>
+                  <SelectTrigger id={`attempt-reason-${rfqId}`} className="mt-1">
+                    <SelectValue placeholder="Select only when the attempt failed" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PICKUP_ATTEMPT_REASON_CODES.map((value) => (
+                      <SelectItem key={value} value={value}>{reasonLabel(value)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <label className="mt-3 block text-xs font-medium" htmlFor={`attempt-notes-${rfqId}`}>
+                  Attempt notes (required when reason is Other)
+                </label>
+                <Textarea id={`attempt-notes-${rfqId}`} className="mt-1" value={attemptNotes} onChange={(event) => setAttemptNotes(event.target.value)} maxLength={4000} rows={2} placeholder="Operational facts only; do not record custody or billing conclusions" />
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button disabled={submitting} onClick={() => void submitAttemptOutcome('collection_asserted')}>
+                    Record collection assertion
+                  </Button>
+                  <Button variant="outline" disabled={submitting} onClick={() => void submitAttemptOutcome('failed')}>
+                    Record failed attempt
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {record.current_attempt_event && (
+              <div className="mt-3 rounded-md bg-white p-3 text-xs text-slate-700">
+                <p className="font-medium text-slate-900">
+                  {pickupAttemptLabel(record.current_attempt_event.event_type)}
+                </p>
+                <p>{formatDate(record.current_attempt_event.created_at)} · assigned field actor</p>
+                {record.current_attempt_event.reason_code && (
+                  <p>Reason: {reasonLabel(record.current_attempt_event.reason_code)}</p>
+                )}
+                {record.current_attempt_event.notes && <p>{record.current_attempt_event.notes}</p>}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
