@@ -27,6 +27,19 @@ export interface PickupScheduleEventProjection {
   created_at: string
 }
 
+export type PickupDispatchState = 'not_dispatched' | 'field_actor_assigned'
+  | 'en_route_recorded' | 'arrival_recorded'
+
+export interface PickupDispatchEventProjection {
+  id: string
+  event_sequence: number
+  event_type: Exclude<PickupDispatchState, 'not_dispatched'>
+  actor_role: 'vendor_dispatcher' | 'assigned_field_actor'
+  assigned_actor_id: string
+  notes: string | null
+  created_at: string
+}
+
 export type PickupTaskInput =
   | { action: 'status'; rfqId: string; timelineBeforeSequence: number | null }
   | {
@@ -46,6 +59,19 @@ export type PickupTaskInput =
       notes: string | null
       idempotencyKey: string
     }
+  | {
+      action: 'assign_self'
+      rfqId: string
+      notes: string | null
+      idempotencyKey: string
+    }
+  | {
+      action: 'record_dispatch'
+      rfqId: string
+      progress: 'en_route' | 'arrived'
+      notes: string | null
+      idempotencyKey: string
+    }
 
 const ACTION_KEYS: Record<PickupTaskInput['action'], Set<string>> = {
   status: new Set(['action', 'rfq_id', 'timeline_before_sequence']),
@@ -55,6 +81,10 @@ const ACTION_KEYS: Record<PickupTaskInput['action'], Set<string>> = {
   ]),
   respond: new Set([
     'action', 'rfq_id', 'decision', 'reason_code', 'notes', 'idempotency_key',
+  ]),
+  assign_self: new Set(['action', 'rfq_id', 'notes', 'idempotency_key']),
+  record_dispatch: new Set([
+    'action', 'rfq_id', 'progress', 'notes', 'idempotency_key',
   ]),
 }
 
@@ -107,6 +137,36 @@ export function buildPickupScheduleProjection(
   }
 }
 
+export function buildPickupDispatchProjection(
+  timelineAscending: PickupDispatchEventProjection[],
+  callerId: string,
+) {
+  const expectedEvents: PickupDispatchEventProjection['event_type'][] = [
+    'field_actor_assigned', 'en_route_recorded', 'arrival_recorded',
+  ]
+  const assignedActorId = timelineAscending[0]?.assigned_actor_id ?? null
+  const malformed = timelineAscending.length > expectedEvents.length
+    || timelineAscending.some((event, index) =>
+      event.event_sequence !== index + 1
+      || event.event_type !== expectedEvents[index]
+      || event.assigned_actor_id !== assignedActorId)
+  if (malformed) throw new Error('Malformed PickupTask dispatch projection')
+
+  const current = timelineAscending.length > 0
+    ? timelineAscending[timelineAscending.length - 1]
+    : null
+  const timeline = timelineAscending.map(({ assigned_actor_id: _assignedActorId, ...event }) => event)
+
+  return {
+    current_dispatch_state: current?.event_type ?? 'not_dispatched',
+    current_dispatch_event: current
+      ? (({ assigned_actor_id: _assignedActorId, ...event }) => event)(current)
+      : null,
+    dispatch_timeline: timeline,
+    caller_is_assigned_field_actor: current?.assigned_actor_id === callerId,
+  }
+}
+
 function validateExactKeys(body: Record<string, unknown>, action: PickupTaskInput['action']): string | null {
   const unsupported = Object.keys(body).filter((key) => !ACTION_KEYS[action].has(key))
   return unsupported.length > 0
@@ -118,8 +178,12 @@ export function validatePickupTaskAction(
   body: Record<string, unknown>,
 ): { valid: boolean; error?: string; input?: PickupTaskInput } {
   const action = body['action']
-  if (action !== 'status' && action !== 'propose' && action !== 'respond') {
-    return { valid: false, error: 'action must be status, propose, or respond' }
+  if (action !== 'status' && action !== 'propose' && action !== 'respond'
+      && action !== 'assign_self' && action !== 'record_dispatch') {
+    return {
+      valid: false,
+      error: 'action must be status, propose, respond, assign_self, or record_dispatch',
+    }
   }
 
   const unsupportedError = validateExactKeys(body, action)
@@ -167,6 +231,24 @@ export function validatePickupTaskAction(
   const reasonCode = normalizeReasonCode(body['reason_code'])
   if (reasonCode === undefined) {
     return { valid: false, error: 'reason_code must be a governed pickup reason' }
+  }
+
+  if (action === 'assign_self') {
+    return {
+      valid: true,
+      input: { action, rfqId, notes, idempotencyKey },
+    }
+  }
+
+  if (action === 'record_dispatch') {
+    const progress = body['progress']
+    if (progress !== 'en_route' && progress !== 'arrived') {
+      return { valid: false, error: 'progress must be en_route or arrived' }
+    }
+    return {
+      valid: true,
+      input: { action, rfqId, progress, notes, idempotencyKey },
+    }
   }
 
   if (action === 'propose') {

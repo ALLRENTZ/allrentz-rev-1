@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   hasPendingPickupProposal,
   normalizePickupTaskRecord,
+  pickupDispatchLabel,
   pickupScheduleLabel,
 } from './pickupTaskControl'
 
@@ -28,6 +29,10 @@ const completeRecord = {
     created_at: '2026-08-18T12:00:00Z',
   }],
   timeline_page: { has_more: false, next_before_sequence: null },
+  current_dispatch_state: 'not_dispatched',
+  current_dispatch_event: null,
+  dispatch_timeline: [],
+  caller_is_assigned_field_actor: false,
   authority_boundary: {
     object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
   },
@@ -48,6 +53,8 @@ describe('PickupTask control projection', () => {
       current_schedule_state: 'unscheduled', current_schedule_event: null,
       confirmed_window: null, pending_window: null, timeline: [],
       timeline_page: { has_more: false, next_before_sequence: null },
+      current_dispatch_state: 'not_dispatched', current_dispatch_event: null,
+      dispatch_timeline: [], caller_is_assigned_field_actor: false,
       authority_boundary: {
         object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
       },
@@ -115,5 +122,75 @@ describe('PickupTask control projection', () => {
     expect(pickupScheduleLabel('schedule_confirmed')).toBe('Pickup window confirmed')
     expect(hasPendingPickupProposal('schedule_reschedule_proposed')).toBe(true)
     expect(hasPendingPickupProposal('schedule_confirmed')).toBe(false)
+  })
+
+  it('accepts a strict customer-visible dispatch timeline without exposing actor identity', () => {
+    const dispatchTimeline = [
+      {
+        id: 'dispatch-1', event_sequence: 1, event_type: 'field_actor_assigned',
+        actor_role: 'vendor_dispatcher', notes: 'Assigned for confirmed window',
+        created_at: '2026-08-18T13:00:00Z',
+      },
+      {
+        id: 'dispatch-2', event_sequence: 2, event_type: 'en_route_recorded',
+        actor_role: 'assigned_field_actor', notes: 'Departed vendor yard',
+        created_at: '2026-08-19T13:00:00Z',
+      },
+    ]
+    const record = normalizePickupTaskRecord({
+      ...completeRecord,
+      current_dispatch_state: 'en_route_recorded',
+      current_dispatch_event: dispatchTimeline[1],
+      dispatch_timeline: dispatchTimeline,
+      caller_is_assigned_field_actor: true,
+    })
+
+    expect(record?.current_dispatch_state).toBe('en_route_recorded')
+    expect(record?.dispatch_timeline).toHaveLength(2)
+    expect(pickupDispatchLabel('arrival_recorded')).toBe('Arrived at site (reported)')
+  })
+
+  it('fails closed on dispatch sequence, role, current-state, or hidden identity evidence', () => {
+    const assigned = {
+      id: 'dispatch-1', event_sequence: 1, event_type: 'field_actor_assigned',
+      actor_role: 'vendor_dispatcher', notes: null, created_at: '2026-08-18T13:00:00Z',
+    }
+    expect(normalizePickupTaskRecord({
+      ...completeRecord,
+      current_dispatch_state: 'field_actor_assigned',
+      current_dispatch_event: assigned,
+      dispatch_timeline: [{ ...assigned, event_sequence: 2 }],
+      caller_is_assigned_field_actor: false,
+    })).toBeNull()
+    expect(normalizePickupTaskRecord({
+      ...completeRecord,
+      current_dispatch_state: 'field_actor_assigned',
+      current_dispatch_event: { ...assigned, actor_role: 'assigned_field_actor' },
+      dispatch_timeline: [{ ...assigned, actor_role: 'assigned_field_actor' }],
+      caller_is_assigned_field_actor: false,
+    })).toBeNull()
+    expect(normalizePickupTaskRecord({
+      ...completeRecord,
+      current_dispatch_state: 'arrival_recorded',
+      current_dispatch_event: {
+        ...assigned, id: 'dispatch-2', event_sequence: 2,
+        event_type: 'arrival_recorded', actor_role: 'assigned_field_actor',
+      },
+      dispatch_timeline: [
+        assigned,
+        {
+          ...assigned, id: 'dispatch-2', event_sequence: 2,
+          event_type: 'arrival_recorded', actor_role: 'assigned_field_actor',
+        },
+      ],
+      caller_is_assigned_field_actor: false,
+    })).toBeNull()
+    expect(normalizePickupTaskRecord({
+      ...completeRecord,
+      current_dispatch_state: 'field_actor_assigned',
+      current_dispatch_event: { ...assigned, assigned_actor_id: 'hidden' },
+      dispatch_timeline: [{ ...assigned, assigned_actor_id: 'hidden' }],
+      caller_is_assigned_field_actor: false,
+    })).toBeNull()
   })
 })

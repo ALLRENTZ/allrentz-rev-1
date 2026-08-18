@@ -6,6 +6,13 @@ export type PickupScheduleState =
   | 'schedule_rejected'
   | 'unknown'
 
+export type PickupDispatchState =
+  | 'not_dispatched'
+  | 'field_actor_assigned'
+  | 'en_route_recorded'
+  | 'arrival_recorded'
+  | 'unknown'
+
 export const PICKUP_SCHEDULE_REASON_CODES = [
   'customer_access_conflict',
   'vendor_capacity',
@@ -33,6 +40,15 @@ export interface PickupScheduleEvent extends PickupScheduleWindow {
   created_at: string
 }
 
+export interface PickupDispatchEvent {
+  id: string
+  event_sequence: number
+  event_type: Exclude<PickupDispatchState, 'not_dispatched' | 'unknown'>
+  actor_role: 'vendor_dispatcher' | 'assigned_field_actor'
+  notes: string | null
+  created_at: string
+}
+
 export interface PickupTaskControlRecord {
   rfq_id: string
   operational_status: string
@@ -50,6 +66,10 @@ export interface PickupTaskControlRecord {
     has_more: boolean
     next_before_sequence: number | null
   }
+  current_dispatch_state: PickupDispatchState
+  current_dispatch_event: PickupDispatchEvent | null
+  dispatch_timeline: PickupDispatchEvent[]
+  caller_is_assigned_field_actor: boolean
   authority_boundary: {
     object_scope: 'rfq'
     pickup_controls_billing: false
@@ -64,6 +84,9 @@ const EVENT_TYPES = new Set([
   'schedule_rejected',
 ])
 const REASON_CODES = new Set<string>(PICKUP_SCHEDULE_REASON_CODES)
+const DISPATCH_EVENT_TYPES = new Set([
+  'field_actor_assigned', 'en_route_recorded', 'arrival_recorded',
+])
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -125,6 +148,36 @@ function normalizeEvent(value: unknown): PickupScheduleEvent | null {
   }
 }
 
+function normalizeDispatchEvent(value: unknown): PickupDispatchEvent | null {
+  if (!isRecord(value)) return null
+  const allowedKeys = new Set([
+    'id', 'event_sequence', 'event_type', 'actor_role', 'notes', 'created_at',
+  ])
+  if (Object.keys(value).some((key) => !allowedKeys.has(key))) return null
+  const id = requiredString(value.id)
+  const eventType = requiredString(value.event_type)
+  const actorRole = value.actor_role
+  const notes = typeof value.notes === 'string' ? value.notes : null
+  const isAssignment = eventType === 'field_actor_assigned'
+  if (!id || !eventType || !DISPATCH_EVENT_TYPES.has(eventType)
+      || (actorRole !== 'vendor_dispatcher' && actorRole !== 'assigned_field_actor')
+      || (isAssignment && actorRole !== 'vendor_dispatcher')
+      || (!isAssignment && actorRole !== 'assigned_field_actor')
+      || typeof value.event_sequence !== 'number' || !Number.isInteger(value.event_sequence)
+      || value.event_sequence < 1 || !validDate(value.created_at)
+      || (value.notes !== null && typeof value.notes !== 'string')) {
+    return null
+  }
+  return {
+    id,
+    event_sequence: value.event_sequence,
+    event_type: eventType as PickupDispatchEvent['event_type'],
+    actor_role: actorRole,
+    notes,
+    created_at: value.created_at,
+  }
+}
+
 function windowsMatch(left: PickupScheduleWindow | null, right: PickupScheduleEvent | null): boolean {
   if (!left || !right) return left === null && right === null
   return left.pickup_window_start === right.pickup_window_start
@@ -149,7 +202,11 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
         || value.confirmed_window !== null || value.pending_window !== null
         || !Array.isArray(value.timeline) || value.timeline.length !== 0
         || !isRecord(value.timeline_page) || value.timeline_page.has_more !== false
-        || value.timeline_page.next_before_sequence !== null) return null
+        || value.timeline_page.next_before_sequence !== null
+        || value.current_dispatch_state !== 'not_dispatched'
+        || value.current_dispatch_event !== null
+        || !Array.isArray(value.dispatch_timeline) || value.dispatch_timeline.length !== 0
+        || value.caller_is_assigned_field_actor !== false) return null
     return {
       rfq_id: rfqId,
       operational_status: operationalStatus,
@@ -160,6 +217,10 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
       pending_window: null,
       timeline: [],
       timeline_page: { has_more: false, next_before_sequence: null },
+      current_dispatch_state: 'not_dispatched',
+      current_dispatch_event: null,
+      dispatch_timeline: [],
+      caller_is_assigned_field_actor: false,
       authority_boundary: {
         object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
       },
@@ -199,6 +260,39 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
       && (typeof nextBefore !== 'number' || !Number.isInteger(nextBefore) || nextBefore < 2)) return null
   if (value.timeline_page.has_more !== (nextBefore !== null)) return null
 
+  const dispatchState = requiredString(value.current_dispatch_state)
+  if (!dispatchState || (!DISPATCH_EVENT_TYPES.has(dispatchState)
+      && dispatchState !== 'not_dispatched')) return null
+  if (!Array.isArray(value.dispatch_timeline)
+      || typeof value.caller_is_assigned_field_actor !== 'boolean') return null
+  const dispatchTimeline: PickupDispatchEvent[] = []
+  for (const entry of value.dispatch_timeline) {
+    const normalized = normalizeDispatchEvent(entry)
+    if (!normalized) return null
+    dispatchTimeline.push(normalized)
+  }
+  for (let index = 0; index < dispatchTimeline.length; index += 1) {
+    if (dispatchTimeline[index].event_sequence !== index + 1) return null
+    const expectedEvent = [
+      'field_actor_assigned', 'en_route_recorded', 'arrival_recorded',
+    ][index]
+    if (dispatchTimeline[index].event_type !== expectedEvent) return null
+  }
+  if (dispatchTimeline.length > 3) return null
+  const currentDispatch = value.current_dispatch_event === null
+    ? null
+    : normalizeDispatchEvent(value.current_dispatch_event)
+  if (dispatchState === 'not_dispatched') {
+    if (currentDispatch !== null || dispatchTimeline.length !== 0
+        || value.caller_is_assigned_field_actor !== false) return null
+  } else {
+    const latestDispatch = dispatchTimeline.length > 0
+      ? dispatchTimeline[dispatchTimeline.length - 1]
+      : null
+    if (!currentDispatch || !latestDispatch || currentDispatch.id !== latestDispatch.id
+        || currentDispatch.event_type !== dispatchState) return null
+  }
+
   return {
     rfq_id: rfqId,
     operational_status: operationalStatus,
@@ -212,6 +306,10 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
       has_more: value.timeline_page.has_more,
       next_before_sequence: nextBefore === null ? null : Number(nextBefore),
     },
+    current_dispatch_state: dispatchState as PickupDispatchState,
+    current_dispatch_event: currentDispatch,
+    dispatch_timeline: dispatchTimeline,
+    caller_is_assigned_field_actor: value.caller_is_assigned_field_actor,
     authority_boundary: {
       object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
     },
@@ -229,4 +327,12 @@ export function pickupScheduleLabel(state: PickupScheduleState): string {
 
 export function hasPendingPickupProposal(state: PickupScheduleState): boolean {
   return state === 'schedule_proposed' || state === 'schedule_reschedule_proposed'
+}
+
+export function pickupDispatchLabel(state: PickupDispatchState): string {
+  if (state === 'not_dispatched') return 'Not dispatched'
+  if (state === 'field_actor_assigned') return 'Field actor assigned'
+  if (state === 'en_route_recorded') return 'En route (reported)'
+  if (state === 'arrival_recorded') return 'Arrived at site (reported)'
+  return 'Dispatch status unknown'
 }

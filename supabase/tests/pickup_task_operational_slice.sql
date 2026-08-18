@@ -3,10 +3,11 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = public, extensions;
 
-SELECT plan(41);
+SELECT plan(64);
 
 SELECT has_table('public', 'rental_pickup_tasks', 'PickupTask table exists');
 SELECT has_table('public', 'rental_pickup_schedule_events', 'pickup schedule event table exists');
+SELECT has_table('public', 'rental_pickup_dispatch_events', 'pickup dispatch event table exists');
 
 SELECT ok(
   (SELECT relrowsecurity FROM pg_catalog.pg_class
@@ -18,6 +19,11 @@ SELECT ok(
    WHERE oid = 'public.rental_pickup_schedule_events'::regclass),
   'pickup schedule event RLS is enabled'
 );
+SELECT ok(
+  (SELECT relrowsecurity FROM pg_catalog.pg_class
+   WHERE oid = 'public.rental_pickup_dispatch_events'::regclass),
+  'pickup dispatch event RLS is enabled'
+);
 
 SELECT ok(
   NOT has_table_privilege('authenticated', 'public.rental_pickup_tasks', 'SELECT'),
@@ -27,6 +33,10 @@ SELECT ok(
   NOT has_table_privilege('authenticated', 'public.rental_pickup_schedule_events', 'SELECT'),
   'authenticated clients cannot read pickup schedule events directly'
 );
+SELECT ok(
+  NOT has_table_privilege('authenticated', 'public.rental_pickup_dispatch_events', 'SELECT'),
+  'authenticated clients cannot read pickup dispatch events directly'
+);
 
 SELECT ok(
   NOT has_table_privilege('service_role', table_name, privilege_name),
@@ -34,7 +44,8 @@ SELECT ok(
 )
 FROM unnest(ARRAY[
   'public.rental_pickup_tasks',
-  'public.rental_pickup_schedule_events'
+  'public.rental_pickup_schedule_events',
+  'public.rental_pickup_dispatch_events'
 ]) AS tables(table_name)
 CROSS JOIN unnest(ARRAY['INSERT', 'UPDATE', 'DELETE']) AS privileges(privilege_name);
 
@@ -45,6 +56,10 @@ SELECT ok(
 SELECT ok(
   has_table_privilege('service_role', 'public.rental_pickup_schedule_events', 'SELECT'),
   'service_role can assemble the sanitized pickup event projection'
+);
+SELECT ok(
+  has_table_privilege('service_role', 'public.rental_pickup_dispatch_events', 'SELECT'),
+  'service_role can assemble the sanitized dispatch projection'
 );
 
 SELECT ok(
@@ -78,6 +93,38 @@ SELECT ok(
     'EXECUTE'
   ),
   'authenticated clients cannot call the customer response command directly'
+);
+SELECT ok(
+  has_function_privilege(
+    'service_role',
+    'public.assign_rental_pickup_field_actor(uuid,uuid,text,text)',
+    'EXECUTE'
+  ),
+  'service_role can transport the governed field-assignment command'
+);
+SELECT ok(
+  NOT has_function_privilege(
+    'authenticated',
+    'public.assign_rental_pickup_field_actor(uuid,uuid,text,text)',
+    'EXECUTE'
+  ),
+  'authenticated clients cannot call field assignment directly'
+);
+SELECT ok(
+  has_function_privilege(
+    'service_role',
+    'public.record_rental_pickup_dispatch_progress(uuid,uuid,text,text,text)',
+    'EXECUTE'
+  ),
+  'service_role can transport governed dispatch progress'
+);
+SELECT ok(
+  NOT has_function_privilege(
+    'authenticated',
+    'public.record_rental_pickup_dispatch_progress(uuid,uuid,text,text,text)',
+    'EXECUTE'
+  ),
+  'authenticated clients cannot call dispatch progress directly'
 );
 
 SELECT is(
@@ -271,6 +318,95 @@ SELECT is(
 );
 
 SELECT throws_ok(
+  $$ SELECT public.assign_rental_pickup_field_actor(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007104',
+    'Generic member cannot dispatch', 'member-assignment'
+  ) $$,
+  'P0001',
+  'Actor 00000000-0000-4000-8000-000000007104 lacks accepted-vendor field assignment authority for RFQ 00000000-0000-4000-8000-000000007301',
+  'a generic vendor member cannot exercise dispatcher assignment authority'
+);
+SELECT lives_ok(
+  $$ SELECT public.assign_rental_pickup_field_actor(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007102',
+    'Assigned for confirmed window', 'vendor-assignment-1'
+  ) $$,
+  'the accepted-vendor owner can assign themselves as field actor'
+);
+SELECT is(
+  (SELECT count(*)::integer FROM public.rental_pickup_dispatch_events
+   WHERE rfq_id = '00000000-0000-4000-8000-000000007301'),
+  1,
+  'field assignment appends exactly one dispatch event'
+);
+SELECT lives_ok(
+  $$ SELECT public.assign_rental_pickup_field_actor(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007102',
+    'Assigned for confirmed window', 'vendor-assignment-1'
+  ) $$,
+  'an exact field-assignment replay succeeds'
+);
+SELECT is(
+  (SELECT count(*)::integer FROM public.rental_pickup_dispatch_events
+   WHERE rfq_id = '00000000-0000-4000-8000-000000007301'),
+  1,
+  'an idempotent field-assignment replay creates no duplicate event'
+);
+SELECT throws_ok(
+  $$ SELECT public.record_rental_pickup_dispatch_progress(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007104',
+    'en_route', 'Unassigned member', 'member-en-route'
+  ) $$,
+  'P0001',
+  'Actor 00000000-0000-4000-8000-000000007104 is not the assigned pickup field actor for RFQ 00000000-0000-4000-8000-000000007301',
+  'an unassigned vendor member cannot report dispatch progress'
+);
+SELECT throws_ok(
+  $$ SELECT public.record_rental_pickup_dispatch_progress(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007102',
+    'arrived', 'Skipped en route', 'vendor-arrival-early'
+  ) $$,
+  'P0001',
+  'Pickup dispatch transition arrived requires prior state en_route_recorded; current state is field_actor_assigned',
+  'arrival fails closed until en-route progress exists'
+);
+SELECT lives_ok(
+  $$ SELECT public.record_rental_pickup_dispatch_progress(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007102',
+    'en_route', 'Departed vendor yard', 'vendor-en-route-1'
+  ) $$,
+  'the assigned field actor can report en-route progress'
+);
+SELECT is(
+  (SELECT event_type FROM public.rental_pickup_dispatch_events
+   WHERE rfq_id = '00000000-0000-4000-8000-000000007301'
+   ORDER BY event_sequence DESC LIMIT 1),
+  'en_route_recorded',
+  'dispatch projection advances to en-route reported'
+);
+SELECT lives_ok(
+  $$ SELECT public.record_rental_pickup_dispatch_progress(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007102',
+    'arrived', 'At customer site', 'vendor-arrival-1'
+  ) $$,
+  'the assigned field actor can report arrival after en route'
+);
+SELECT is(
+  (SELECT event_type FROM public.rental_pickup_dispatch_events
+   WHERE rfq_id = '00000000-0000-4000-8000-000000007301'
+   ORDER BY event_sequence DESC LIMIT 1),
+  'arrival_recorded',
+  'dispatch projection advances to arrival reported'
+);
+
+SELECT throws_ok(
   $$ SELECT public.respond_rental_pickup_schedule(
     '00000000-0000-4000-8000-000000007301',
     '00000000-0000-4000-8000-000000007102',
@@ -369,12 +505,23 @@ SELECT throws_ok(
   'rental_pickup_schedule_events rows are immutable; append a governed pickup event instead',
   'pickup schedule events are immutable'
 );
+SELECT throws_ok(
+  $$ DELETE FROM public.rental_pickup_dispatch_events
+     WHERE rfq_id = '00000000-0000-4000-8000-000000007301' $$,
+  'P0001',
+  'rental_pickup_dispatch_events rows are immutable; append a governed pickup event instead',
+  'pickup dispatch events are immutable'
+);
 
 SELECT ok(
   NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public'
-      AND table_name IN ('rental_pickup_tasks', 'rental_pickup_schedule_events')
+      AND table_name IN (
+        'rental_pickup_tasks',
+        'rental_pickup_schedule_events',
+        'rental_pickup_dispatch_events'
+      )
       AND column_name ~ '(line|item|quantity|serial|kit|component|partial|custody|billing)'
   ),
   'the first slice exposes no granular, custody, or billing columns'
@@ -383,7 +530,7 @@ SELECT is(
   (SELECT count(*)::integer FROM public.audit_events
    WHERE related_rfq_id = '00000000-0000-4000-8000-000000007301'
      AND event_type LIKE 'pickup.%'),
-  3,
+  6,
   'each accepted PickupTask command produces one atomic audit event'
 );
 

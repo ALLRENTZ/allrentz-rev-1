@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildPickupDispatchProjection,
   buildPickupScheduleProjection,
   validatePickupTaskAction,
+  type PickupDispatchEventProjection,
   type PickupScheduleEventProjection,
 } from './pickupTaskPolicy'
 
@@ -77,6 +79,21 @@ describe('PickupTask action policy', () => {
     })).toEqual({ valid: false, error: 'notes cannot exceed 4000 characters' })
   })
 
+  it('accepts self-assignment and strict field-progress commands', () => {
+    expect(validatePickupTaskAction({
+      action: 'assign_self', rfq_id: 'rfq-1', notes: 'Assigned for the route',
+      idempotency_key: 'assign-1',
+    })).toMatchObject({ valid: true, input: { action: 'assign_self' } })
+    expect(validatePickupTaskAction({
+      action: 'record_dispatch', rfq_id: 'rfq-1', progress: 'en_route',
+      notes: 'Departed vendor yard', idempotency_key: 'dispatch-1',
+    })).toMatchObject({ valid: true, input: { progress: 'en_route' } })
+    expect(validatePickupTaskAction({
+      action: 'record_dispatch', rfq_id: 'rfq-1', progress: 'complete',
+      idempotency_key: 'dispatch-2',
+    })).toEqual({ valid: false, error: 'progress must be en_route or arrived' })
+  })
+
   it('projects event 101 independently from the 100-event timeline page', () => {
     const events = Array.from({ length: 101 }, (_, index): PickupScheduleEventProjection => ({
       id: `event-${101 - index}`,
@@ -95,6 +112,33 @@ describe('PickupTask action policy', () => {
     expect(projection.current_schedule_state).toBe('schedule_reschedule_proposed')
     expect(projection.timeline).toHaveLength(100)
     expect(projection.timeline_page).toEqual({ has_more: true, next_before_sequence: 2 })
+  })
+
+  it('sanitizes assigned identity while preserving caller-specific field authority', () => {
+    const events: PickupDispatchEventProjection[] = [
+      {
+        id: 'dispatch-1', event_sequence: 1, event_type: 'field_actor_assigned',
+        actor_role: 'vendor_dispatcher', assigned_actor_id: 'vendor-user', notes: null,
+        created_at: '2026-08-18T13:00:00Z',
+      },
+      {
+        id: 'dispatch-2', event_sequence: 2, event_type: 'en_route_recorded',
+        actor_role: 'assigned_field_actor', assigned_actor_id: 'vendor-user',
+        notes: 'Departed vendor yard', created_at: '2026-08-19T13:00:00Z',
+      },
+    ]
+    const assigned = buildPickupDispatchProjection(events, 'vendor-user')
+    const customer = buildPickupDispatchProjection(events, 'customer-user')
+
+    expect(assigned.current_dispatch_state).toBe('en_route_recorded')
+    expect(assigned.caller_is_assigned_field_actor).toBe(true)
+    expect(customer.caller_is_assigned_field_actor).toBe(false)
+    expect(assigned.current_dispatch_event).not.toHaveProperty('assigned_actor_id')
+    expect(assigned.dispatch_timeline[0]).not.toHaveProperty('assigned_actor_id')
+    expect(() => buildPickupDispatchProjection([
+      events[0],
+      { ...events[1], event_type: 'arrival_recorded' },
+    ], 'vendor-user')).toThrow('Malformed PickupTask dispatch projection')
   })
 
   it('fails closed on granular, custody, financial, or assignment fields', () => {
