@@ -14,6 +14,18 @@ export const PICKUP_SCHEDULE_REASON_CODES = [
 
 export type PickupScheduleReasonCode = typeof PICKUP_SCHEDULE_REASON_CODES[number]
 
+export const PICKUP_ATTEMPT_REASON_CODES = [
+  'customer_access_unavailable',
+  'site_restriction',
+  'equipment_not_ready',
+  'equipment_not_found',
+  'weather_or_safety',
+  'contact_issue',
+  'other',
+] as const
+
+export type PickupAttemptReasonCode = typeof PICKUP_ATTEMPT_REASON_CODES[number]
+
 export interface PickupScheduleEventProjection {
   id: string
   event_sequence: number
@@ -36,6 +48,17 @@ export interface PickupDispatchEventProjection {
   event_type: Exclude<PickupDispatchState, 'not_dispatched'>
   actor_role: 'vendor_dispatcher' | 'assigned_field_actor'
   assigned_actor_id: string
+  notes: string | null
+  created_at: string
+}
+
+export interface PickupAttemptEventProjection {
+  id: string
+  event_sequence: 1
+  event_type: 'attempt_collection_asserted' | 'attempt_failed'
+  actor_role: 'assigned_field_actor'
+  assigned_actor_id: string
+  reason_code: PickupAttemptReasonCode | null
   notes: string | null
   created_at: string
 }
@@ -72,6 +95,14 @@ export type PickupTaskInput =
       notes: string | null
       idempotencyKey: string
     }
+  | {
+      action: 'record_attempt'
+      rfqId: string
+      outcome: 'collection_asserted' | 'failed'
+      reasonCode: PickupAttemptReasonCode | null
+      notes: string | null
+      idempotencyKey: string
+    }
 
 const ACTION_KEYS: Record<PickupTaskInput['action'], Set<string>> = {
   status: new Set(['action', 'rfq_id', 'timeline_before_sequence']),
@@ -86,9 +117,17 @@ const ACTION_KEYS: Record<PickupTaskInput['action'], Set<string>> = {
   record_dispatch: new Set([
     'action', 'rfq_id', 'progress', 'notes', 'idempotency_key',
   ]),
+  record_attempt: new Set([
+    'action', 'rfq_id', 'outcome', 'reason_code', 'notes', 'idempotency_key',
+  ]),
 }
 
 const REASON_CODE_SET = new Set<string>(PICKUP_SCHEDULE_REASON_CODES)
+const ATTEMPT_REASON_CODE_SET = new Set<string>(PICKUP_ATTEMPT_REASON_CODES)
+const ATTEMPT_EVENT_TYPES = new Set<string>([
+  'attempt_collection_asserted',
+  'attempt_failed',
+])
 
 function normalizeDate(value: unknown): string | null {
   if (typeof value !== 'string' || !value.trim()) return null
@@ -167,6 +206,41 @@ export function buildPickupDispatchProjection(
   }
 }
 
+export function buildPickupAttemptProjection(
+  eventsAscending: PickupAttemptEventProjection[],
+  callerIsAssignedFieldActor: boolean,
+  dispatchState: PickupDispatchState,
+) {
+  if (eventsAscending.length > 1) throw new Error('Malformed PickupTask attempt projection')
+  const current = eventsAscending[0] ?? null
+  const malformed = current && (
+    current.event_sequence !== 1
+    || current.actor_role !== 'assigned_field_actor'
+    || !ATTEMPT_EVENT_TYPES.has(current.event_type)
+    || dispatchState !== 'arrival_recorded'
+    || (current.reason_code !== null
+      && !ATTEMPT_REASON_CODE_SET.has(current.reason_code))
+    || (current.event_type === 'attempt_collection_asserted' && current.reason_code !== null)
+    || (current.event_type === 'attempt_failed' && !current.reason_code)
+    || (current.reason_code === 'other' && !current.notes?.trim())
+  )
+  if (malformed) throw new Error('Malformed PickupTask attempt projection')
+
+  const sanitized = current
+    ? (({ assigned_actor_id: _assignedActorId, ...event }) => event)(current)
+    : null
+  return {
+    current_attempt_state: current?.event_type ?? 'not_recorded',
+    current_attempt_event: sanitized,
+    current_exception_state: current?.event_type === 'attempt_failed'
+      ? 'review_required'
+      : 'none_recorded',
+    caller_can_record_attempt: current === null
+      && callerIsAssignedFieldActor
+      && dispatchState === 'arrival_recorded',
+  }
+}
+
 function validateExactKeys(body: Record<string, unknown>, action: PickupTaskInput['action']): string | null {
   const unsupported = Object.keys(body).filter((key) => !ACTION_KEYS[action].has(key))
   return unsupported.length > 0
@@ -179,10 +253,11 @@ export function validatePickupTaskAction(
 ): { valid: boolean; error?: string; input?: PickupTaskInput } {
   const action = body['action']
   if (action !== 'status' && action !== 'propose' && action !== 'respond'
-      && action !== 'assign_self' && action !== 'record_dispatch') {
+      && action !== 'assign_self' && action !== 'record_dispatch'
+      && action !== 'record_attempt') {
     return {
       valid: false,
-      error: 'action must be status, propose, respond, assign_self, or record_dispatch',
+      error: 'action must be status, propose, respond, assign_self, record_dispatch, or record_attempt',
     }
   }
 
@@ -248,6 +323,36 @@ export function validatePickupTaskAction(
     return {
       valid: true,
       input: { action, rfqId, progress, notes, idempotencyKey },
+    }
+  }
+
+  if (action === 'record_attempt') {
+    const outcome = body['outcome']
+    if (outcome !== 'collection_asserted' && outcome !== 'failed') {
+      return { valid: false, error: 'outcome must be collection_asserted or failed' }
+    }
+    const rawReasonCode = body['reason_code']
+    const attemptReasonCode = rawReasonCode === null || rawReasonCode === undefined
+      || rawReasonCode === ''
+      ? null
+      : typeof rawReasonCode === 'string' && ATTEMPT_REASON_CODE_SET.has(rawReasonCode.trim())
+        ? rawReasonCode.trim() as PickupAttemptReasonCode
+        : undefined
+    if (attemptReasonCode === undefined) {
+      return { valid: false, error: 'reason_code must be a governed pickup attempt reason' }
+    }
+    if (outcome === 'failed' && !attemptReasonCode) {
+      return { valid: false, error: 'a failed pickup attempt requires a governed reason_code' }
+    }
+    if (outcome === 'collection_asserted' && attemptReasonCode) {
+      return { valid: false, error: 'reason_code is only permitted for a failed pickup attempt' }
+    }
+    if (attemptReasonCode === 'other' && !notes) {
+      return { valid: false, error: 'notes are required when reason_code is other' }
+    }
+    return {
+      valid: true,
+      input: { action, rfqId, outcome, reasonCode: attemptReasonCode, notes, idempotencyKey },
     }
   }
 

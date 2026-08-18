@@ -7,6 +7,7 @@ import {
   selectSecretKey,
 } from '../rfq-transition/keys.ts'
 import {
+  buildPickupAttemptProjection,
   buildPickupDispatchProjection,
   buildPickupScheduleProjection,
   validatePickupTaskAction,
@@ -34,7 +35,9 @@ function mapCommandError(message: string): Response {
       || message.includes('no pending schedule proposal')
       || message.includes('requires a currently confirmed schedule')
       || message.includes('requires a field assignment')
+      || message.includes('requires an assigned-actor arrival assertion')
       || message.includes('already has a field assignment')
+      || message.includes('already has an attempt outcome')
       || message.includes('reassignment is not authorized')
       || message.includes('requires prior state')
       || message.includes('idempotency key conflicts')) {
@@ -160,6 +163,10 @@ Deno.serve(async (req: Request) => {
         current_dispatch_event: null,
         dispatch_timeline: [],
         caller_is_assigned_field_actor: false,
+        current_attempt_state: 'not_recorded',
+        current_attempt_event: null,
+        current_exception_state: 'none_recorded',
+        caller_can_record_attempt: false,
         authority_boundary: {
           object_scope: 'rfq',
           pickup_controls_billing: false,
@@ -231,6 +238,31 @@ Deno.serve(async (req: Request) => {
     }
 
     const dispatchProjection = buildPickupDispatchProjection(dispatchEvents ?? [], user.id)
+
+    const attemptEventProjection = 'id, event_sequence, event_type, actor_role, assigned_actor_id, reason_code, notes, created_at'
+    const { data: attemptEvents, error: attemptError } = await svc
+      .from('rental_pickup_attempt_events')
+      .select(attemptEventProjection)
+      .eq('pickup_task_id', task.id)
+      .order('event_sequence', { ascending: true })
+      .limit(2)
+
+    if (attemptError) {
+      console.error('rfq-pickup-task attempt projection error:', attemptError)
+      return jsonError(500, 'Unable to load PickupTask progress')
+    }
+
+    let attemptProjection
+    try {
+      attemptProjection = buildPickupAttemptProjection(
+        attemptEvents ?? [],
+        dispatchProjection.caller_is_assigned_field_actor,
+        dispatchProjection.current_dispatch_state,
+      )
+    } catch (error) {
+      console.error('rfq-pickup-task malformed attempt projection:', error)
+      return jsonError(500, 'Pickup attempt progress requires review')
+    }
     return json(200, {
       rfq_id: authorizedRfq.id,
       operational_status: authorizedRfq.operational_status,
@@ -241,6 +273,7 @@ Deno.serve(async (req: Request) => {
       },
       ...scheduleProjection,
       ...dispatchProjection,
+      ...attemptProjection,
       authority_boundary: {
         object_scope: task.object_scope,
         pickup_controls_billing: false,
@@ -275,13 +308,22 @@ Deno.serve(async (req: Request) => {
             p_notes: input.notes,
             p_idempotency_key: input.idempotencyKey,
           })
-        : svc.rpc('record_rental_pickup_dispatch_progress', {
-            p_rfq_id: input.rfqId,
-            p_actor_id: user.id,
-            p_progress: input.progress,
-            p_notes: input.notes,
-            p_idempotency_key: input.idempotencyKey,
-          })
+        : input.action === 'record_dispatch'
+          ? svc.rpc('record_rental_pickup_dispatch_progress', {
+              p_rfq_id: input.rfqId,
+              p_actor_id: user.id,
+              p_progress: input.progress,
+              p_notes: input.notes,
+              p_idempotency_key: input.idempotencyKey,
+            })
+          : svc.rpc('record_rental_pickup_attempt_outcome', {
+              p_rfq_id: input.rfqId,
+              p_actor_id: user.id,
+              p_outcome: input.outcome,
+              p_reason_code: input.reasonCode,
+              p_notes: input.notes,
+              p_idempotency_key: input.idempotencyKey,
+            })
 
   const { data, error } = await rpc
   if (error) {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   hasPendingPickupProposal,
   normalizePickupTaskRecord,
+  pickupAttemptLabel,
   pickupDispatchLabel,
   pickupScheduleLabel,
 } from './pickupTaskControl'
@@ -33,6 +34,10 @@ const completeRecord = {
   current_dispatch_event: null,
   dispatch_timeline: [],
   caller_is_assigned_field_actor: false,
+  current_attempt_state: 'not_recorded',
+  current_attempt_event: null,
+  current_exception_state: 'none_recorded',
+  caller_can_record_attempt: false,
   authority_boundary: {
     object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
   },
@@ -55,6 +60,8 @@ describe('PickupTask control projection', () => {
       timeline_page: { has_more: false, next_before_sequence: null },
       current_dispatch_state: 'not_dispatched', current_dispatch_event: null,
       dispatch_timeline: [], caller_is_assigned_field_actor: false,
+      current_attempt_state: 'not_recorded', current_attempt_event: null,
+      current_exception_state: 'none_recorded', caller_can_record_attempt: false,
       authority_boundary: {
         object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
       },
@@ -191,6 +198,81 @@ describe('PickupTask control projection', () => {
       current_dispatch_event: { ...assigned, assigned_actor_id: 'hidden' },
       dispatch_timeline: [{ ...assigned, assigned_actor_id: 'hidden' }],
       caller_is_assigned_field_actor: false,
+    })).toBeNull()
+  })
+
+  it('accepts a sanitized collection assertion without inferring custody or billing', () => {
+    const arrival = [
+      {
+        id: 'dispatch-1', event_sequence: 1, event_type: 'field_actor_assigned',
+        actor_role: 'vendor_dispatcher', notes: null, created_at: '2026-08-18T13:00:00Z',
+      },
+      {
+        id: 'dispatch-2', event_sequence: 2, event_type: 'en_route_recorded',
+        actor_role: 'assigned_field_actor', notes: null, created_at: '2026-08-18T14:00:00Z',
+      },
+      {
+        id: 'dispatch-3', event_sequence: 3, event_type: 'arrival_recorded',
+        actor_role: 'assigned_field_actor', notes: null, created_at: '2026-08-18T15:00:00Z',
+      },
+    ]
+    const attempt = {
+      id: 'attempt-1', event_sequence: 1, event_type: 'attempt_collection_asserted',
+      actor_role: 'assigned_field_actor', reason_code: null, notes: 'Loaded by driver',
+      created_at: '2026-08-18T15:30:00Z',
+    }
+    const record = normalizePickupTaskRecord({
+      ...completeRecord,
+      current_dispatch_state: 'arrival_recorded',
+      current_dispatch_event: arrival[2],
+      dispatch_timeline: arrival,
+      caller_is_assigned_field_actor: true,
+      current_attempt_state: 'attempt_collection_asserted',
+      current_attempt_event: attempt,
+      current_exception_state: 'none_recorded',
+      caller_can_record_attempt: false,
+    })
+
+    expect(record?.current_attempt_state).toBe('attempt_collection_asserted')
+    expect(record?.authority_boundary).toEqual({
+      object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
+    })
+    expect(pickupAttemptLabel('attempt_collection_asserted')).toContain('asserted')
+  })
+
+  it('requires REVIEW REQUIRED for a structured failed attempt and fails closed on malformed evidence', () => {
+    const failedAttempt = {
+      id: 'attempt-1', event_sequence: 1, event_type: 'attempt_failed',
+      actor_role: 'assigned_field_actor', reason_code: 'equipment_not_ready',
+      notes: 'Customer still using equipment', created_at: '2026-08-18T15:30:00Z',
+    }
+    expect(normalizePickupTaskRecord({
+      ...completeRecord,
+      current_attempt_state: 'attempt_failed',
+      current_attempt_event: failedAttempt,
+      current_exception_state: 'none_recorded',
+      caller_can_record_attempt: false,
+    })).toBeNull()
+    expect(normalizePickupTaskRecord({
+      ...completeRecord,
+      current_attempt_state: 'attempt_failed',
+      current_attempt_event: { ...failedAttempt, reason_code: null },
+      current_exception_state: 'review_required',
+      caller_can_record_attempt: false,
+    })).toBeNull()
+    expect(normalizePickupTaskRecord({
+      ...completeRecord,
+      current_attempt_state: 'not_recorded',
+      current_attempt_event: null,
+      current_exception_state: 'none_recorded',
+      caller_can_record_attempt: true,
+    })).toBeNull()
+    expect(normalizePickupTaskRecord({
+      ...completeRecord,
+      current_attempt_state: 'attempt_failed',
+      current_attempt_event: failedAttempt,
+      current_exception_state: 'review_required',
+      caller_can_record_attempt: false,
     })).toBeNull()
   })
 })

@@ -13,6 +13,14 @@ export type PickupDispatchState =
   | 'arrival_recorded'
   | 'unknown'
 
+export type PickupAttemptState =
+  | 'not_recorded'
+  | 'attempt_collection_asserted'
+  | 'attempt_failed'
+  | 'unknown'
+
+export type PickupExceptionState = 'none_recorded' | 'review_required' | 'unknown'
+
 export const PICKUP_SCHEDULE_REASON_CODES = [
   'customer_access_conflict',
   'vendor_capacity',
@@ -24,6 +32,18 @@ export const PICKUP_SCHEDULE_REASON_CODES = [
 ] as const
 
 export type PickupScheduleReasonCode = typeof PICKUP_SCHEDULE_REASON_CODES[number]
+
+export const PICKUP_ATTEMPT_REASON_CODES = [
+  'customer_access_unavailable',
+  'site_restriction',
+  'equipment_not_ready',
+  'equipment_not_found',
+  'weather_or_safety',
+  'contact_issue',
+  'other',
+] as const
+
+export type PickupAttemptReasonCode = typeof PICKUP_ATTEMPT_REASON_CODES[number]
 
 export interface PickupScheduleWindow {
   pickup_window_start: string
@@ -49,6 +69,16 @@ export interface PickupDispatchEvent {
   created_at: string
 }
 
+export interface PickupAttemptEvent {
+  id: string
+  event_sequence: 1
+  event_type: Exclude<PickupAttemptState, 'not_recorded' | 'unknown'>
+  actor_role: 'assigned_field_actor'
+  reason_code: PickupAttemptReasonCode | null
+  notes: string | null
+  created_at: string
+}
+
 export interface PickupTaskControlRecord {
   rfq_id: string
   operational_status: string
@@ -70,6 +100,10 @@ export interface PickupTaskControlRecord {
   current_dispatch_event: PickupDispatchEvent | null
   dispatch_timeline: PickupDispatchEvent[]
   caller_is_assigned_field_actor: boolean
+  current_attempt_state: PickupAttemptState
+  current_attempt_event: PickupAttemptEvent | null
+  current_exception_state: PickupExceptionState
+  caller_can_record_attempt: boolean
   authority_boundary: {
     object_scope: 'rfq'
     pickup_controls_billing: false
@@ -87,6 +121,10 @@ const REASON_CODES = new Set<string>(PICKUP_SCHEDULE_REASON_CODES)
 const DISPATCH_EVENT_TYPES = new Set([
   'field_actor_assigned', 'en_route_recorded', 'arrival_recorded',
 ])
+const ATTEMPT_EVENT_TYPES = new Set([
+  'attempt_collection_asserted', 'attempt_failed',
+])
+const ATTEMPT_REASON_CODES = new Set<string>(PICKUP_ATTEMPT_REASON_CODES)
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -178,6 +216,38 @@ function normalizeDispatchEvent(value: unknown): PickupDispatchEvent | null {
   }
 }
 
+function normalizeAttemptEvent(value: unknown): PickupAttemptEvent | null {
+  if (!isRecord(value)) return null
+  const allowedKeys = new Set([
+    'id', 'event_sequence', 'event_type', 'actor_role', 'reason_code', 'notes', 'created_at',
+  ])
+  if (Object.keys(value).some((key) => !allowedKeys.has(key))) return null
+  const id = requiredString(value.id)
+  const eventType = requiredString(value.event_type)
+  const reasonCode = value.reason_code
+  const notes = typeof value.notes === 'string' ? value.notes : null
+  if (!id || !eventType || !ATTEMPT_EVENT_TYPES.has(eventType)
+      || value.event_sequence !== 1 || value.actor_role !== 'assigned_field_actor'
+      || !validDate(value.created_at)
+      || (value.notes !== null && typeof value.notes !== 'string')
+      || (reasonCode !== null
+        && (typeof reasonCode !== 'string' || !ATTEMPT_REASON_CODES.has(reasonCode)))
+      || (eventType === 'attempt_collection_asserted' && reasonCode !== null)
+      || (eventType === 'attempt_failed' && reasonCode === null)
+      || (reasonCode === 'other' && !notes?.trim())) {
+    return null
+  }
+  return {
+    id,
+    event_sequence: 1,
+    event_type: eventType as PickupAttemptEvent['event_type'],
+    actor_role: 'assigned_field_actor',
+    reason_code: reasonCode as PickupAttemptReasonCode | null,
+    notes,
+    created_at: value.created_at,
+  }
+}
+
 function windowsMatch(left: PickupScheduleWindow | null, right: PickupScheduleEvent | null): boolean {
   if (!left || !right) return left === null && right === null
   return left.pickup_window_start === right.pickup_window_start
@@ -206,7 +276,11 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
         || value.current_dispatch_state !== 'not_dispatched'
         || value.current_dispatch_event !== null
         || !Array.isArray(value.dispatch_timeline) || value.dispatch_timeline.length !== 0
-        || value.caller_is_assigned_field_actor !== false) return null
+        || value.caller_is_assigned_field_actor !== false
+        || value.current_attempt_state !== 'not_recorded'
+        || value.current_attempt_event !== null
+        || value.current_exception_state !== 'none_recorded'
+        || value.caller_can_record_attempt !== false) return null
     return {
       rfq_id: rfqId,
       operational_status: operationalStatus,
@@ -221,6 +295,10 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
       current_dispatch_event: null,
       dispatch_timeline: [],
       caller_is_assigned_field_actor: false,
+      current_attempt_state: 'not_recorded',
+      current_attempt_event: null,
+      current_exception_state: 'none_recorded',
+      caller_can_record_attempt: false,
       authority_boundary: {
         object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
       },
@@ -293,6 +371,34 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
         || currentDispatch.event_type !== dispatchState) return null
   }
 
+
+  const attemptState = requiredString(value.current_attempt_state)
+  const exceptionState = requiredString(value.current_exception_state)
+  if (!attemptState || !exceptionState || typeof value.caller_can_record_attempt !== 'boolean') {
+    return null
+  }
+  const attemptEvent = value.current_attempt_event === null
+    ? null
+    : normalizeAttemptEvent(value.current_attempt_event)
+  if (attemptState === 'not_recorded') {
+    if (attemptEvent !== null || exceptionState !== 'none_recorded') return null
+    if (value.caller_can_record_attempt
+        && (dispatchState !== 'arrival_recorded'
+          || value.caller_is_assigned_field_actor !== true)) return null
+  } else if (attemptState === 'attempt_collection_asserted') {
+    if (!attemptEvent || attemptEvent.event_type !== attemptState
+        || dispatchState !== 'arrival_recorded'
+        || exceptionState !== 'none_recorded'
+        || value.caller_can_record_attempt !== false) return null
+  } else if (attemptState === 'attempt_failed') {
+    if (!attemptEvent || attemptEvent.event_type !== attemptState
+        || dispatchState !== 'arrival_recorded'
+        || exceptionState !== 'review_required'
+        || value.caller_can_record_attempt !== false) return null
+  } else {
+    return null
+  }
+
   return {
     rfq_id: rfqId,
     operational_status: operationalStatus,
@@ -310,6 +416,10 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
     current_dispatch_event: currentDispatch,
     dispatch_timeline: dispatchTimeline,
     caller_is_assigned_field_actor: value.caller_is_assigned_field_actor,
+    current_attempt_state: attemptState as PickupAttemptState,
+    current_attempt_event: attemptEvent,
+    current_exception_state: exceptionState as PickupExceptionState,
+    caller_can_record_attempt: value.caller_can_record_attempt,
     authority_boundary: {
       object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
     },
@@ -335,4 +445,11 @@ export function pickupDispatchLabel(state: PickupDispatchState): string {
   if (state === 'en_route_recorded') return 'En route (reported)'
   if (state === 'arrival_recorded') return 'Arrived at site (reported)'
   return 'Dispatch status unknown'
+}
+
+export function pickupAttemptLabel(state: PickupAttemptState): string {
+  if (state === 'not_recorded') return 'No attempt outcome recorded'
+  if (state === 'attempt_collection_asserted') return 'Collection asserted by field actor'
+  if (state === 'attempt_failed') return 'Pickup attempt failed'
+  return 'Attempt status unknown'
 }

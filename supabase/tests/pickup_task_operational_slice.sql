@@ -3,11 +3,12 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = public, extensions;
 
-SELECT plan(64);
+SELECT plan(82);
 
 SELECT has_table('public', 'rental_pickup_tasks', 'PickupTask table exists');
 SELECT has_table('public', 'rental_pickup_schedule_events', 'pickup schedule event table exists');
 SELECT has_table('public', 'rental_pickup_dispatch_events', 'pickup dispatch event table exists');
+SELECT has_table('public', 'rental_pickup_attempt_events', 'pickup attempt event table exists');
 
 SELECT ok(
   (SELECT relrowsecurity FROM pg_catalog.pg_class
@@ -24,6 +25,11 @@ SELECT ok(
    WHERE oid = 'public.rental_pickup_dispatch_events'::regclass),
   'pickup dispatch event RLS is enabled'
 );
+SELECT ok(
+  (SELECT relrowsecurity FROM pg_catalog.pg_class
+   WHERE oid = 'public.rental_pickup_attempt_events'::regclass),
+  'pickup attempt event RLS is enabled'
+);
 
 SELECT ok(
   NOT has_table_privilege('authenticated', 'public.rental_pickup_tasks', 'SELECT'),
@@ -37,6 +43,16 @@ SELECT ok(
   NOT has_table_privilege('authenticated', 'public.rental_pickup_dispatch_events', 'SELECT'),
   'authenticated clients cannot read pickup dispatch events directly'
 );
+SELECT ok(
+  NOT has_table_privilege('authenticated', 'public.rental_pickup_attempt_events', 'SELECT'),
+  'authenticated clients cannot read pickup attempt events directly'
+);
+
+SELECT ok(
+  NOT has_table_privilege('service_role', 'public.rental_pickup_attempt_events', privilege_name),
+  format('service_role lacks direct %s on pickup attempt events', privilege_name)
+)
+FROM unnest(ARRAY['INSERT', 'UPDATE', 'DELETE']) AS privileges(privilege_name);
 
 SELECT ok(
   NOT has_table_privilege('service_role', table_name, privilege_name),
@@ -60,6 +76,27 @@ SELECT ok(
 SELECT ok(
   has_table_privilege('service_role', 'public.rental_pickup_dispatch_events', 'SELECT'),
   'service_role can assemble the sanitized dispatch projection'
+);
+SELECT ok(
+  has_table_privilege('service_role', 'public.rental_pickup_attempt_events', 'SELECT'),
+  'service_role can assemble the sanitized attempt projection'
+);
+
+SELECT ok(
+  has_function_privilege(
+    'service_role',
+    'public.record_rental_pickup_attempt_outcome(uuid,uuid,text,text,text,text)',
+    'EXECUTE'
+  ),
+  'service_role can transport the governed pickup attempt command'
+);
+SELECT ok(
+  NOT has_function_privilege(
+    'authenticated',
+    'public.record_rental_pickup_attempt_outcome(uuid,uuid,text,text,text,text)',
+    'EXECUTE'
+  ),
+  'authenticated clients cannot call the pickup attempt command directly'
 );
 
 SELECT ok(
@@ -407,6 +444,75 @@ SELECT is(
 );
 
 SELECT throws_ok(
+  $$ SELECT public.record_rental_pickup_attempt_outcome(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007104',
+    'failed', 'equipment_not_ready', 'Equipment still in use', 'wrong-actor-attempt'
+  ) $$,
+  'P0001',
+  'Actor 00000000-0000-4000-8000-000000007104 is not the assigned pickup field actor for RFQ 00000000-0000-4000-8000-000000007301',
+  'an unassigned accepted-vendor member cannot record a pickup attempt'
+);
+SELECT throws_ok(
+  $$ SELECT public.record_rental_pickup_attempt_outcome(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007102',
+    'failed', NULL, 'Equipment still in use', 'missing-attempt-reason'
+  ) $$,
+  'P0001',
+  'Failed pickup attempt requires a governed reason code',
+  'a failed pickup attempt requires a structured reason'
+);
+SELECT throws_ok(
+  $$ SELECT public.record_rental_pickup_attempt_outcome(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007102',
+    'collection_asserted', 'equipment_not_ready', NULL, 'collection-with-reason'
+  ) $$,
+  'P0001',
+  'Pickup attempt reason is only permitted for a failed attempt',
+  'a collection assertion cannot carry a failure reason'
+);
+SELECT lives_ok(
+  $$ SELECT public.record_rental_pickup_attempt_outcome(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007102',
+    'failed', 'equipment_not_ready', 'Equipment still in use', 'failed-attempt-1'
+  ) $$,
+  'the assigned field actor can append a structured failed-attempt outcome'
+);
+SELECT is(
+  (SELECT event_type FROM public.rental_pickup_attempt_events
+   WHERE rfq_id = '00000000-0000-4000-8000-000000007301'),
+  'attempt_failed',
+  'the attempt ledger records the failed outcome'
+);
+SELECT is(
+  (SELECT reason_code FROM public.rental_pickup_attempt_events
+   WHERE rfq_id = '00000000-0000-4000-8000-000000007301'),
+  'equipment_not_ready',
+  'the attempt ledger records the governed exception reason'
+);
+SELECT lives_ok(
+  $$ SELECT public.record_rental_pickup_attempt_outcome(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007102',
+    'failed', 'equipment_not_ready', 'Equipment still in use', 'failed-attempt-1'
+  ) $$,
+  'an exact pickup attempt replay is idempotent'
+);
+SELECT throws_ok(
+  $$ SELECT public.record_rental_pickup_attempt_outcome(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007102',
+    'collection_asserted', NULL, 'Loaded by driver', 'second-attempt'
+  ) $$,
+  'P0001',
+  'Pickup task already has an attempt outcome; retry authority is not included',
+  'a second pickup attempt fails closed without approved retry authority'
+);
+
+SELECT throws_ok(
   $$ SELECT public.respond_rental_pickup_schedule(
     '00000000-0000-4000-8000-000000007301',
     '00000000-0000-4000-8000-000000007102',
@@ -512,6 +618,13 @@ SELECT throws_ok(
   'rental_pickup_dispatch_events rows are immutable; append a governed pickup event instead',
   'pickup dispatch events are immutable'
 );
+SELECT throws_ok(
+  $$ DELETE FROM public.rental_pickup_attempt_events
+     WHERE rfq_id = '00000000-0000-4000-8000-000000007301' $$,
+  'P0001',
+  'rental_pickup_attempt_events rows are immutable; append a governed pickup event instead',
+  'pickup attempt events are immutable'
+);
 
 SELECT ok(
   NOT EXISTS (
@@ -520,7 +633,8 @@ SELECT ok(
       AND table_name IN (
         'rental_pickup_tasks',
         'rental_pickup_schedule_events',
-        'rental_pickup_dispatch_events'
+        'rental_pickup_dispatch_events',
+        'rental_pickup_attempt_events'
       )
       AND column_name ~ '(line|item|quantity|serial|kit|component|partial|custody|billing)'
   ),
@@ -530,7 +644,7 @@ SELECT is(
   (SELECT count(*)::integer FROM public.audit_events
    WHERE related_rfq_id = '00000000-0000-4000-8000-000000007301'
      AND event_type LIKE 'pickup.%'),
-  6,
+  7,
   'each accepted PickupTask command produces one atomic audit event'
 );
 

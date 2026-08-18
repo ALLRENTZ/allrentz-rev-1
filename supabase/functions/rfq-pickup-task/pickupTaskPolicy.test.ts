@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildPickupAttemptProjection,
   buildPickupDispatchProjection,
   buildPickupScheduleProjection,
   validatePickupTaskAction,
+  type PickupAttemptEventProjection,
   type PickupDispatchEventProjection,
   type PickupScheduleEventProjection,
 } from './pickupTaskPolicy'
@@ -94,6 +96,31 @@ describe('PickupTask action policy', () => {
     })).toEqual({ valid: false, error: 'progress must be en_route or arrived' })
   })
 
+  it('accepts only governed pickup attempt outcomes and structured failure reasons', () => {
+    expect(validatePickupTaskAction({
+      action: 'record_attempt', rfq_id: 'rfq-1', outcome: 'collection_asserted',
+      reason_code: null, notes: 'Loaded by driver', idempotency_key: 'attempt-1',
+    })).toMatchObject({ valid: true, input: { outcome: 'collection_asserted' } })
+    expect(validatePickupTaskAction({
+      action: 'record_attempt', rfq_id: 'rfq-1', outcome: 'failed',
+      reason_code: 'equipment_not_ready', notes: 'Still in use', idempotency_key: 'attempt-2',
+    })).toMatchObject({
+      valid: true, input: { outcome: 'failed', reasonCode: 'equipment_not_ready' },
+    })
+    expect(validatePickupTaskAction({
+      action: 'record_attempt', rfq_id: 'rfq-1', outcome: 'failed',
+      reason_code: null, idempotency_key: 'attempt-3',
+    })).toEqual({
+      valid: false, error: 'a failed pickup attempt requires a governed reason_code',
+    })
+    expect(validatePickupTaskAction({
+      action: 'record_attempt', rfq_id: 'rfq-1', outcome: 'collection_asserted',
+      reason_code: 'equipment_not_ready', idempotency_key: 'attempt-4',
+    })).toEqual({
+      valid: false, error: 'reason_code is only permitted for a failed pickup attempt',
+    })
+  })
+
   it('projects event 101 independently from the 100-event timeline page', () => {
     const events = Array.from({ length: 101 }, (_, index): PickupScheduleEventProjection => ({
       id: `event-${101 - index}`,
@@ -139,6 +166,38 @@ describe('PickupTask action policy', () => {
       events[0],
       { ...events[1], event_type: 'arrival_recorded' },
     ], 'vendor-user')).toThrow('Malformed PickupTask dispatch projection')
+  })
+
+  it('projects a sanitized attempt assertion and fail-closed exception state', () => {
+    const collection: PickupAttemptEventProjection = {
+      id: 'attempt-1', event_sequence: 1, event_type: 'attempt_collection_asserted',
+      actor_role: 'assigned_field_actor', assigned_actor_id: 'vendor-user',
+      reason_code: null, notes: 'Loaded by driver', created_at: '2026-08-18T15:30:00Z',
+    }
+    const recorded = buildPickupAttemptProjection([collection], true, 'arrival_recorded')
+    const available = buildPickupAttemptProjection([], true, 'arrival_recorded')
+
+    expect(recorded.current_attempt_state).toBe('attempt_collection_asserted')
+    expect(recorded.current_attempt_event).not.toHaveProperty('assigned_actor_id')
+    expect(recorded.current_exception_state).toBe('none_recorded')
+    expect(recorded.caller_can_record_attempt).toBe(false)
+    expect(available.caller_can_record_attempt).toBe(true)
+    expect(buildPickupAttemptProjection([], true, 'en_route_recorded').caller_can_record_attempt)
+      .toBe(false)
+    expect(buildPickupAttemptProjection([{
+      ...collection, event_type: 'attempt_failed', reason_code: 'equipment_not_ready',
+    }], false, 'arrival_recorded').current_exception_state).toBe('review_required')
+    expect(() => buildPickupAttemptProjection([
+      { ...collection, event_sequence: 2 as 1 },
+    ], true, 'arrival_recorded')).toThrow('Malformed PickupTask attempt projection')
+    expect(() => buildPickupAttemptProjection([
+      collection,
+    ], true, 'en_route_recorded')).toThrow('Malformed PickupTask attempt projection')
+    expect(() => buildPickupAttemptProjection([{
+      ...collection,
+      event_type: 'attempt_failed',
+      reason_code: 'invalid_reason' as 'equipment_not_ready',
+    }], true, 'arrival_recorded')).toThrow('Malformed PickupTask attempt projection')
   })
 
   it('fails closed on granular, custody, financial, or assignment fields', () => {
