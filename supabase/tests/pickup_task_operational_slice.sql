@@ -3,12 +3,16 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = public, extensions;
 
-SELECT plan(82);
+SELECT plan(105);
 
 SELECT has_table('public', 'rental_pickup_tasks', 'PickupTask table exists');
 SELECT has_table('public', 'rental_pickup_schedule_events', 'pickup schedule event table exists');
 SELECT has_table('public', 'rental_pickup_dispatch_events', 'pickup dispatch event table exists');
 SELECT has_table('public', 'rental_pickup_attempt_events', 'pickup attempt event table exists');
+SELECT has_table(
+  'public', 'rental_pickup_exception_triage_events',
+  'pickup exception triage event table exists'
+);
 
 SELECT ok(
   (SELECT relrowsecurity FROM pg_catalog.pg_class
@@ -30,6 +34,11 @@ SELECT ok(
    WHERE oid = 'public.rental_pickup_attempt_events'::regclass),
   'pickup attempt event RLS is enabled'
 );
+SELECT ok(
+  (SELECT relrowsecurity FROM pg_catalog.pg_class
+   WHERE oid = 'public.rental_pickup_exception_triage_events'::regclass),
+  'pickup exception triage RLS is enabled'
+);
 
 SELECT ok(
   NOT has_table_privilege('authenticated', 'public.rental_pickup_tasks', 'SELECT'),
@@ -46,6 +55,18 @@ SELECT ok(
 SELECT ok(
   NOT has_table_privilege('authenticated', 'public.rental_pickup_attempt_events', 'SELECT'),
   'authenticated clients cannot read pickup attempt events directly'
+);
+SELECT ok(
+  NOT has_table_privilege(
+    'authenticated', 'public.rental_pickup_exception_triage_events', 'SELECT'
+  ),
+  'authenticated clients cannot read internal pickup exception triage directly'
+);
+SELECT ok(
+  NOT has_table_privilege(
+    'service_role', 'public.rental_pickup_exception_triage_events', 'INSERT'
+  ),
+  'service_role cannot insert triage events outside the canonical command'
 );
 
 SELECT ok(
@@ -80,6 +101,40 @@ SELECT ok(
 SELECT ok(
   has_table_privilege('service_role', 'public.rental_pickup_attempt_events', 'SELECT'),
   'service_role can assemble the sanitized attempt projection'
+);
+SELECT ok(
+  has_table_privilege(
+    'service_role', 'public.rental_pickup_exception_triage_events', 'SELECT'
+  ),
+  'service_role can assemble the authorized operations triage projection'
+);
+SELECT ok(
+  has_function_privilege(
+    'service_role',
+    'public.record_rental_pickup_exception_triage(uuid,uuid,text,text,text,text)',
+    'EXECUTE'
+  ),
+  'service_role can transport the canonical triage command'
+);
+SELECT ok(
+  NOT has_function_privilege(
+    'authenticated',
+    'public.record_rental_pickup_exception_triage(uuid,uuid,text,text,text,text)',
+    'EXECUTE'
+  ),
+  'authenticated clients cannot call the triage command directly'
+);
+SELECT ok(
+  has_function_privilege(
+    'service_role', 'public.get_rental_pickup_exception_triage_queue(uuid)', 'EXECUTE'
+  ),
+  'service_role can transport the authorized operations triage queue'
+);
+SELECT ok(
+  NOT has_function_privilege(
+    'authenticated', 'public.get_rental_pickup_exception_triage_queue(uuid)', 'EXECUTE'
+  ),
+  'authenticated clients cannot call the operations triage queue directly'
 );
 
 SELECT ok(
@@ -194,7 +249,20 @@ INSERT INTO auth.users (
    '{"full_name":"Pickup Outsider","role":"vendor"}'::jsonb, now(), now()),
   ('00000000-0000-4000-8000-000000007104', 'authenticated', 'authenticated',
    'pickup-vendor-member@example.test', '{}'::jsonb,
-   '{"full_name":"Pickup Vendor Member","role":"vendor"}'::jsonb, now(), now());
+   '{"full_name":"Pickup Vendor Member","role":"vendor"}'::jsonb, now(), now()),
+  ('00000000-0000-4000-8000-000000007105', 'authenticated', 'authenticated',
+   'pickup-operations@example.test', '{}'::jsonb,
+   '{"full_name":"Pickup Operations","role":"customer"}'::jsonb, now(), now()),
+  ('00000000-0000-4000-8000-000000007106', 'authenticated', 'authenticated',
+   'pickup-manager@example.test', '{}'::jsonb,
+   '{"full_name":"Pickup Manager","role":"customer"}'::jsonb, now(), now());
+
+UPDATE public.user_roles
+SET role = 'admin'::public.app_role
+WHERE user_id = '00000000-0000-4000-8000-000000007105';
+UPDATE public.user_roles
+SET role = 'manager'::public.app_role
+WHERE user_id = '00000000-0000-4000-8000-000000007106';
 
 INSERT INTO public.organizations (
   id, name, org_type, slug, verified, is_simulated
@@ -646,6 +714,124 @@ SELECT is(
      AND event_type LIKE 'pickup.%'),
   7,
   'each accepted PickupTask command produces one atomic audit event'
+);
+
+SELECT throws_ok(
+  $$ SELECT public.record_rental_pickup_exception_triage(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007101',
+    'claim', NULL, NULL, 'customer-triage-claim'
+  ) $$,
+  'P0001',
+  'Actor 00000000-0000-4000-8000-000000007101 lacks pickup exception triage authority',
+  'a customer cannot claim operations triage'
+);
+SELECT lives_ok(
+  $$ SELECT public.record_rental_pickup_exception_triage(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007105',
+    'claim', NULL, NULL, 'operations-triage-claim'
+  ) $$,
+  'an active protected operations actor can claim triage for self'
+);
+SELECT is(
+  (SELECT event_type FROM public.rental_pickup_exception_triage_events
+   WHERE rfq_id = '00000000-0000-4000-8000-000000007301'
+   ORDER BY event_sequence DESC LIMIT 1),
+  'triage_claimed',
+  'claiming appends a triage event'
+);
+SELECT lives_ok(
+  $$ SELECT public.record_rental_pickup_exception_triage(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007105',
+    'claim', NULL, NULL, 'operations-triage-claim'
+  ) $$,
+  'an exact triage claim replay is idempotent'
+);
+SELECT throws_ok(
+  $$ SELECT public.record_rental_pickup_exception_triage(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007106',
+    'note', NULL, 'Manager note', 'manager-triage-note'
+  ) $$,
+  'P0001',
+  'Actor 00000000-0000-4000-8000-000000007106 is not the assigned pickup exception triage actor',
+  'another operations actor cannot append to the claimed triage'
+);
+SELECT lives_ok(
+  $$ SELECT public.record_rental_pickup_exception_triage(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007105',
+    'note', NULL, 'Customer coordination requested', 'operations-triage-note'
+  ) $$,
+  'the assigned operations actor can append an internal note'
+);
+SELECT throws_ok(
+  $$ SELECT public.record_rental_pickup_exception_triage(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007105',
+    'escalate', 'billing_adjustment', 'Not a governed reason', 'invalid-escalation'
+  ) $$,
+  'P0001',
+  'Pickup exception escalation reason must be governed',
+  'triage cannot escalate using a financial or ungoverned reason'
+);
+SELECT lives_ok(
+  $$ SELECT public.record_rental_pickup_exception_triage(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007105',
+    'escalate', 'site_access_review', 'Gate remains inaccessible', 'valid-escalation'
+  ) $$,
+  'the assigned operations actor can append a governed escalation'
+);
+SELECT throws_ok(
+  $$ SELECT public.record_rental_pickup_exception_triage(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007105',
+    'note', NULL, 'Post-escalation mutation', 'post-escalation-note'
+  ) $$,
+  'P0001',
+  'Pickup exception triage is already escalated; further mutation is not authorized',
+  'an escalation is terminal for the bounded triage workflow'
+);
+SELECT is(
+  (SELECT triage_state FROM public.get_rental_pickup_exception_triage_queue(
+    '00000000-0000-4000-8000-000000007105'
+  )),
+  'escalated',
+  'the operations projection shows the latest triage state'
+);
+SELECT is(
+  (SELECT resolution_state FROM public.get_rental_pickup_exception_triage_queue(
+    '00000000-0000-4000-8000-000000007105'
+  )),
+  'blocked',
+  'the operations projection keeps resolution blocked'
+);
+SELECT is(
+  (SELECT count(*)::integer FROM public.audit_events
+   WHERE related_rfq_id = '00000000-0000-4000-8000-000000007301'
+     AND event_type LIKE 'pickup.exception.triage_%'),
+  3,
+  'each accepted triage command appends one atomic audit event'
+);
+SELECT throws_ok(
+  $$ DELETE FROM public.rental_pickup_exception_triage_events
+     WHERE rfq_id = '00000000-0000-4000-8000-000000007301' $$,
+  'P0001',
+  'rental_pickup_exception_triage_events rows are immutable; append a governed pickup event instead',
+  'triage history is immutable'
+);
+SELECT ok(
+  NOT EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_proc AS proc
+    JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = proc.pronamespace
+    WHERE namespace.nspname = 'public'
+      AND proc.proname ILIKE '%pickup%exception%resolve%'
+  ),
+  'no pickup exception resolution command exists'
 );
 
 SELECT * FROM finish();

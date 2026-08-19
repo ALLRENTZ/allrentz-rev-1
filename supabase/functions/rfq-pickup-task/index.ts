@@ -8,6 +8,7 @@ import {
 } from '../rfq-transition/keys.ts'
 import {
   buildPickupAttemptProjection,
+  buildPickupExceptionPublicProjection,
   buildPickupDispatchProjection,
   buildPickupScheduleProjection,
   validatePickupTaskAction,
@@ -28,6 +29,7 @@ function mapCommandError(message: string): Response {
   if (message.includes('not found')) return jsonError(404, 'Required pickup authority record not found')
   if (message.includes('lacks accepted-vendor') || message.includes('lacks customer')
       || message.includes('lacks assigned-vendor') || message.includes('not the assigned')
+      || message.includes('lacks pickup exception triage authority')
       || message.includes('simulation scope')) {
     return jsonError(403, 'Insufficient authority for this PickupTask action')
   }
@@ -38,6 +40,8 @@ function mapCommandError(message: string): Response {
       || message.includes('requires an assigned-actor arrival assertion')
       || message.includes('already has a field assignment')
       || message.includes('already has an attempt outcome')
+      || message.includes('already claimed')
+      || message.includes('must be claimed')
       || message.includes('reassignment is not authorized')
       || message.includes('requires prior state')
       || message.includes('idempotency key conflicts')) {
@@ -122,6 +126,26 @@ Deno.serve(async (req: Request) => {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
+  if (input.action === 'triage_queue') {
+    const { data, error } = await svc.rpc('get_rental_pickup_exception_triage_queue', {
+      p_actor_id: user.id,
+    })
+    if (error) {
+      console.error('rfq-pickup-task triage queue error:', error.message ?? 'unknown')
+      return mapCommandError(error.message ?? '')
+    }
+    return json(200, {
+      items: data ?? [],
+      authority_boundary: {
+        object_scope: 'rfq',
+        non_authoritative_triage: true,
+        resolution_state: 'blocked',
+        pickup_controls_billing: false,
+        custody_recorded: false,
+      },
+    })
+  }
+
   if (input.action === 'status') {
     // The caller-scoped rental_requests query is the read authorization gate.
     // Privileged reads occur only afterward and return a narrow projection.
@@ -166,6 +190,9 @@ Deno.serve(async (req: Request) => {
         current_attempt_state: 'not_recorded',
         current_attempt_event: null,
         current_exception_state: 'none_recorded',
+        current_exception_triage_state: 'not_applicable',
+        current_exception_triage_updated_at: null,
+        exception_resolution_state: 'blocked',
         caller_can_record_attempt: false,
         authority_boundary: {
           object_scope: 'rfq',
@@ -263,6 +290,29 @@ Deno.serve(async (req: Request) => {
       console.error('rfq-pickup-task malformed attempt projection:', error)
       return jsonError(500, 'Pickup attempt progress requires review')
     }
+
+    const triageEventProjection = 'id, event_sequence, event_type, actor_role, escalation_reason, created_at'
+    const { data: triageEvents, error: triageError } = await svc
+      .from('rental_pickup_exception_triage_events')
+      .select(triageEventProjection)
+      .eq('pickup_task_id', task.id)
+      .order('event_sequence', { ascending: true })
+
+    if (triageError) {
+      console.error('rfq-pickup-task triage projection error:', triageError)
+      return jsonError(500, 'Pickup exception triage requires review')
+    }
+
+    let publicTriageProjection
+    try {
+      publicTriageProjection = buildPickupExceptionPublicProjection(
+        triageEvents ?? [],
+        attemptProjection.current_exception_state,
+      )
+    } catch (error) {
+      console.error('rfq-pickup-task malformed triage projection:', error)
+      return jsonError(500, 'Pickup exception triage requires review')
+    }
     return json(200, {
       rfq_id: authorizedRfq.id,
       operational_status: authorizedRfq.operational_status,
@@ -274,6 +324,7 @@ Deno.serve(async (req: Request) => {
       ...scheduleProjection,
       ...dispatchProjection,
       ...attemptProjection,
+      ...publicTriageProjection,
       authority_boundary: {
         object_scope: task.object_scope,
         pickup_controls_billing: false,
@@ -316,14 +367,23 @@ Deno.serve(async (req: Request) => {
               p_notes: input.notes,
               p_idempotency_key: input.idempotencyKey,
             })
-          : svc.rpc('record_rental_pickup_attempt_outcome', {
-              p_rfq_id: input.rfqId,
-              p_actor_id: user.id,
-              p_outcome: input.outcome,
-              p_reason_code: input.reasonCode,
-              p_notes: input.notes,
-              p_idempotency_key: input.idempotencyKey,
-            })
+          : input.action === 'record_attempt'
+            ? svc.rpc('record_rental_pickup_attempt_outcome', {
+                p_rfq_id: input.rfqId,
+                p_actor_id: user.id,
+                p_outcome: input.outcome,
+                p_reason_code: input.reasonCode,
+                p_notes: input.notes,
+                p_idempotency_key: input.idempotencyKey,
+              })
+            : svc.rpc('record_rental_pickup_exception_triage', {
+                p_rfq_id: input.rfqId,
+                p_actor_id: user.id,
+                p_action: input.triageAction,
+                p_escalation_reason: input.escalationReason,
+                p_notes: input.notes,
+                p_idempotency_key: input.idempotencyKey,
+              })
 
   const { data, error } = await rpc
   if (error) {

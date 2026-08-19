@@ -37,6 +37,9 @@ const completeRecord = {
   current_attempt_state: 'not_recorded',
   current_attempt_event: null,
   current_exception_state: 'none_recorded',
+  current_exception_triage_state: 'not_applicable',
+  current_exception_triage_updated_at: null,
+  exception_resolution_state: 'blocked',
   caller_can_record_attempt: false,
   authority_boundary: {
     object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
@@ -62,6 +65,9 @@ describe('PickupTask control projection', () => {
       dispatch_timeline: [], caller_is_assigned_field_actor: false,
       current_attempt_state: 'not_recorded', current_attempt_event: null,
       current_exception_state: 'none_recorded', caller_can_record_attempt: false,
+      current_exception_triage_state: 'not_applicable',
+      current_exception_triage_updated_at: null,
+      exception_resolution_state: 'blocked',
       authority_boundary: {
         object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
       },

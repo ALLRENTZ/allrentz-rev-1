@@ -14,6 +14,9 @@ export interface PickupExceptionReviewItem extends PickupExceptionReviewSource {
   reasonCode: PickupAttemptReasonCode
   notes: string | null
   recordedAt: string
+  triageState: 'unassigned' | 'under_review' | 'escalated'
+  triageUpdatedAt: string | null
+  resolutionState: 'blocked'
   authorityBoundary: {
     objectScope: 'rfq'
     pickupControlsBilling: false
@@ -51,6 +54,10 @@ export function classifyPickupExceptionReview(
       reasonCode: event.reason_code,
       notes: event.notes,
       recordedAt: event.created_at,
+      triageState: record.current_exception_triage_state as
+        'unassigned' | 'under_review' | 'escalated',
+      triageUpdatedAt: record.current_exception_triage_updated_at,
+      resolutionState: record.exception_resolution_state,
       authorityBoundary: {
         objectScope: 'rfq',
         pickupControlsBilling: false,

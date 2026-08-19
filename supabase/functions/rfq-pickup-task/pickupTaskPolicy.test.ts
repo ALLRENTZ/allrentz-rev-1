@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   buildPickupAttemptProjection,
   buildPickupDispatchProjection,
+  buildPickupExceptionPublicProjection,
   buildPickupScheduleProjection,
   validatePickupTaskAction,
   type PickupAttemptEventProjection,
   type PickupDispatchEventProjection,
+  type PickupExceptionTriageEventProjection,
   type PickupScheduleEventProjection,
 } from './pickupTaskPolicy'
 
@@ -121,6 +123,37 @@ describe('PickupTask action policy', () => {
     })
   })
 
+  it('accepts only non-authoritative triage queue and append actions', () => {
+    expect(validatePickupTaskAction({ action: 'triage_queue' })).toEqual({
+      valid: true, input: { action: 'triage_queue' },
+    })
+    expect(validatePickupTaskAction({
+      action: 'triage', rfq_id: 'rfq-1', triage_action: 'claim',
+      idempotency_key: 'claim-1',
+    })).toMatchObject({ valid: true, input: { triageAction: 'claim' } })
+    expect(validatePickupTaskAction({
+      action: 'triage', rfq_id: 'rfq-1', triage_action: 'note',
+      notes: 'Customer contact requested', idempotency_key: 'note-1',
+    })).toMatchObject({ valid: true, input: { triageAction: 'note' } })
+    expect(validatePickupTaskAction({
+      action: 'triage', rfq_id: 'rfq-1', triage_action: 'escalate',
+      escalation_reason: 'site_access_review', notes: 'Gate remains inaccessible',
+      idempotency_key: 'escalate-1',
+    })).toMatchObject({
+      valid: true,
+      input: { triageAction: 'escalate', escalationReason: 'site_access_review' },
+    })
+    expect(validatePickupTaskAction({
+      action: 'triage', rfq_id: 'rfq-1', triage_action: 'resolve',
+      idempotency_key: 'resolve-1',
+    })).toEqual({ valid: false, error: 'triage_action must be claim, note, or escalate' })
+    expect(validatePickupTaskAction({
+      action: 'triage', rfq_id: 'rfq-1', triage_action: 'escalate',
+      escalation_reason: 'billing_adjustment', notes: 'Not permitted',
+      idempotency_key: 'escalate-2',
+    })).toEqual({ valid: false, error: 'escalation_reason must be a governed triage reason' })
+  })
+
   it('projects event 101 independently from the 100-event timeline page', () => {
     const events = Array.from({ length: 101 }, (_, index): PickupScheduleEventProjection => ({
       id: `event-${101 - index}`,
@@ -198,6 +231,36 @@ describe('PickupTask action policy', () => {
       event_type: 'attempt_failed',
       reason_code: 'invalid_reason' as 'equipment_not_ready',
     }], true, 'arrival_recorded')).toThrow('Malformed PickupTask attempt projection')
+  })
+
+  it('projects sanitized triage progress without internal notes, actors, or resolution authority', () => {
+    const events: PickupExceptionTriageEventProjection[] = [
+      {
+        id: 'triage-1', event_sequence: 1, event_type: 'triage_claimed',
+        actor_role: 'platform_operations', escalation_reason: null,
+        created_at: '2026-08-19T13:00:00Z',
+      },
+      {
+        id: 'triage-2', event_sequence: 2, event_type: 'triage_note_added',
+        actor_role: 'platform_operations', escalation_reason: null,
+        created_at: '2026-08-19T13:30:00Z',
+      },
+    ]
+    expect(buildPickupExceptionPublicProjection([], 'review_required')).toEqual({
+      current_exception_triage_state: 'unassigned',
+      current_exception_triage_updated_at: null,
+      exception_resolution_state: 'blocked',
+    })
+    expect(buildPickupExceptionPublicProjection(events, 'review_required')).toEqual({
+      current_exception_triage_state: 'under_review',
+      current_exception_triage_updated_at: '2026-08-19T13:30:00Z',
+      exception_resolution_state: 'blocked',
+    })
+    expect(() => buildPickupExceptionPublicProjection([
+      { ...events[0], event_type: 'triage_note_added' },
+    ], 'review_required')).toThrow('Malformed pickup exception triage projection')
+    expect(() => buildPickupExceptionPublicProjection(events, 'none_recorded'))
+      .toThrow('Malformed pickup exception triage projection')
   })
 
   it('fails closed on granular, custody, financial, or assignment fields', () => {

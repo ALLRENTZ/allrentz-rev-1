@@ -22,6 +22,12 @@ function reasonLabel(value: string): string {
   return value.split('_').map((part) => part[0].toUpperCase() + part.slice(1)).join(' ')
 }
 
+function triageLabel(value: PickupExceptionReviewItem['triageState']): string {
+  if (value === 'unassigned') return 'Awaiting operations review'
+  if (value === 'under_review') return 'Operations review in progress'
+  return 'Escalated for operations review'
+}
+
 export default function PickupExceptionReviewQueue({ sources }: PickupExceptionReviewQueueProps) {
   const [items, setItems] = useState<PickupExceptionReviewItem[]>([])
   const [unknownCount, setUnknownCount] = useState(0)
@@ -101,6 +107,8 @@ export default function PickupExceptionReviewQueue({ sources }: PickupExceptionR
               <dl className="mt-2 grid gap-1 text-xs text-slate-700 sm:grid-cols-2">
                 <div><dt className="font-medium">Reported reason</dt><dd>{reasonLabel(item.reasonCode)}</dd></div>
                 <div><dt className="font-medium">System-recorded time</dt><dd>{formatDate(item.recordedAt)}</dd></div>
+                <div><dt className="font-medium">Operations progress</dt><dd>{triageLabel(item.triageState)}</dd></div>
+                <div><dt className="font-medium">Progress updated</dt><dd>{item.triageUpdatedAt ? formatDate(item.triageUpdatedAt) : 'Not started'}</dd></div>
               </dl>
               {item.notes && <p className="mt-2 text-xs text-slate-700">{item.notes}</p>}
               <p className="mt-2 text-xs font-medium text-amber-900">
