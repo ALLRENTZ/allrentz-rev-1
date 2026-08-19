@@ -26,6 +26,18 @@ export const PICKUP_ATTEMPT_REASON_CODES = [
 
 export type PickupAttemptReasonCode = typeof PICKUP_ATTEMPT_REASON_CODES[number]
 
+export const PICKUP_EXCEPTION_ESCALATION_REASONS = [
+  'additional_information_required',
+  'customer_coordination_review',
+  'vendor_coordination_review',
+  'site_access_review',
+  'safety_review',
+  'operations_review',
+] as const
+
+export type PickupExceptionEscalationReason =
+  typeof PICKUP_EXCEPTION_ESCALATION_REASONS[number]
+
 export interface PickupScheduleEventProjection {
   id: string
   event_sequence: number
@@ -64,6 +76,7 @@ export interface PickupAttemptEventProjection {
 }
 
 export type PickupTaskInput =
+  | { action: 'triage_queue' }
   | { action: 'status'; rfqId: string; timelineBeforeSequence: number | null }
   | {
       action: 'propose'
@@ -103,8 +116,17 @@ export type PickupTaskInput =
       notes: string | null
       idempotencyKey: string
     }
+  | {
+      action: 'triage'
+      rfqId: string
+      triageAction: 'claim' | 'note' | 'escalate'
+      escalationReason: PickupExceptionEscalationReason | null
+      notes: string | null
+      idempotencyKey: string
+    }
 
 const ACTION_KEYS: Record<PickupTaskInput['action'], Set<string>> = {
+  triage_queue: new Set(['action']),
   status: new Set(['action', 'rfq_id', 'timeline_before_sequence']),
   propose: new Set([
     'action', 'rfq_id', 'pickup_window_start', 'pickup_window_end', 'reason_code', 'notes',
@@ -120,10 +142,24 @@ const ACTION_KEYS: Record<PickupTaskInput['action'], Set<string>> = {
   record_attempt: new Set([
     'action', 'rfq_id', 'outcome', 'reason_code', 'notes', 'idempotency_key',
   ]),
+  triage: new Set([
+    'action', 'rfq_id', 'triage_action', 'escalation_reason', 'notes',
+    'idempotency_key',
+  ]),
+}
+
+export interface PickupExceptionTriageEventProjection {
+  id: string
+  event_sequence: number
+  event_type: 'triage_claimed' | 'triage_note_added' | 'triage_escalated'
+  actor_role: 'platform_operations'
+  escalation_reason: PickupExceptionEscalationReason | null
+  created_at: string
 }
 
 const REASON_CODE_SET = new Set<string>(PICKUP_SCHEDULE_REASON_CODES)
 const ATTEMPT_REASON_CODE_SET = new Set<string>(PICKUP_ATTEMPT_REASON_CODES)
+const EXCEPTION_ESCALATION_REASON_SET = new Set<string>(PICKUP_EXCEPTION_ESCALATION_REASONS)
 const ATTEMPT_EVENT_TYPES = new Set<string>([
   'attempt_collection_asserted',
   'attempt_failed',
@@ -241,6 +277,49 @@ export function buildPickupAttemptProjection(
   }
 }
 
+export function buildPickupExceptionPublicProjection(
+  eventsAscending: PickupExceptionTriageEventProjection[],
+  exceptionState: 'none_recorded' | 'review_required',
+) {
+  if (exceptionState === 'none_recorded') {
+    if (eventsAscending.length > 0) throw new Error('Malformed pickup exception triage projection')
+    return {
+      current_exception_triage_state: 'not_applicable',
+      current_exception_triage_updated_at: null,
+      exception_resolution_state: 'blocked',
+    }
+  }
+
+  const expectedTypes = ['triage_claimed', 'triage_note_added', 'triage_escalated'] as const
+  let escalated = false
+  for (let index = 0; index < eventsAscending.length; index += 1) {
+    const event = eventsAscending[index]
+    if (event.event_sequence !== index + 1
+        || event.actor_role !== 'platform_operations'
+        || !expectedTypes.includes(event.event_type)
+        || (index === 0 && event.event_type !== 'triage_claimed')
+        || (index > 0 && event.event_type === 'triage_claimed')
+        || (event.event_type === 'triage_escalated'
+          && (!event.escalation_reason
+            || !EXCEPTION_ESCALATION_REASON_SET.has(event.escalation_reason)))
+        || (event.event_type !== 'triage_escalated' && event.escalation_reason !== null)
+        || !normalizeDate(event.created_at)
+        || escalated) {
+      throw new Error('Malformed pickup exception triage projection')
+    }
+    if (event.event_type === 'triage_escalated') escalated = true
+  }
+
+  const current = eventsAscending.at(-1) ?? null
+  return {
+    current_exception_triage_state: current === null
+      ? 'unassigned'
+      : current.event_type === 'triage_escalated' ? 'escalated' : 'under_review',
+    current_exception_triage_updated_at: current?.created_at ?? null,
+    exception_resolution_state: 'blocked',
+  }
+}
+
 function validateExactKeys(body: Record<string, unknown>, action: PickupTaskInput['action']): string | null {
   const unsupported = Object.keys(body).filter((key) => !ACTION_KEYS[action].has(key))
   return unsupported.length > 0
@@ -252,17 +331,20 @@ export function validatePickupTaskAction(
   body: Record<string, unknown>,
 ): { valid: boolean; error?: string; input?: PickupTaskInput } {
   const action = body['action']
-  if (action !== 'status' && action !== 'propose' && action !== 'respond'
+  if (action !== 'triage_queue' && action !== 'triage'
+      && action !== 'status' && action !== 'propose' && action !== 'respond'
       && action !== 'assign_self' && action !== 'record_dispatch'
       && action !== 'record_attempt') {
     return {
       valid: false,
-      error: 'action must be status, propose, respond, assign_self, record_dispatch, or record_attempt',
+      error: 'action must be status, propose, respond, assign_self, record_dispatch, record_attempt, triage_queue, or triage',
     }
   }
 
   const unsupportedError = validateExactKeys(body, action)
   if (unsupportedError) return { valid: false, error: unsupportedError }
+
+  if (action === 'triage_queue') return { valid: true, input: { action } }
 
   const rfqId = typeof body['rfq_id'] === 'string' ? body['rfq_id'].trim() : ''
   if (!rfqId) return { valid: false, error: 'rfq_id is required' }
@@ -306,6 +388,39 @@ export function validatePickupTaskAction(
   const reasonCode = normalizeReasonCode(body['reason_code'])
   if (reasonCode === undefined) {
     return { valid: false, error: 'reason_code must be a governed pickup reason' }
+  }
+
+  if (action === 'triage') {
+    const triageAction = body['triage_action']
+    if (triageAction !== 'claim' && triageAction !== 'note' && triageAction !== 'escalate') {
+      return { valid: false, error: 'triage_action must be claim, note, or escalate' }
+    }
+    const rawEscalationReason = body['escalation_reason']
+    const escalationReason = rawEscalationReason === null || rawEscalationReason === undefined
+      || rawEscalationReason === ''
+      ? null
+      : typeof rawEscalationReason === 'string'
+          && EXCEPTION_ESCALATION_REASON_SET.has(rawEscalationReason.trim())
+        ? rawEscalationReason.trim() as PickupExceptionEscalationReason
+        : undefined
+    if (escalationReason === undefined) {
+      return { valid: false, error: 'escalation_reason must be a governed triage reason' }
+    }
+    if (triageAction === 'escalate' && (!escalationReason || !notes)) {
+      return { valid: false, error: 'escalation_reason and notes are required for escalation' }
+    }
+    if (triageAction !== 'escalate' && escalationReason) {
+      return { valid: false, error: 'escalation_reason is permitted only for escalation' }
+    }
+    if (triageAction === 'note' && !notes) {
+      return { valid: false, error: 'notes are required for a triage note' }
+    }
+    return {
+      valid: true,
+      input: {
+        action, rfqId, triageAction, escalationReason, notes, idempotencyKey,
+      },
+    }
   }
 
   if (action === 'assign_self') {

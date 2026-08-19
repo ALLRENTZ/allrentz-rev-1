@@ -54,6 +54,9 @@ function projection(overrides: Record<string, unknown> = {}) {
       notes: 'Equipment remains in operation', created_at: '2026-08-18T15:30:00Z',
     },
     current_exception_state: 'review_required',
+    current_exception_triage_state: 'unassigned',
+    current_exception_triage_updated_at: null,
+    exception_resolution_state: 'blocked',
     caller_can_record_attempt: false,
     authority_boundary: {
       object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
@@ -72,6 +75,9 @@ describe('Pickup exception review projection', () => {
         reasonCode: 'equipment_not_ready',
         notes: 'Equipment remains in operation',
         recordedAt: '2026-08-18T15:30:00Z',
+        triageState: 'unassigned',
+        triageUpdatedAt: null,
+        resolutionState: 'blocked',
         authorityBoundary: {
           objectScope: 'rfq', pickupControlsBilling: false, custodyRecorded: false,
         },
@@ -88,6 +94,8 @@ describe('Pickup exception review projection', () => {
         created_at: '2026-08-18T15:30:00Z',
       },
       current_exception_state: 'none_recorded',
+      current_exception_triage_state: 'not_applicable',
+      current_exception_triage_updated_at: null,
     }))).toEqual({ state: 'clear' })
   })
 
