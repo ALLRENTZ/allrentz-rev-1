@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Plus, MapPin, Calendar, FileText, Bell, Settings, DollarSign, CheckCircle, AlertTriangle, TrendingUp, Package } from 'lucide-react';
@@ -9,6 +9,7 @@ import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operat
 import { getVendorLifecycleAction, getVendorLifecycleLabel } from '@/lib/vendorLifecycle';
 import OffRentControlPanel from '@/components/OffRentControlPanel';
 import PickupTaskControlPanel from '@/components/PickupTaskControlPanel';
+import PickupExceptionReviewQueue from '@/components/PickupExceptionReviewQueue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -47,6 +48,13 @@ const VendorDashboard = () => {
   const [realQuoteForm, setRealQuoteForm] = useState({ daily_rate: '', vendor_notes: '', compliance_confirmed: false });
   const [pendingRfqsError, setPendingRfqsError] = useState(false);
   const [lifecycleRfqsError, setLifecycleRfqsError] = useState(false);
+  const pickupExceptionSources = useMemo(() => lifecycleRfqs
+    .filter((rfq) => ['demobilizing', 'off_rent'].includes(rfq.operational_status))
+    .map((rfq) => ({
+      rfqId: String(rfq.id),
+      title: rfq.equipment?.title || 'Equipment request',
+      location: rfq.delivery_address || null,
+    })), [lifecycleRfqs]);
 
   const toLocalDateTimeInput = (value: string | null | undefined) => {
     if (!value) return '';
@@ -699,6 +707,9 @@ const VendorDashboard = () => {
             {activeTab === 'requests' && (
               <div className="industrial-card p-6">
                 <h2 className="text-xl font-bold text-allrentz-gray mb-6">Quote Requests</h2>
+                {authority.canUseOperationalData && (
+                  <PickupExceptionReviewQueue sources={pickupExceptionSources} />
+                )}
                 {authority.canUseOperationalData && (
                   <div className="mb-6">
                     <h3 className="font-semibold text-allrentz-gray mb-3">Active Fulfillment</h3>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import DemoTour from '@/components/DemoTour';
 import OffRentControlPanel from '@/components/OffRentControlPanel';
 import PickupTaskControlPanel from '@/components/PickupTaskControlPanel';
+import PickupExceptionReviewQueue from '@/components/PickupExceptionReviewQueue';
 import { demoCustomerRentalRequests, demoCustomerNotifications } from '@/data/demoDashboardData';
 import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
 
@@ -58,6 +59,13 @@ const CustomerDashboard = () => {
 
   const authority = getOperationalAuthority({ user, authLoading, profile });
   const isDemoUser = profile?.is_demo === true;
+  const pickupExceptionSources = useMemo(() => rentalRequests
+    .filter((request) => ['demobilizing', 'off_rent'].includes(request.operational_status))
+    .map((request) => ({
+      rfqId: String(request.id),
+      title: request.equipment?.title || 'Equipment request',
+      location: request.delivery_address || null,
+    })), [rentalRequests]);
 
   useEffect(() => {
     if (!user || authLoading || !profile) return;
@@ -482,6 +490,10 @@ const CustomerDashboard = () => {
             </div>
           </Link>
         </div>
+
+        {authority.canUseOperationalData && (
+          <PickupExceptionReviewQueue sources={pickupExceptionSources} />
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Active Rentals */}
