@@ -249,11 +249,25 @@ describe('PickupTask action policy', () => {
     expect(buildPickupExceptionPublicProjection([], 'review_required')).toEqual({
       current_exception_triage_state: 'unassigned',
       current_exception_triage_updated_at: null,
+      current_exception_coordination_state: 'operations_review',
       exception_resolution_state: 'blocked',
     })
     expect(buildPickupExceptionPublicProjection(events, 'review_required')).toEqual({
       current_exception_triage_state: 'under_review',
       current_exception_triage_updated_at: '2026-08-19T13:30:00Z',
+      current_exception_coordination_state: 'operations_review',
+      exception_resolution_state: 'blocked',
+    })
+    expect(buildPickupExceptionPublicProjection([
+      ...events,
+      {
+        id: 'triage-3', event_sequence: 3, event_type: 'triage_escalated',
+        actor_role: 'platform_operations', escalation_reason: 'vendor_coordination_review',
+        created_at: '2026-08-19T14:00:00Z',
+      },
+    ], 'review_required')).toMatchObject({
+      current_exception_triage_state: 'escalated',
+      current_exception_coordination_state: 'vendor_coordination_review',
       exception_resolution_state: 'blocked',
     })
     expect(() => buildPickupExceptionPublicProjection([

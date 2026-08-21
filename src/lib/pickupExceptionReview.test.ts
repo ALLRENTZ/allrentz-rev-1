@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   classifyPickupExceptionReview,
+  formatPickupExceptionDisplayAge,
+  sortPickupExceptionReviewItems,
   type PickupExceptionReviewSource,
 } from './pickupExceptionReview'
 
@@ -56,6 +58,7 @@ function projection(overrides: Record<string, unknown> = {}) {
     current_exception_state: 'review_required',
     current_exception_triage_state: 'unassigned',
     current_exception_triage_updated_at: null,
+    current_exception_coordination_state: 'operations_review',
     exception_resolution_state: 'blocked',
     caller_can_record_attempt: false,
     authority_boundary: {
@@ -77,6 +80,7 @@ describe('Pickup exception review projection', () => {
         recordedAt: '2026-08-18T15:30:00Z',
         triageState: 'unassigned',
         triageUpdatedAt: null,
+        coordinationState: 'operations_review',
         resolutionState: 'blocked',
         authorityBoundary: {
           objectScope: 'rfq', pickupControlsBilling: false, custodyRecorded: false,
@@ -96,6 +100,7 @@ describe('Pickup exception review projection', () => {
       current_exception_state: 'none_recorded',
       current_exception_triage_state: 'not_applicable',
       current_exception_triage_updated_at: null,
+      current_exception_coordination_state: 'not_applicable',
     }))).toEqual({ state: 'clear' })
   })
 
@@ -110,5 +115,29 @@ describe('Pickup exception review projection', () => {
     expect(classifyPickupExceptionReview(source, projection({
       current_attempt_event: null,
     }))).toEqual({ state: 'unknown' })
+    expect(classifyPickupExceptionReview(source, projection({
+      current_exception_coordination_state: 'resolved',
+    }))).toEqual({ state: 'unknown' })
+  })
+
+  it('formats display-only age and sorts oldest exceptions first', () => {
+    const current = classifyPickupExceptionReview(source, projection())
+    expect(current.state).toBe('review_required')
+    if (current.state !== 'review_required') throw new Error('Expected review item')
+    const newer = {
+      ...current.item,
+      attemptEventId: 'attempt-2',
+      recordedAt: '2026-08-20T14:45:00Z',
+    }
+    expect(formatPickupExceptionDisplayAge(
+      current.item.recordedAt,
+      Date.parse('2026-08-20T15:30:00Z'),
+    )).toBe('2d')
+    expect(formatPickupExceptionDisplayAge(
+      newer.recordedAt,
+      Date.parse('2026-08-20T15:30:00Z'),
+    )).toBe('45m')
+    expect(sortPickupExceptionReviewItems([newer, current.item]).map((item) => item.attemptEventId))
+      .toEqual(['attempt-1', 'attempt-2'])
   })
 })
