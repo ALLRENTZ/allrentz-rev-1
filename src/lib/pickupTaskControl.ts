@@ -60,6 +60,12 @@ export const PICKUP_ATTEMPT_REASON_CODES = [
 
 export type PickupAttemptReasonCode = typeof PICKUP_ATTEMPT_REASON_CODES[number]
 
+export const PICKUP_ACCESS_INSTRUCTION_TYPES = [
+  'site_access', 'site_contact', 'pickup_location',
+  'safety_requirement', 'entry_restriction', 'other',
+] as const
+export type PickupAccessInstructionType = typeof PICKUP_ACCESS_INSTRUCTION_TYPES[number]
+
 export interface PickupScheduleWindow {
   pickup_window_start: string
   pickup_window_end: string
@@ -94,6 +100,16 @@ export interface PickupAttemptEvent {
   created_at: string
 }
 
+export interface PickupAccessInstructionEvent {
+  id: string
+  event_sequence: number
+  event_type: 'access_instructions_added'
+  actor_role: 'customer'
+  instruction_type: PickupAccessInstructionType
+  instructions: string
+  created_at: string
+}
+
 export interface PickupTaskControlRecord {
   rfq_id: string
   operational_status: string
@@ -122,6 +138,8 @@ export interface PickupTaskControlRecord {
   current_exception_triage_updated_at: string | null
   current_exception_coordination_state: PickupExceptionCoordinationState
   exception_resolution_state: 'blocked'
+  current_access_instructions: PickupAccessInstructionEvent | null
+  access_instruction_timeline: PickupAccessInstructionEvent[]
   caller_can_record_attempt: boolean
   authority_boundary: {
     object_scope: 'rfq'
@@ -144,6 +162,7 @@ const ATTEMPT_EVENT_TYPES = new Set([
   'attempt_collection_asserted', 'attempt_failed',
 ])
 const ATTEMPT_REASON_CODES = new Set<string>(PICKUP_ATTEMPT_REASON_CODES)
+const ACCESS_INSTRUCTION_TYPES = new Set<string>(PICKUP_ACCESS_INSTRUCTION_TYPES)
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -267,6 +286,34 @@ function normalizeAttemptEvent(value: unknown): PickupAttemptEvent | null {
   }
 }
 
+function normalizeAccessInstructionEvent(value: unknown): PickupAccessInstructionEvent | null {
+  if (!isRecord(value)) return null
+  const allowedKeys = new Set([
+    'id', 'event_sequence', 'event_type', 'actor_role', 'instruction_type',
+    'instructions', 'created_at',
+  ])
+  if (Object.keys(value).some((key) => !allowedKeys.has(key))) return null
+  const id = requiredString(value.id)
+  const instructionType = requiredString(value.instruction_type)
+  const instructions = requiredString(value.instructions)
+  if (!id || !instructionType || !ACCESS_INSTRUCTION_TYPES.has(instructionType)
+      || !instructions || instructions.length > 4000
+      || value.event_type !== 'access_instructions_added'
+      || value.actor_role !== 'customer'
+      || typeof value.event_sequence !== 'number'
+      || !Number.isInteger(value.event_sequence) || value.event_sequence < 1
+      || !validDate(value.created_at)) return null
+  return {
+    id,
+    event_sequence: value.event_sequence,
+    event_type: 'access_instructions_added',
+    actor_role: 'customer',
+    instruction_type: instructionType as PickupAccessInstructionType,
+    instructions,
+    created_at: value.created_at,
+  }
+}
+
 function windowsMatch(left: PickupScheduleWindow | null, right: PickupScheduleEvent | null): boolean {
   if (!left || !right) return left === null && right === null
   return left.pickup_window_start === right.pickup_window_start
@@ -303,6 +350,9 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
         || value.current_exception_triage_updated_at !== null
         || value.current_exception_coordination_state !== 'not_applicable'
         || value.exception_resolution_state !== 'blocked'
+        || value.current_access_instructions !== null
+        || !Array.isArray(value.access_instruction_timeline)
+        || value.access_instruction_timeline.length !== 0
         || value.caller_can_record_attempt !== false) return null
     return {
       rfq_id: rfqId,
@@ -325,6 +375,8 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
       current_exception_triage_updated_at: null,
       current_exception_coordination_state: 'not_applicable',
       exception_resolution_state: 'blocked',
+      current_access_instructions: null,
+      access_instruction_timeline: [],
       caller_can_record_attempt: false,
       authority_boundary: {
         object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
@@ -409,6 +461,23 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
     'customer_coordination_review', 'vendor_coordination_review',
     'site_access_review', 'safety_review',
   ])
+  if (!Array.isArray(value.access_instruction_timeline)) return null
+  const accessInstructionTimeline: PickupAccessInstructionEvent[] = []
+  for (const entry of value.access_instruction_timeline) {
+    const normalized = normalizeAccessInstructionEvent(entry)
+    if (!normalized) return null
+    accessInstructionTimeline.push(normalized)
+  }
+  for (let index = 0; index < accessInstructionTimeline.length; index += 1) {
+    if (accessInstructionTimeline[index].event_sequence !== index + 1) return null
+  }
+  const currentAccessInstructions = value.current_access_instructions === null
+    ? null
+    : normalizeAccessInstructionEvent(value.current_access_instructions)
+  const latestAccessInstructions = accessInstructionTimeline.at(-1) ?? null
+  if ((currentAccessInstructions === null) !== (latestAccessInstructions === null)
+      || (currentAccessInstructions && latestAccessInstructions
+        && currentAccessInstructions.id !== latestAccessInstructions.id)) return null
   if (!attemptState || !exceptionState || !triageState
       || !coordinationState
       || !coordinationStates.has(coordinationState as PickupExceptionCoordinationState)
@@ -472,6 +541,8 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
     current_exception_coordination_state:
       coordinationState as PickupExceptionCoordinationState,
     exception_resolution_state: 'blocked',
+    current_access_instructions: currentAccessInstructions,
+    access_instruction_timeline: accessInstructionTimeline,
     caller_can_record_attempt: value.caller_can_record_attempt,
     authority_boundary: {
       object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,

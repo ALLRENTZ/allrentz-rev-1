@@ -41,6 +41,8 @@ const completeRecord = {
   current_exception_triage_updated_at: null,
   current_exception_coordination_state: 'not_applicable',
   exception_resolution_state: 'blocked',
+  current_access_instructions: null,
+  access_instruction_timeline: [],
   caller_can_record_attempt: false,
   authority_boundary: {
     object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
@@ -48,6 +50,24 @@ const completeRecord = {
 }
 
 describe('PickupTask control projection', () => {
+  it('accepts sanitized customer access instructions and fails closed on malformed evidence', () => {
+    const accessEvent = {
+      id: 'access-1', event_sequence: 1, event_type: 'access_instructions_added',
+      actor_role: 'customer', instruction_type: 'site_access',
+      instructions: 'Use gate 3.', created_at: '2026-08-21T12:00:00Z',
+    }
+    expect(normalizePickupTaskRecord({
+      ...completeRecord,
+      current_access_instructions: accessEvent,
+      access_instruction_timeline: [accessEvent],
+    })?.current_access_instructions).toMatchObject({ instruction_type: 'site_access' })
+    expect(normalizePickupTaskRecord({
+      ...completeRecord,
+      current_access_instructions: { ...accessEvent, actor_role: 'vendor_scheduler' },
+      access_instruction_timeline: [{ ...accessEvent, actor_role: 'vendor_scheduler' }],
+    })).toBeNull()
+  })
+
   it('accepts a complete RFQ-wide non-financial projection', () => {
     expect(normalizePickupTaskRecord(completeRecord)).toMatchObject({
       pickup_task: { object_scope: 'rfq' },
@@ -70,6 +90,7 @@ describe('PickupTask control projection', () => {
       current_exception_triage_updated_at: null,
       current_exception_coordination_state: 'not_applicable',
       exception_resolution_state: 'blocked',
+      current_access_instructions: null, access_instruction_timeline: [],
       authority_boundary: {
         object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
       },

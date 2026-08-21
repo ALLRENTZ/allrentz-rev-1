@@ -3,7 +3,7 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = public, extensions;
 
-SELECT plan(105);
+SELECT plan(122);
 
 SELECT has_table('public', 'rental_pickup_tasks', 'PickupTask table exists');
 SELECT has_table('public', 'rental_pickup_schedule_events', 'pickup schedule event table exists');
@@ -12,6 +12,10 @@ SELECT has_table('public', 'rental_pickup_attempt_events', 'pickup attempt event
 SELECT has_table(
   'public', 'rental_pickup_exception_triage_events',
   'pickup exception triage event table exists'
+);
+SELECT has_table(
+  'public', 'rental_pickup_access_instruction_events',
+  'pickup access-instruction event table exists'
 );
 
 SELECT ok(
@@ -39,6 +43,11 @@ SELECT ok(
    WHERE oid = 'public.rental_pickup_exception_triage_events'::regclass),
   'pickup exception triage RLS is enabled'
 );
+SELECT ok(
+  (SELECT relrowsecurity FROM pg_catalog.pg_class
+   WHERE oid = 'public.rental_pickup_access_instruction_events'::regclass),
+  'pickup access-instruction RLS is enabled'
+);
 
 SELECT ok(
   NOT has_table_privilege('authenticated', 'public.rental_pickup_tasks', 'SELECT'),
@@ -61,6 +70,41 @@ SELECT ok(
     'authenticated', 'public.rental_pickup_exception_triage_events', 'SELECT'
   ),
   'authenticated clients cannot read internal pickup exception triage directly'
+);
+SELECT ok(
+  NOT has_table_privilege(
+    'authenticated', 'public.rental_pickup_access_instruction_events', 'SELECT'
+  ),
+  'authenticated clients cannot read pickup access instructions directly'
+);
+SELECT ok(
+  has_table_privilege(
+    'service_role', 'public.rental_pickup_access_instruction_events', 'SELECT'
+  ),
+  'service role can assemble sanitized pickup access-instruction projections'
+);
+SELECT ok(
+  NOT has_table_privilege(
+    'service_role', 'public.rental_pickup_access_instruction_events', privilege_name
+  ),
+  format('service_role lacks direct %s on pickup access instructions', privilege_name)
+)
+FROM unnest(ARRAY['INSERT', 'UPDATE', 'DELETE']) AS privileges(privilege_name);
+SELECT ok(
+  has_function_privilege(
+    'service_role',
+    'public.record_rental_pickup_access_instructions(uuid,uuid,text,text,text)',
+    'EXECUTE'
+  ),
+  'service_role can transport the governed access-instruction command'
+);
+SELECT ok(
+  NOT has_function_privilege(
+    'authenticated',
+    'public.record_rental_pickup_access_instructions(uuid,uuid,text,text,text)',
+    'EXECUTE'
+  ),
+  'authenticated clients cannot call access-instruction command directly'
 );
 SELECT ok(
   NOT has_table_privilege(
@@ -383,6 +427,72 @@ SELECT is(
   1,
   'the command creates exactly one RFQ-wide PickupTask'
 );
+
+SELECT throws_ok(
+  $$ SELECT public.record_rental_pickup_access_instructions(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007102',
+    'site_access', 'Use the east service gate', 'vendor-access-1'
+  ) $$,
+  'P0001',
+  'Actor 00000000-0000-4000-8000-000000007102 lacks customer pickup access-instruction authority for RFQ 00000000-0000-4000-8000-000000007301',
+  'the accepted vendor cannot create customer pickup access instructions'
+);
+SELECT lives_ok(
+  $$ SELECT public.record_rental_pickup_access_instructions(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007101',
+    'site_access', 'Use the east service gate', 'customer-access-1'
+  ) $$,
+  'the owning customer can append RFQ-wide pickup access instructions'
+);
+SELECT is(
+  (SELECT count(*)::integer
+   FROM public.rental_pickup_access_instruction_events
+   WHERE rfq_id = '00000000-0000-4000-8000-000000007301'),
+  1,
+  'the governed command appends exactly one access-instruction event'
+);
+SELECT lives_ok(
+  $$ SELECT public.record_rental_pickup_access_instructions(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007101',
+    'site_access', 'Use the east service gate', 'customer-access-1'
+  ) $$,
+  'an identical idempotent replay succeeds'
+);
+SELECT is(
+  (SELECT count(*)::integer
+   FROM public.rental_pickup_access_instruction_events
+   WHERE rfq_id = '00000000-0000-4000-8000-000000007301'),
+  1,
+  'an idempotent replay does not append a duplicate event'
+);
+SELECT is(
+  (SELECT count(*)::integer
+   FROM public.audit_events
+   WHERE related_rfq_id = '00000000-0000-4000-8000-000000007301'
+     AND event_type = 'pickup.access_instructions_added'),
+  1,
+  'the accepted access instruction appends one atomic audit event'
+);
+SELECT throws_ok(
+  $$ SELECT public.record_rental_pickup_access_instructions(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007101',
+    'pickup_location', 'Use the west loading area', 'customer-access-1'
+  ) $$,
+  'P0001',
+  'Pickup access-instruction idempotency key conflicts with an existing command',
+  'an idempotency-key conflict fails closed'
+);
+SELECT throws_ok(
+  $$ DELETE FROM public.rental_pickup_access_instruction_events
+     WHERE rfq_id = '00000000-0000-4000-8000-000000007301' $$,
+  'P0001',
+  'rental_pickup_access_instruction_events rows are immutable; append a governed pickup event instead',
+  'pickup access-instruction history is immutable'
+);
 SELECT is(
   (SELECT event_type FROM public.rental_pickup_schedule_events
    WHERE rfq_id = '00000000-0000-4000-8000-000000007301'),
@@ -702,7 +812,8 @@ SELECT ok(
         'rental_pickup_tasks',
         'rental_pickup_schedule_events',
         'rental_pickup_dispatch_events',
-        'rental_pickup_attempt_events'
+        'rental_pickup_attempt_events',
+        'rental_pickup_access_instruction_events'
       )
       AND column_name ~ '(line|item|quantity|serial|kit|component|partial|custody|billing)'
   ),
@@ -712,7 +823,7 @@ SELECT is(
   (SELECT count(*)::integer FROM public.audit_events
    WHERE related_rfq_id = '00000000-0000-4000-8000-000000007301'
      AND event_type LIKE 'pickup.%'),
-  7,
+  8,
   'each accepted PickupTask command produces one atomic audit event'
 );
 

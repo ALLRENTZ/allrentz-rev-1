@@ -1,17 +1,62 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildPickupAccessInstructionProjection,
   buildPickupAttemptProjection,
   buildPickupDispatchProjection,
   buildPickupExceptionPublicProjection,
   buildPickupScheduleProjection,
   validatePickupTaskAction,
   type PickupAttemptEventProjection,
+  type PickupAccessInstructionEventProjection,
   type PickupDispatchEventProjection,
   type PickupExceptionTriageEventProjection,
   type PickupScheduleEventProjection,
 } from './pickupTaskPolicy'
 
 describe('PickupTask action policy', () => {
+  it('accepts governed customer access instructions and rejects unsupported authority fields', () => {
+    expect(validatePickupTaskAction({
+      action: 'add_access_instructions', rfq_id: 'rfq-1',
+      instruction_type: 'site_access', instructions: 'Use gate 3 after calling dispatch.',
+      idempotency_key: 'access-1',
+    })).toMatchObject({
+      valid: true,
+      input: { action: 'add_access_instructions', instructionType: 'site_access' },
+    })
+    expect(validatePickupTaskAction({
+      action: 'add_access_instructions', rfq_id: 'rfq-1',
+      instruction_type: 'custody_transfer', instructions: 'Not authorized.',
+      idempotency_key: 'access-2',
+    })).toEqual({
+      valid: false,
+      error: 'instruction_type must be a governed pickup access type',
+    })
+    expect(validatePickupTaskAction({
+      action: 'add_access_instructions', rfq_id: 'rfq-1',
+      instruction_type: 'site_access', instructions: 'Gate 3',
+      idempotency_key: 'access-3', billable_through_at: '2026-08-21T00:00:00Z',
+    }).valid).toBe(false)
+  })
+
+  it('builds a strict sanitized access-instruction projection', () => {
+    const events: PickupAccessInstructionEventProjection[] = [{
+      id: 'access-1', event_sequence: 1, event_type: 'access_instructions_added',
+      actor_role: 'customer', instruction_type: 'site_contact',
+      instructions: 'Call the site manager before entry.',
+      created_at: '2026-08-21T12:00:00Z',
+    }]
+    expect(buildPickupAccessInstructionProjection(events)).toEqual({
+      current_access_instructions: events[0],
+      access_instruction_timeline: events,
+    })
+    expect(() => buildPickupAccessInstructionProjection([
+      { ...events[0], actor_role: 'vendor_scheduler' as 'customer' },
+    ])).toThrow('Pickup access-instruction evidence is malformed')
+    expect(() => buildPickupAccessInstructionProjection([
+      { ...events[0], event_sequence: 2 },
+    ])).toThrow('Pickup access-instruction evidence is malformed')
+  })
+
   it('accepts the read-only status projection', () => {
     expect(validatePickupTaskAction({ action: 'status', rfq_id: 'rfq-1' })).toEqual({
       valid: true,
