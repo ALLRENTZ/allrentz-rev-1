@@ -38,6 +38,15 @@ export const PICKUP_EXCEPTION_ESCALATION_REASONS = [
 export type PickupExceptionEscalationReason =
   typeof PICKUP_EXCEPTION_ESCALATION_REASONS[number]
 
+export type PickupExceptionCoordinationState =
+  | 'not_applicable'
+  | 'operations_review'
+  | 'additional_information_review'
+  | 'customer_coordination_review'
+  | 'vendor_coordination_review'
+  | 'site_access_review'
+  | 'safety_review'
+
 export interface PickupScheduleEventProjection {
   id: string
   event_sequence: number
@@ -286,6 +295,7 @@ export function buildPickupExceptionPublicProjection(
     return {
       current_exception_triage_state: 'not_applicable',
       current_exception_triage_updated_at: null,
+      current_exception_coordination_state: 'not_applicable',
       exception_resolution_state: 'blocked',
     }
   }
@@ -311,11 +321,18 @@ export function buildPickupExceptionPublicProjection(
   }
 
   const current = eventsAscending.at(-1) ?? null
+  const coordinationState: PickupExceptionCoordinationState =
+    current?.event_type !== 'triage_escalated'
+      ? 'operations_review'
+      : current.escalation_reason === 'additional_information_required'
+        ? 'additional_information_review'
+        : current.escalation_reason ?? 'operations_review'
   return {
     current_exception_triage_state: current === null
       ? 'unassigned'
       : current.event_type === 'triage_escalated' ? 'escalated' : 'under_review',
     current_exception_triage_updated_at: current?.created_at ?? null,
+    current_exception_coordination_state: coordinationState,
     exception_resolution_state: 'blocked',
   }
 }

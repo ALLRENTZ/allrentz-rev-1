@@ -27,6 +27,15 @@ export type PickupExceptionTriageState =
   | 'escalated'
   | 'unknown'
 
+export type PickupExceptionCoordinationState =
+  | 'not_applicable'
+  | 'operations_review'
+  | 'additional_information_review'
+  | 'customer_coordination_review'
+  | 'vendor_coordination_review'
+  | 'site_access_review'
+  | 'safety_review'
+
 export const PICKUP_SCHEDULE_REASON_CODES = [
   'customer_access_conflict',
   'vendor_capacity',
@@ -111,6 +120,7 @@ export interface PickupTaskControlRecord {
   current_exception_state: PickupExceptionState
   current_exception_triage_state: PickupExceptionTriageState
   current_exception_triage_updated_at: string | null
+  current_exception_coordination_state: PickupExceptionCoordinationState
   exception_resolution_state: 'blocked'
   caller_can_record_attempt: boolean
   authority_boundary: {
@@ -291,6 +301,7 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
         || value.current_exception_state !== 'none_recorded'
         || value.current_exception_triage_state !== 'not_applicable'
         || value.current_exception_triage_updated_at !== null
+        || value.current_exception_coordination_state !== 'not_applicable'
         || value.exception_resolution_state !== 'blocked'
         || value.caller_can_record_attempt !== false) return null
     return {
@@ -312,6 +323,7 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
       current_exception_state: 'none_recorded',
       current_exception_triage_state: 'not_applicable',
       current_exception_triage_updated_at: null,
+      current_exception_coordination_state: 'not_applicable',
       exception_resolution_state: 'blocked',
       caller_can_record_attempt: false,
       authority_boundary: {
@@ -391,7 +403,15 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
   const exceptionState = requiredString(value.current_exception_state)
   const triageState = requiredString(value.current_exception_triage_state)
   const triageUpdatedAt = value.current_exception_triage_updated_at
+  const coordinationState = requiredString(value.current_exception_coordination_state)
+  const coordinationStates = new Set<PickupExceptionCoordinationState>([
+    'not_applicable', 'operations_review', 'additional_information_review',
+    'customer_coordination_review', 'vendor_coordination_review',
+    'site_access_review', 'safety_review',
+  ])
   if (!attemptState || !exceptionState || !triageState
+      || !coordinationState
+      || !coordinationStates.has(coordinationState as PickupExceptionCoordinationState)
       || typeof value.caller_can_record_attempt !== 'boolean'
       || value.exception_resolution_state !== 'blocked'
       || (triageUpdatedAt !== null && !validDate(triageUpdatedAt))) {
@@ -402,7 +422,8 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
     : normalizeAttemptEvent(value.current_attempt_event)
   if (attemptState === 'not_recorded') {
     if (attemptEvent !== null || exceptionState !== 'none_recorded'
-        || triageState !== 'not_applicable' || triageUpdatedAt !== null) return null
+        || triageState !== 'not_applicable' || triageUpdatedAt !== null
+        || coordinationState !== 'not_applicable') return null
     if (value.caller_can_record_attempt
         && (dispatchState !== 'arrival_recorded'
           || value.caller_is_assigned_field_actor !== true)) return null
@@ -411,12 +432,14 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
         || dispatchState !== 'arrival_recorded'
         || exceptionState !== 'none_recorded'
         || triageState !== 'not_applicable' || triageUpdatedAt !== null
+        || coordinationState !== 'not_applicable'
         || value.caller_can_record_attempt !== false) return null
   } else if (attemptState === 'attempt_failed') {
     if (!attemptEvent || attemptEvent.event_type !== attemptState
         || dispatchState !== 'arrival_recorded'
         || exceptionState !== 'review_required'
         || !['unassigned', 'under_review', 'escalated'].includes(triageState)
+        || coordinationState === 'not_applicable'
         || (triageState === 'unassigned' && triageUpdatedAt !== null)
         || (triageState !== 'unassigned' && triageUpdatedAt === null)
         || value.caller_can_record_attempt !== false) return null
@@ -446,6 +469,8 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
     current_exception_state: exceptionState as PickupExceptionState,
     current_exception_triage_state: triageState as PickupExceptionTriageState,
     current_exception_triage_updated_at: triageUpdatedAt as string | null,
+    current_exception_coordination_state:
+      coordinationState as PickupExceptionCoordinationState,
     exception_resolution_state: 'blocked',
     caller_can_record_attempt: value.caller_can_record_attempt,
     authority_boundary: {

@@ -39,6 +39,7 @@ const completeRecord = {
   current_exception_state: 'none_recorded',
   current_exception_triage_state: 'not_applicable',
   current_exception_triage_updated_at: null,
+  current_exception_coordination_state: 'not_applicable',
   exception_resolution_state: 'blocked',
   caller_can_record_attempt: false,
   authority_boundary: {
@@ -67,6 +68,7 @@ describe('PickupTask control projection', () => {
       current_exception_state: 'none_recorded', caller_can_record_attempt: false,
       current_exception_triage_state: 'not_applicable',
       current_exception_triage_updated_at: null,
+      current_exception_coordination_state: 'not_applicable',
       exception_resolution_state: 'blocked',
       authority_boundary: {
         object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
@@ -75,6 +77,10 @@ describe('PickupTask control projection', () => {
   })
 
   it('fails closed if billing, custody, scope, or current-state evidence conflicts', () => {
+    expect(normalizePickupTaskRecord({
+      ...completeRecord,
+      current_exception_coordination_state: 'resolved',
+    })).toBeNull()
     expect(normalizePickupTaskRecord({
       ...completeRecord,
       authority_boundary: { ...completeRecord.authority_boundary, pickup_controls_billing: true },
