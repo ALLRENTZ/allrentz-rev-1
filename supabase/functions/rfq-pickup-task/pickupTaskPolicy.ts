@@ -26,6 +26,17 @@ export const PICKUP_ATTEMPT_REASON_CODES = [
 
 export type PickupAttemptReasonCode = typeof PICKUP_ATTEMPT_REASON_CODES[number]
 
+export const PICKUP_ACCESS_INSTRUCTION_TYPES = [
+  'site_access',
+  'site_contact',
+  'pickup_location',
+  'safety_requirement',
+  'entry_restriction',
+  'other',
+] as const
+
+export type PickupAccessInstructionType = typeof PICKUP_ACCESS_INSTRUCTION_TYPES[number]
+
 export const PICKUP_EXCEPTION_ESCALATION_REASONS = [
   'additional_information_required',
   'customer_coordination_review',
@@ -84,6 +95,40 @@ export interface PickupAttemptEventProjection {
   created_at: string
 }
 
+export interface PickupAccessInstructionEventProjection {
+  id: string
+  event_sequence: number
+  event_type: 'access_instructions_added'
+  actor_role: 'customer'
+  instruction_type: PickupAccessInstructionType
+  instructions: string
+  created_at: string
+}
+
+export function buildPickupAccessInstructionProjection(
+  events: PickupAccessInstructionEventProjection[],
+): { current_access_instructions: PickupAccessInstructionEventProjection | null; access_instruction_timeline: PickupAccessInstructionEventProjection[] } {
+  const sanitized: PickupAccessInstructionEventProjection[] = []
+  for (let index = 0; index < events.length; index += 1) {
+    const event = events[index]
+    if (!event || typeof event.id !== 'string' || !event.id
+        || event.event_sequence !== index + 1
+        || event.event_type !== 'access_instructions_added'
+        || event.actor_role !== 'customer'
+        || !ACCESS_INSTRUCTION_TYPE_SET.has(event.instruction_type)
+        || typeof event.instructions !== 'string'
+        || !event.instructions.trim() || event.instructions.length > MAX_NOTES_LENGTH
+        || !Number.isFinite(Date.parse(event.created_at))) {
+      throw new Error('Pickup access-instruction evidence is malformed')
+    }
+    sanitized.push({ ...event, instructions: event.instructions.trim() })
+  }
+  return {
+    current_access_instructions: sanitized.at(-1) ?? null,
+    access_instruction_timeline: sanitized,
+  }
+}
+
 export type PickupTaskInput =
   | { action: 'triage_queue' }
   | { action: 'status'; rfqId: string; timelineBeforeSequence: number | null }
@@ -126,6 +171,13 @@ export type PickupTaskInput =
       idempotencyKey: string
     }
   | {
+      action: 'add_access_instructions'
+      rfqId: string
+      instructionType: PickupAccessInstructionType
+      instructions: string
+      idempotencyKey: string
+    }
+  | {
       action: 'triage'
       rfqId: string
       triageAction: 'claim' | 'note' | 'escalate'
@@ -151,6 +203,9 @@ const ACTION_KEYS: Record<PickupTaskInput['action'], Set<string>> = {
   record_attempt: new Set([
     'action', 'rfq_id', 'outcome', 'reason_code', 'notes', 'idempotency_key',
   ]),
+  add_access_instructions: new Set([
+    'action', 'rfq_id', 'instruction_type', 'instructions', 'idempotency_key',
+  ]),
   triage: new Set([
     'action', 'rfq_id', 'triage_action', 'escalation_reason', 'notes',
     'idempotency_key',
@@ -168,6 +223,7 @@ export interface PickupExceptionTriageEventProjection {
 
 const REASON_CODE_SET = new Set<string>(PICKUP_SCHEDULE_REASON_CODES)
 const ATTEMPT_REASON_CODE_SET = new Set<string>(PICKUP_ATTEMPT_REASON_CODES)
+const ACCESS_INSTRUCTION_TYPE_SET = new Set<string>(PICKUP_ACCESS_INSTRUCTION_TYPES)
 const EXCEPTION_ESCALATION_REASON_SET = new Set<string>(PICKUP_EXCEPTION_ESCALATION_REASONS)
 const ATTEMPT_EVENT_TYPES = new Set<string>([
   'attempt_collection_asserted',
@@ -351,10 +407,10 @@ export function validatePickupTaskAction(
   if (action !== 'triage_queue' && action !== 'triage'
       && action !== 'status' && action !== 'propose' && action !== 'respond'
       && action !== 'assign_self' && action !== 'record_dispatch'
-      && action !== 'record_attempt') {
+      && action !== 'record_attempt' && action !== 'add_access_instructions') {
     return {
       valid: false,
-      error: 'action must be status, propose, respond, assign_self, record_dispatch, record_attempt, triage_queue, or triage',
+      error: 'action must be status, propose, respond, assign_self, record_dispatch, record_attempt, add_access_instructions, triage_queue, or triage',
     }
   }
 
@@ -395,6 +451,31 @@ export function validatePickupTaskAction(
     return {
       valid: false,
       error: `idempotency_key must contain 1 to ${MAX_IDEMPOTENCY_KEY_LENGTH} characters`,
+    }
+  }
+
+  if (action === 'add_access_instructions') {
+    const rawType = typeof body['instruction_type'] === 'string'
+      ? body['instruction_type'].trim()
+      : ''
+    const instructions = typeof body['instructions'] === 'string'
+      ? body['instructions'].trim()
+      : ''
+    if (!ACCESS_INSTRUCTION_TYPE_SET.has(rawType)) {
+      return { valid: false, error: 'instruction_type must be a governed pickup access type' }
+    }
+    if (!instructions || instructions.length > MAX_NOTES_LENGTH) {
+      return { valid: false, error: `instructions must contain 1 to ${MAX_NOTES_LENGTH} characters` }
+    }
+    return {
+      valid: true,
+      input: {
+        action,
+        rfqId,
+        instructionType: rawType as PickupAccessInstructionType,
+        instructions,
+        idempotencyKey,
+      },
     }
   }
 

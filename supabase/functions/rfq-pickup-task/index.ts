@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
+  buildPickupAccessInstructionProjection,
   BACKEND_SECRET_KEY_NAME,
   KeyConfigError,
   preferProductionValue,
@@ -194,6 +195,8 @@ Deno.serve(async (req: Request) => {
         current_exception_triage_updated_at: null,
         current_exception_coordination_state: 'not_applicable',
         exception_resolution_state: 'blocked',
+        current_access_instructions: null,
+        access_instruction_timeline: [],
         caller_can_record_attempt: false,
         authority_boundary: {
           object_scope: 'rfq',
@@ -267,6 +270,26 @@ Deno.serve(async (req: Request) => {
 
     const dispatchProjection = buildPickupDispatchProjection(dispatchEvents ?? [], user.id)
 
+    const accessInstructionProjection = 'id, event_sequence, event_type, actor_role, instruction_type, instructions, created_at'
+    const { data: accessInstructionEvents, error: accessInstructionError } = await svc
+      .from('rental_pickup_access_instruction_events')
+      .select(accessInstructionProjection)
+      .eq('pickup_task_id', task.id)
+      .order('event_sequence', { ascending: true })
+
+    if (accessInstructionError) {
+      console.error('rfq-pickup-task access-instruction projection error:', accessInstructionError)
+      return jsonError(500, 'Pickup access instructions require review')
+    }
+
+    let accessInstructions
+    try {
+      accessInstructions = buildPickupAccessInstructionProjection(accessInstructionEvents ?? [])
+    } catch (error) {
+      console.error('rfq-pickup-task malformed access-instruction projection:', error)
+      return jsonError(500, 'Pickup access instructions require review')
+    }
+
     const attemptEventProjection = 'id, event_sequence, event_type, actor_role, assigned_actor_id, reason_code, notes, created_at'
     const { data: attemptEvents, error: attemptError } = await svc
       .from('rental_pickup_attempt_events')
@@ -324,6 +347,7 @@ Deno.serve(async (req: Request) => {
       },
       ...scheduleProjection,
       ...dispatchProjection,
+      ...accessInstructions,
       ...attemptProjection,
       ...publicTriageProjection,
       authority_boundary: {
@@ -377,7 +401,15 @@ Deno.serve(async (req: Request) => {
                 p_notes: input.notes,
                 p_idempotency_key: input.idempotencyKey,
               })
-            : svc.rpc('record_rental_pickup_exception_triage', {
+            : input.action === 'add_access_instructions'
+              ? svc.rpc('record_rental_pickup_access_instructions', {
+                  p_rfq_id: input.rfqId,
+                  p_actor_id: user.id,
+                  p_instruction_type: input.instructionType,
+                  p_instructions: input.instructions,
+                  p_idempotency_key: input.idempotencyKey,
+                })
+              : svc.rpc('record_rental_pickup_exception_triage', {
                 p_rfq_id: input.rfqId,
                 p_actor_id: user.id,
                 p_action: input.triageAction,

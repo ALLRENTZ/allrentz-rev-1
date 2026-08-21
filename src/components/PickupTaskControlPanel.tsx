@@ -9,12 +9,14 @@ import { supabase } from '@/integrations/supabase/client'
 import {
   hasPendingPickupProposal,
   normalizePickupTaskRecord,
+  PICKUP_ACCESS_INSTRUCTION_TYPES,
   PICKUP_ATTEMPT_REASON_CODES,
   PICKUP_SCHEDULE_REASON_CODES,
   pickupAttemptLabel,
   pickupDispatchLabel,
   pickupScheduleLabel,
   type PickupAttemptReasonCode,
+  type PickupAccessInstructionType,
   type PickupScheduleReasonCode,
   type PickupTaskControlRecord,
 } from '@/lib/pickupTaskControl'
@@ -34,6 +36,10 @@ function reasonLabel(value: PickupScheduleReasonCode | PickupAttemptReasonCode):
   return value.split('_').map((part) => part[0].toUpperCase() + part.slice(1)).join(' ')
 }
 
+function accessInstructionLabel(value: PickupAccessInstructionType): string {
+  return value.split('_').map((part) => part[0].toUpperCase() + part.slice(1)).join(' ')
+}
+
 export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskControlPanelProps) {
   const [record, setRecord] = useState<PickupTaskControlRecord | null>(null)
   const [loading, setLoading] = useState(true)
@@ -48,6 +54,8 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
   const [dispatchNotes, setDispatchNotes] = useState('')
   const [attemptReasonCode, setAttemptReasonCode] = useState<PickupAttemptReasonCode | ''>('')
   const [attemptNotes, setAttemptNotes] = useState('')
+  const [accessInstructionType, setAccessInstructionType] = useState<PickupAccessInstructionType | ''>('')
+  const [accessInstructions, setAccessInstructions] = useState('')
 
   const loadRecord = useCallback(async () => {
     setLoading(true)
@@ -245,6 +253,34 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
     setSubmitting(false)
   }
 
+  const submitAccessInstructions = async () => {
+    if (!accessInstructionType || !accessInstructions.trim()) {
+      setError('Select an instruction type and provide the pickup access instructions.')
+      return
+    }
+    setSubmitting(true)
+    setError(null)
+    setSuccess(null)
+    const { error: invokeError } = await supabase.functions.invoke('rfq-pickup-task', {
+      body: {
+        action: 'add_access_instructions',
+        rfq_id: rfqId,
+        instruction_type: accessInstructionType,
+        instructions: accessInstructions,
+        idempotency_key: crypto.randomUUID(),
+      },
+    })
+    if (invokeError) {
+      setError(invokeError.message || 'Unable to record governed pickup access instructions.')
+    } else {
+      setSuccess('Pickup access instructions recorded for operational coordination.')
+      setAccessInstructionType('')
+      setAccessInstructions('')
+      await loadRecord()
+    }
+    setSubmitting(false)
+  }
+
   if (loading) {
     return <div className="mt-4 rounded-lg border bg-slate-50 p-3 text-sm text-slate-600">Loading PickupTask progress…</div>
   }
@@ -388,6 +424,55 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
             <Button disabled={submitting} onClick={() => void submitCustomerResponse('confirm')}>Confirm window</Button>
             <Button variant="outline" disabled={submitting} onClick={() => void submitCustomerResponse('reject')}>Request revision</Button>
           </div>
+        </div>
+      )}
+
+      {record.pickup_task && (
+        <div className="mt-4 rounded-md border border-cyan-200 bg-cyan-50/40 p-3">
+          <p className="text-sm font-medium text-slate-900">Pickup access instructions</p>
+          <p className="mt-1 text-xs text-slate-600">
+            Customer-provided coordination details only. Instructions do not establish assignment,
+            collection, custody, return completion, billing, or exception resolution.
+          </p>
+
+          {actorMode === 'customer' && (
+            <div className="mt-3 rounded-md border bg-white p-3">
+              <label className="text-xs font-medium" htmlFor={`access-instruction-type-${rfqId}`}>
+                Instruction type
+              </label>
+              <Select value={accessInstructionType} onValueChange={(value) => setAccessInstructionType(value as PickupAccessInstructionType)}>
+                <SelectTrigger id={`access-instruction-type-${rfqId}`} className="mt-1">
+                  <SelectValue placeholder="Select a governed instruction type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PICKUP_ACCESS_INSTRUCTION_TYPES.map((value) => (
+                    <SelectItem key={value} value={value}>{accessInstructionLabel(value)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <label className="mt-3 block text-xs font-medium" htmlFor={`access-instructions-${rfqId}`}>
+                Instructions
+              </label>
+              <Textarea id={`access-instructions-${rfqId}`} className="mt-1" value={accessInstructions} onChange={(event) => setAccessInstructions(event.target.value)} maxLength={4000} rows={3} placeholder="Gate, site contact, entry restriction, pickup location, or safety requirement" />
+              <Button className="mt-2" variant="outline" disabled={submitting} onClick={() => void submitAccessInstructions()}>
+                Add access instructions
+              </Button>
+            </div>
+          )}
+
+          {record.access_instruction_timeline.length === 0 ? (
+            <p className="mt-3 text-xs text-slate-500">No customer pickup access instructions have been recorded.</p>
+          ) : (
+            <ol className="mt-3 space-y-2 border-l border-cyan-200 pl-4">
+              {record.access_instruction_timeline.map((event) => (
+                <li key={event.id} className="text-xs text-slate-600">
+                  <p className="font-medium text-slate-800">{accessInstructionLabel(event.instruction_type)}</p>
+                  <p>{formatDate(event.created_at)} · customer</p>
+                  <p className="mt-0.5 whitespace-pre-wrap">{event.instructions}</p>
+                </li>
+              ))}
+            </ol>
+          )}
         </div>
       )}
 
