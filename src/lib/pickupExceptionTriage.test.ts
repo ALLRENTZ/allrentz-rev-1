@@ -7,6 +7,7 @@ import { normalizePickupExceptionTriageQueue } from './pickupExceptionTriage'
 
 function queue(overrides: Record<string, unknown> = {}): {
   items: Array<Record<string, unknown>>
+  customer_reports: Array<Record<string, unknown>>
   authority_boundary: Record<string, unknown>
 } & Record<string, unknown> {
   return {
@@ -25,6 +26,7 @@ function queue(overrides: Record<string, unknown> = {}): {
       internal_timeline: [],
       resolution_state: 'blocked',
     }],
+    customer_reports: [],
     authority_boundary: {
       object_scope: 'rfq',
       non_authoritative_triage: true,
@@ -72,6 +74,23 @@ describe('pickup exception triage projection', () => {
     expect(normalizePickupExceptionTriageQueue(value)?.items[0].internal_timeline).toHaveLength(2)
   })
 
+  it('accepts strict customer reports as read-only review-required evidence', () => {
+    const value = queue({
+      customer_reports: [{
+        rfq_id: 'rfq-1', pickup_task_id: 'task-1',
+        report_event_id: 'report-1', description: 'Gate access is unavailable.',
+        reported_at: '2026-08-26T12:00:00Z', review_state: 'review_required',
+        resolution_state: 'blocked',
+      }],
+    })
+    expect(normalizePickupExceptionTriageQueue(value)?.customer_reports[0]).toEqual({
+      rfq_id: 'rfq-1', pickup_task_id: 'task-1',
+      report_event_id: 'report-1', description: 'Gate access is unavailable.',
+      reported_at: '2026-08-26T12:00:00Z', review_state: 'review_required',
+      resolution_state: 'blocked',
+    })
+  })
+
   it('fails closed when authority or resolution state is malformed', () => {
     expect(normalizePickupExceptionTriageQueue(queue({
       authority_boundary: { object_scope: 'rfq', resolution_state: 'resolved' },
@@ -94,5 +113,28 @@ describe('pickup exception triage projection', () => {
       created_at: '2026-08-19T13:00:00Z', performed_by_caller: true,
     }]
     expect(normalizePickupExceptionTriageQueue(invalidSequence)).toBeNull()
+
+    expect(normalizePickupExceptionTriageQueue(queue({
+      customer_reports: [{
+        rfq_id: 'rfq-1', pickup_task_id: 'task-1', report_event_id: 'report-1',
+        description: 'Gate locked', reported_at: '2026-08-26T12:00:00Z',
+        review_state: 'resolved', resolution_state: 'blocked',
+      }],
+    }))).toBeNull()
+    expect(normalizePickupExceptionTriageQueue(queue({
+      customer_reports: [{
+        rfq_id: 'rfq-1', pickup_task_id: 'task-1', report_event_id: 'report-1',
+        description: 'Gate locked', reported_at: 'not-a-date',
+        review_state: 'review_required', resolution_state: 'blocked',
+      }],
+    }))).toBeNull()
+    expect(normalizePickupExceptionTriageQueue(queue({
+      customer_reports: [{
+        rfq_id: 'rfq-1', pickup_task_id: 'task-1', report_event_id: 'report-1',
+        description: 'Gate locked', reported_at: '2026-08-26T12:00:00Z',
+        review_state: 'review_required', resolution_state: 'blocked',
+        billing_authority: true,
+      }],
+    }))).toBeNull()
   })
 })

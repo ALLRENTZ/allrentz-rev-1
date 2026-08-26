@@ -8,6 +8,7 @@ import {
   PICKUP_EXCEPTION_ESCALATION_REASONS,
   type PickupExceptionEscalationReason,
   type PickupExceptionTriageItem,
+  type PickupCustomerExceptionReportQueueItem,
 } from '@/lib/pickupExceptionTriage'
 
 function label(value: string): string {
@@ -23,6 +24,7 @@ function age(value: string): string {
 
 export default function PickupExceptionTriageQueue() {
   const [items, setItems] = useState<PickupExceptionTriageItem[]>([])
+  const [customerReports, setCustomerReports] = useState<PickupCustomerExceptionReportQueueItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [notes, setNotes] = useState<Record<string, string>>({})
@@ -33,9 +35,12 @@ export default function PickupExceptionTriageQueue() {
     setLoading(true)
     setError(null)
     try {
-      setItems((await loadPickupExceptionTriageQueue()).items)
+      const queue = await loadPickupExceptionTriageQueue()
+      setItems(queue.items)
+      setCustomerReports(queue.customer_reports)
     } catch (caught) {
       setItems([])
+      setCustomerReports([])
       setError(caught instanceof Error ? caught.message : 'Pickup exception triage requires review')
     } finally {
       setLoading(false)
@@ -89,8 +94,39 @@ export default function PickupExceptionTriageQueue() {
           <span>{error}. State remains UNKNOWN / REVIEW REQUIRED.</span>
         </div>
       )}
-      {!loading && !error && items.length === 0 && (
-        <p className="mt-4 text-sm text-slate-600">No failed pickup attempts require triage.</p>
+      {!loading && !error && items.length === 0 && customerReports.length === 0 && (
+        <p className="mt-4 text-sm text-slate-600">No pickup exceptions require operations review.</p>
+      )}
+
+      {!loading && !error && customerReports.length > 0 && (
+        <div className="mt-4 space-y-3" aria-label="Customer pickup issue reports">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Customer-reported pickup issues</h3>
+            <p className="mt-1 text-xs text-slate-600">
+              Read-only evidence queue. Resolution, custody, return, billing, and contractual authority are blocked.
+            </p>
+          </div>
+          {customerReports.map((report) => (
+            <article key={report.report_event_id} className="rounded-md border border-amber-200 bg-amber-50/40 p-4">
+              <div className="flex flex-wrap justify-between gap-2">
+                <p className="font-medium text-slate-900">RFQ {report.rfq_id}</p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="border-amber-300 text-amber-900">
+                    REVIEW REQUIRED
+                  </Badge>
+                  <Badge variant="destructive">RESOLUTION BLOCKED</Badge>
+                </div>
+              </div>
+              <div className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+                <Clock className="h-3.5 w-3.5" /> {age(report.reported_at)}
+              </div>
+              <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{report.description}</p>
+              <p className="mt-3 text-xs font-medium text-amber-900">
+                No claim or resolution action is authorized for customer reports in this slice.
+              </p>
+            </article>
+          ))}
+        </div>
       )}
 
       <div className="mt-4 space-y-4">

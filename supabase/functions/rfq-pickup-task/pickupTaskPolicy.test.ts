@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest'
 import {
   buildPickupAccessInstructionProjection,
   buildPickupAttemptProjection,
+  buildPickupCustomerExceptionReportProjection,
   buildPickupDispatchProjection,
   buildPickupExceptionPublicProjection,
   buildPickupScheduleProjection,
   validatePickupTaskAction,
   type PickupAttemptEventProjection,
   type PickupAccessInstructionEventProjection,
+  type PickupCustomerExceptionReportEventProjection,
   type PickupDispatchEventProjection,
   type PickupExceptionTriageEventProjection,
   type PickupScheduleEventProjection,
@@ -55,6 +57,64 @@ describe('PickupTask action policy', () => {
     expect(() => buildPickupAccessInstructionProjection([
       { ...events[0], event_sequence: 2 },
     ])).toThrow('Pickup access-instruction evidence is malformed')
+  })
+
+  it('accepts only governed customer exception reports', () => {
+    expect(validatePickupTaskAction({
+      action: 'report_exception', rfq_id: 'rfq-1',
+      description: '  The gate is locked and the site contact is unavailable.  ',
+      idempotency_key: 'customer-exception-1',
+    })).toMatchObject({
+      valid: true,
+      input: {
+        action: 'report_exception',
+        rfqId: 'rfq-1',
+        description: 'The gate is locked and the site contact is unavailable.',
+      },
+    })
+    expect(validatePickupTaskAction({
+      action: 'report_exception', rfq_id: 'rfq-1', description: '   ',
+      idempotency_key: 'customer-exception-2',
+    })).toEqual({ valid: false, error: 'description must contain 1 to 4000 characters' })
+    expect(validatePickupTaskAction({
+      action: 'report_exception', rfq_id: 'rfq-1', description: 'x'.repeat(4001),
+      idempotency_key: 'customer-exception-3',
+    })).toEqual({ valid: false, error: 'description must contain 1 to 4000 characters' })
+    expect(validatePickupTaskAction({
+      action: 'report_exception', rfq_id: 'rfq-1', description: 'Gate locked',
+      idempotency_key: 'customer-exception-4', resolution_state: 'resolved',
+    }).valid).toBe(false)
+  })
+
+  it('builds a strict review-required customer exception projection', () => {
+    const events: PickupCustomerExceptionReportEventProjection[] = [{
+      id: 'customer-exception-1', event_sequence: 1,
+      event_type: 'customer_exception_reported', actor_role: 'customer',
+      description: '  Gate access is unavailable.  ', created_at: '2026-08-26T12:00:00Z',
+    }]
+    expect(buildPickupCustomerExceptionReportProjection(events)).toEqual({
+      current_customer_exception_state: 'review_required',
+      current_customer_exception_report: {
+        ...events[0], description: 'Gate access is unavailable.',
+      },
+      customer_exception_report_timeline: [{
+        ...events[0], description: 'Gate access is unavailable.',
+      }],
+    })
+    expect(buildPickupCustomerExceptionReportProjection([])).toEqual({
+      current_customer_exception_state: 'none_recorded',
+      current_customer_exception_report: null,
+      customer_exception_report_timeline: [],
+    })
+    expect(() => buildPickupCustomerExceptionReportProjection([
+      { ...events[0], actor_role: 'vendor_scheduler' as 'customer' },
+    ])).toThrow('Pickup customer exception-report evidence is malformed')
+    expect(() => buildPickupCustomerExceptionReportProjection([
+      { ...events[0], event_sequence: 2 },
+    ])).toThrow('Pickup customer exception-report evidence is malformed')
+    expect(() => buildPickupCustomerExceptionReportProjection([
+      { ...events[0], created_at: 'not-a-date' },
+    ])).toThrow('Pickup customer exception-report evidence is malformed')
   })
 
   it('accepts the read-only status projection', () => {

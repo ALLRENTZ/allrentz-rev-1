@@ -105,6 +105,15 @@ export interface PickupAccessInstructionEventProjection {
   created_at: string
 }
 
+export interface PickupCustomerExceptionReportEventProjection {
+  id: string
+  event_sequence: number
+  event_type: 'customer_exception_reported'
+  actor_role: 'customer'
+  description: string
+  created_at: string
+}
+
 export function buildPickupAccessInstructionProjection(
   events: PickupAccessInstructionEventProjection[],
 ): { current_access_instructions: PickupAccessInstructionEventProjection | null; access_instruction_timeline: PickupAccessInstructionEventProjection[] } {
@@ -126,6 +135,34 @@ export function buildPickupAccessInstructionProjection(
   return {
     current_access_instructions: sanitized.at(-1) ?? null,
     access_instruction_timeline: sanitized,
+  }
+}
+
+export function buildPickupCustomerExceptionReportProjection(
+  events: PickupCustomerExceptionReportEventProjection[],
+): {
+  current_customer_exception_state: 'none_recorded' | 'review_required'
+  current_customer_exception_report: PickupCustomerExceptionReportEventProjection | null
+  customer_exception_report_timeline: PickupCustomerExceptionReportEventProjection[]
+} {
+  const sanitized: PickupCustomerExceptionReportEventProjection[] = []
+  for (let index = 0; index < events.length; index += 1) {
+    const event = events[index]
+    if (!event || typeof event.id !== 'string' || !event.id
+        || event.event_sequence !== index + 1
+        || event.event_type !== 'customer_exception_reported'
+        || event.actor_role !== 'customer'
+        || typeof event.description !== 'string'
+        || !event.description.trim() || event.description.length > MAX_NOTES_LENGTH
+        || !Number.isFinite(Date.parse(event.created_at))) {
+      throw new Error('Pickup customer exception-report evidence is malformed')
+    }
+    sanitized.push({ ...event, description: event.description.trim() })
+  }
+  return {
+    current_customer_exception_state: sanitized.length > 0 ? 'review_required' : 'none_recorded',
+    current_customer_exception_report: sanitized.at(-1) ?? null,
+    customer_exception_report_timeline: sanitized,
   }
 }
 
@@ -178,6 +215,12 @@ export type PickupTaskInput =
       idempotencyKey: string
     }
   | {
+      action: 'report_exception'
+      rfqId: string
+      description: string
+      idempotencyKey: string
+    }
+  | {
       action: 'triage'
       rfqId: string
       triageAction: 'claim' | 'note' | 'escalate'
@@ -206,6 +249,7 @@ const ACTION_KEYS: Record<PickupTaskInput['action'], Set<string>> = {
   add_access_instructions: new Set([
     'action', 'rfq_id', 'instruction_type', 'instructions', 'idempotency_key',
   ]),
+  report_exception: new Set(['action', 'rfq_id', 'description', 'idempotency_key']),
   triage: new Set([
     'action', 'rfq_id', 'triage_action', 'escalation_reason', 'notes',
     'idempotency_key',
@@ -407,10 +451,11 @@ export function validatePickupTaskAction(
   if (action !== 'triage_queue' && action !== 'triage'
       && action !== 'status' && action !== 'propose' && action !== 'respond'
       && action !== 'assign_self' && action !== 'record_dispatch'
-      && action !== 'record_attempt' && action !== 'add_access_instructions') {
+      && action !== 'record_attempt' && action !== 'add_access_instructions'
+      && action !== 'report_exception') {
     return {
       valid: false,
-      error: 'action must be status, propose, respond, assign_self, record_dispatch, record_attempt, add_access_instructions, triage_queue, or triage',
+      error: 'action must be status, propose, respond, assign_self, record_dispatch, record_attempt, add_access_instructions, report_exception, triage_queue, or triage',
     }
   }
 
@@ -476,6 +521,22 @@ export function validatePickupTaskAction(
         instructions,
         idempotencyKey,
       },
+    }
+  }
+
+  if (action === 'report_exception') {
+    const description = typeof body['description'] === 'string'
+      ? body['description'].trim()
+      : ''
+    if (!description || description.length > MAX_NOTES_LENGTH) {
+      return {
+        valid: false,
+        error: `description must contain 1 to ${MAX_NOTES_LENGTH} characters`,
+      }
+    }
+    return {
+      valid: true,
+      input: { action, rfqId, description, idempotencyKey },
     }
   }
 

@@ -38,8 +38,19 @@ export interface PickupExceptionTriageItem {
   resolution_state: 'blocked'
 }
 
+export interface PickupCustomerExceptionReportQueueItem {
+  rfq_id: string
+  pickup_task_id: string
+  report_event_id: string
+  description: string
+  reported_at: string
+  review_state: 'review_required'
+  resolution_state: 'blocked'
+}
+
 type TriageQueue = {
   items: PickupExceptionTriageItem[]
+  customer_reports: PickupCustomerExceptionReportQueueItem[]
   authority_boundary: {
     object_scope: 'rfq'
     non_authoritative_triage: true
@@ -68,7 +79,8 @@ export function normalizePickupExceptionTriageQueue(value: unknown): TriageQueue
       || boundary.resolution_state !== 'blocked'
       || boundary.pickup_controls_billing !== false
       || boundary.custody_recorded !== false
-      || !Array.isArray(record.items)) return null
+      || !Array.isArray(record.items)
+      || !Array.isArray(record.customer_reports)) return null
 
   const items: PickupExceptionTriageItem[] = []
   for (const raw of record.items) {
@@ -135,7 +147,31 @@ export function normalizePickupExceptionTriageQueue(value: unknown): TriageQueue
       internal_timeline: timeline,
     })
   }
-  return { items, authority_boundary: boundary as TriageQueue['authority_boundary'] }
+  const customerReports: PickupCustomerExceptionReportQueueItem[] = []
+  for (const raw of record.customer_reports) {
+    if (!raw || typeof raw !== 'object') return null
+    const report = raw as Record<string, unknown>
+    const allowedKeys = new Set([
+      'rfq_id', 'pickup_task_id', 'report_event_id', 'description', 'reported_at',
+      'review_state', 'resolution_state',
+    ])
+    if (Object.keys(report).some((key) => !allowedKeys.has(key))
+        || !isString(report.rfq_id)
+        || !isString(report.pickup_task_id)
+        || !isString(report.report_event_id)
+        || !isString(report.description)
+        || report.description.length > 4000
+        || !isString(report.reported_at)
+        || !Number.isFinite(Date.parse(report.reported_at))
+        || report.review_state !== 'review_required'
+        || report.resolution_state !== 'blocked') return null
+    customerReports.push(report as unknown as PickupCustomerExceptionReportQueueItem)
+  }
+  return {
+    items,
+    customer_reports: customerReports,
+    authority_boundary: boundary as TriageQueue['authority_boundary'],
+  }
 }
 
 export async function loadPickupExceptionTriageQueue(): Promise<TriageQueue> {
