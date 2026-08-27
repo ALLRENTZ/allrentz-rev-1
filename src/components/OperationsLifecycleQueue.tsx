@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Clock3, FileCheck2, LockKeyhole, RefreshCw, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock3, FileCheck2, LockKeyhole, RefreshCw, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -92,6 +92,51 @@ function PreDispatchReadiness({ item }: { item: OperationsLifecycleItem }) {
         <span>
           Release authority is NOT IMPLEMENTED. This projection cannot release equipment,
           dispatch a task, determine billing, establish custody, or approve document sufficiency.
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function DeliveryAcceptanceContinuity({ item }: { item: OperationsLifecycleItem }) {
+  const status = item.field_acceptance
+  if (!status) return null
+
+  const recorded = status.field_acceptance_state === 'RECORDED'
+  const awaiting = status.field_acceptance_state === 'AWAITING_CUSTOMER'
+  return (
+    <div className={`mt-4 rounded-md border p-4 ${recorded
+      ? 'border-emerald-200 bg-emerald-50'
+      : awaiting ? 'border-blue-200 bg-blue-50' : 'border-amber-200 bg-amber-50'}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            {recorded
+              ? <CheckCircle2 className="h-4 w-4 text-emerald-800" />
+              : <AlertTriangle className="h-4 w-4 text-amber-800" />}
+            <p className="font-medium text-slate-950">Delivery & field-acceptance continuity</p>
+          </div>
+          <p className="mt-1 text-sm text-slate-700">
+            Canonical system transition evidence only; private delivery references are not exposed.
+          </p>
+        </div>
+        <Badge variant="outline">{status.field_acceptance_state.replaceAll('_', ' ')}</Badge>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <div className="rounded border bg-white p-3 text-sm">
+          <span className="text-slate-600">On-rent determination</span>
+          <p className="font-medium text-slate-900">{status.on_rent_determination.replaceAll('_', ' ')}</p>
+        </div>
+        <div className="rounded border bg-white p-3 text-sm">
+          <span className="text-slate-600">Determined at</span>
+          <p className="font-medium text-slate-900">{formatTimestamp(status.accepted_at)}</p>
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2 border-t pt-3 text-xs text-slate-700">
+        <LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <span>
+          Read-only RFQ-wide projection. It does not decide custody, condition liability,
+          legal evidence sufficiency, billing calculations, or granular scope.
         </span>
       </div>
     </div>
@@ -197,6 +242,7 @@ export default function OperationsLifecycleQueue() {
                   </div>
                   <Timeline item={item} />
                   <PreDispatchReadiness item={item} />
+                  <DeliveryAcceptanceContinuity item={item} />
                 </article>
               ))}
             </div>

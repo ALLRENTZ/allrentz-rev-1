@@ -6,7 +6,12 @@ import {
   selectPublishableKey,
   selectSecretKey,
 } from '../rfq-transition/keys.ts'
-import { validateFieldAcceptance } from './fieldAcceptancePolicy.ts'
+import {
+  buildFieldAcceptanceStatusProjection,
+  hasFieldAcceptanceProjectionAccess,
+  validateFieldAcceptance,
+  validateFieldAcceptanceStatus,
+} from './fieldAcceptancePolicy.ts'
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -85,14 +90,112 @@ Deno.serve(async (req: Request) => {
     return jsonError(400, 'Invalid JSON body')
   }
 
-  const validation = validateFieldAcceptance(body)
-  if (!validation.valid || !validation.input) {
+  const isStatusRequest = body['action'] === 'status'
+  const statusValidation = isStatusRequest ? validateFieldAcceptanceStatus(body) : null
+  const validation = isStatusRequest ? null : validateFieldAcceptance(body)
+  if (statusValidation && (!statusValidation.valid || !statusValidation.input)) {
+    return jsonError(400, statusValidation.error ?? 'Invalid status request')
+  }
+  if (validation && (!validation.valid || !validation.input)) {
     return jsonError(400, validation.error ?? 'Invalid field acceptance')
   }
 
   const svc = createClient(supabaseUrl, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
+
+  if (statusValidation?.input) {
+    const rfqId = statusValidation.input.rfqId
+    const { data: actorProfile, error: actorProfileError } = await svc
+      .from('profiles')
+      .select('is_demo')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (actorProfileError) {
+      console.error('field acceptance projection actor boundary error:', actorProfileError.message)
+      return jsonError(500, 'Unable to verify field acceptance visibility')
+    }
+    if (!actorProfile || typeof actorProfile.is_demo !== 'boolean') {
+      return jsonError(403, 'Field acceptance visibility requires an active profile boundary')
+    }
+
+    const { data: rfq, error: rfqError } = await svc
+      .from('rental_requests')
+      .select('id, customer_id, customer_organization_id, operational_status, on_rent_at, is_simulated')
+      .eq('id', rfqId)
+      .maybeSingle()
+    if (rfqError) {
+      console.error('field acceptance projection RFQ error:', rfqError.message)
+      return jsonError(500, 'Unable to load field acceptance status')
+    }
+    if (!rfq) return jsonError(404, 'RFQ not found')
+
+    const [roleResult, membershipResult, acceptedQuoteResult] = await Promise.all([
+      svc
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .in('role', ['admin', 'manager']),
+      svc
+        .from('organization_memberships')
+        .select('organization_id, role')
+        .eq('user_id', user.id)
+        .is('archived_at', null)
+        .in('role', ['owner', 'admin', 'member']),
+      svc
+        .from('vendor_quote_responses')
+        .select('vendor_organization_id')
+        .eq('rfq_id', rfqId)
+        .eq('status', 'accepted')
+        .eq('is_simulated', rfq.is_simulated),
+    ])
+    if (roleResult.error || membershipResult.error || acceptedQuoteResult.error) {
+      console.error(
+        'field acceptance projection authorization error:',
+        roleResult.error?.message
+          ?? membershipResult.error?.message
+          ?? acceptedQuoteResult.error?.message,
+      )
+      return jsonError(500, 'Unable to verify field acceptance visibility')
+    }
+
+    if (!hasFieldAcceptanceProjectionAccess({
+      actorId: user.id,
+      actorIsDemo: actorProfile.is_demo,
+      rfq: {
+        customerId: rfq.customer_id,
+        customerOrganizationId: rfq.customer_organization_id,
+        isSimulated: rfq.is_simulated,
+      },
+      operationsRoles: roleResult.data,
+      memberships: membershipResult.data,
+      acceptedVendorOrganizationIds: (acceptedQuoteResult.data ?? [])
+        .map((quote) => quote.vendor_organization_id)
+        .filter((organizationId): organizationId is string => typeof organizationId === 'string'),
+    })) return jsonError(403, 'Insufficient authority to view field acceptance status')
+
+    const { data: timelineRows, error: timelineError } = await svc
+      .from('rfq_operational_status')
+      .select('previous_status, new_status, transitioned_by, actor_role, created_at')
+      .eq('rfq_id', rfqId)
+      .eq('is_simulated', rfq.is_simulated)
+      .eq('new_status', 'on_rent')
+      .order('created_at', { ascending: true })
+    if (timelineError) {
+      console.error('field acceptance projection timeline error:', timelineError.message)
+      return jsonError(500, 'Unable to load field acceptance status')
+    }
+
+    const projection = buildFieldAcceptanceStatusProjection({
+      currentStatus: rfq.operational_status,
+      onRentAt: rfq.on_rent_at,
+      timelineRows,
+    })
+    if (!projection) return jsonError(422, 'Field acceptance status is not applicable')
+    return json(200, projection)
+  }
+
+  if (!validation?.input) return jsonError(400, 'Invalid field acceptance')
   const input = validation.input
   const { data: correlationId, error: acceptanceError } = await svc.rpc(
     'record_rental_field_acceptance',

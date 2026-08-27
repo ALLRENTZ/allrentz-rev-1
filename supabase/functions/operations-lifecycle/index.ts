@@ -12,6 +12,7 @@ import {
   lifecycleRowsAreConsistent,
   validateOperationsLifecycleAction,
 } from './operationsLifecyclePolicy.ts'
+import { buildFieldAcceptanceStatusProjection } from '../rfq-field-acceptance/fieldAcceptancePolicy.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -120,7 +121,7 @@ Deno.serve(async (req: Request) => {
   const isSimulated = actorProfile.is_demo
   const { data: rfqs, error: rfqError } = await svc
     .from('rental_requests')
-    .select('id, customer_id, operational_status, created_at, updated_at')
+    .select('id, customer_id, operational_status, on_rent_at, created_at, updated_at')
     .eq('is_simulated', isSimulated)
     .order('updated_at', { ascending: false, nullsFirst: false })
     .limit(50)
@@ -198,13 +199,15 @@ Deno.serve(async (req: Request) => {
     rfq_id: string
     previous_status: unknown
     new_status: unknown
+    transitioned_by: unknown
+    actor_role: unknown
     created_at: string
   }> = []
 
   if (rfqIds.length > 0) {
     const { data: events, error: eventError } = await svc
       .from('rfq_operational_status')
-      .select('rfq_id, previous_status, new_status, created_at')
+      .select('rfq_id, previous_status, new_status, transitioned_by, actor_role, created_at')
       .in('rfq_id', rfqIds)
       .eq('is_simulated', isSimulated)
       .order('created_at', { ascending: true })
@@ -252,6 +255,11 @@ Deno.serve(async (req: Request) => {
         customerRequirements: eligibleCustomerIds.has(rfq.customer_id)
           ? customerRequirementsByUser.get(rfq.customer_id)
           : null,
+      }),
+      field_acceptance: buildFieldAcceptanceStatusProjection({
+        currentStatus: rfq.operational_status,
+        onRentAt: rfq.on_rent_at,
+        timelineRows: events,
       }),
       timeline: events.map((event) => ({
         previous_status: event.previous_status,

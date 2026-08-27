@@ -1,4 +1,8 @@
 import { supabase } from '@/integrations/supabase/client'
+import {
+  normalizeFieldAcceptanceStatus,
+  type FieldAcceptanceStatusProjection,
+} from '@/lib/fieldAcceptanceStatus'
 
 export const APP_RFQ_STATUSES = [
   'draft',
@@ -50,6 +54,7 @@ export interface OperationsLifecycleItem {
   created_at: string | null
   updated_at: string | null
   pre_dispatch: PreDispatchReadinessProjection | null
+  field_acceptance: FieldAcceptanceStatusProjection | null
   timeline: OperationsLifecycleEvent[]
 }
 
@@ -73,6 +78,15 @@ const PRE_DISPATCH_STATUS_SET = new Set<AppRfqStatus>([
   'quote_accepted',
   'vendor_confirmed',
   'mobilizing',
+])
+const FIELD_ACCEPTANCE_STATUS_SET = new Set<AppRfqStatus>([
+  'in_transit',
+  'on_rent',
+  'rental_extended',
+  'off_rent_requested',
+  'demobilizing',
+  'off_rent',
+  'completed',
 ])
 const REQUIREMENT_KEYS = ['twic', 'isnet', 'purchase_order'] as const
 
@@ -175,6 +189,12 @@ export function normalizeOperationsLifecycleProjection(
 
     const preDispatch = normalizePreDispatchReadiness(raw.pre_dispatch, raw.current_status)
     if (preDispatch === undefined) return null
+    const fieldAcceptance = FIELD_ACCEPTANCE_STATUS_SET.has(raw.current_status)
+      ? normalizeFieldAcceptanceStatus(raw.field_acceptance)
+      : raw.field_acceptance === null ? null : undefined
+    if (fieldAcceptance === undefined
+        || (FIELD_ACCEPTANCE_STATUS_SET.has(raw.current_status) && fieldAcceptance === null)) return null
+    if (fieldAcceptance && fieldAcceptance.current_status !== raw.current_status) return null
 
     const timeline: OperationsLifecycleEvent[] = []
     let previousNewStatus: AppRfqStatus | null = null
@@ -204,6 +224,7 @@ export function normalizeOperationsLifecycleProjection(
       created_at: raw.created_at,
       updated_at: raw.updated_at,
       pre_dispatch: preDispatch,
+      field_acceptance: fieldAcceptance,
       timeline,
     })
   }
