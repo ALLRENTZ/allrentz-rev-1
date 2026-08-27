@@ -62,6 +62,9 @@ function projection(overrides: Record<string, unknown> = {}) {
     exception_resolution_state: 'blocked',
     current_access_instructions: null,
     access_instruction_timeline: [],
+    current_customer_exception_state: 'none_recorded',
+    current_customer_exception_report: null,
+    customer_exception_report_timeline: [],
     caller_can_record_attempt: false,
     authority_boundary: {
       object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,

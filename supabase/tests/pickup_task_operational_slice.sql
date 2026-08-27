@@ -3,7 +3,7 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = public, extensions;
 
-SELECT plan(122);
+SELECT plan(144);
 
 SELECT has_table('public', 'rental_pickup_tasks', 'PickupTask table exists');
 SELECT has_table('public', 'rental_pickup_schedule_events', 'pickup schedule event table exists');
@@ -16,6 +16,10 @@ SELECT has_table(
 SELECT has_table(
   'public', 'rental_pickup_access_instruction_events',
   'pickup access-instruction event table exists'
+);
+SELECT has_table(
+  'public', 'rental_pickup_customer_exception_report_events',
+  'customer pickup exception-report event table exists'
 );
 
 SELECT ok(
@@ -48,6 +52,11 @@ SELECT ok(
    WHERE oid = 'public.rental_pickup_access_instruction_events'::regclass),
   'pickup access-instruction RLS is enabled'
 );
+SELECT ok(
+  (SELECT relrowsecurity FROM pg_catalog.pg_class
+   WHERE oid = 'public.rental_pickup_customer_exception_report_events'::regclass),
+  'customer pickup exception-report RLS is enabled'
+);
 
 SELECT ok(
   NOT has_table_privilege('authenticated', 'public.rental_pickup_tasks', 'SELECT'),
@@ -76,6 +85,57 @@ SELECT ok(
     'authenticated', 'public.rental_pickup_access_instruction_events', 'SELECT'
   ),
   'authenticated clients cannot read pickup access instructions directly'
+);
+SELECT ok(
+  NOT has_table_privilege(
+    'authenticated', 'public.rental_pickup_customer_exception_report_events', 'SELECT'
+  ),
+  'authenticated clients cannot read customer pickup exception reports directly'
+);
+SELECT ok(
+  has_table_privilege(
+    'service_role', 'public.rental_pickup_customer_exception_report_events', 'SELECT'
+  ),
+  'service role can assemble sanitized customer exception-report projections'
+);
+SELECT ok(
+  NOT has_table_privilege(
+    'service_role', 'public.rental_pickup_customer_exception_report_events', privilege_name
+  ),
+  format('service_role lacks direct %s on customer pickup exception reports', privilege_name)
+)
+FROM unnest(ARRAY['INSERT', 'UPDATE', 'DELETE']) AS privileges(privilege_name);
+SELECT ok(
+  has_function_privilege(
+    'service_role',
+    'public.record_rental_pickup_customer_exception_report(uuid,uuid,text,text)',
+    'EXECUTE'
+  ),
+  'service_role can transport the governed customer exception-report command'
+);
+SELECT ok(
+  NOT has_function_privilege(
+    'authenticated',
+    'public.record_rental_pickup_customer_exception_report(uuid,uuid,text,text)',
+    'EXECUTE'
+  ),
+  'authenticated clients cannot call the customer exception-report command directly'
+);
+SELECT ok(
+  has_function_privilege(
+    'service_role',
+    'public.get_rental_pickup_customer_exception_report_queue(uuid)',
+    'EXECUTE'
+  ),
+  'service_role can transport the authorized customer exception-report queue'
+);
+SELECT ok(
+  NOT has_function_privilege(
+    'authenticated',
+    'public.get_rental_pickup_customer_exception_report_queue(uuid)',
+    'EXECUTE'
+  ),
+  'authenticated clients cannot call the customer exception-report queue directly'
 );
 SELECT ok(
   has_table_privilege(
@@ -493,6 +553,95 @@ SELECT throws_ok(
   'rental_pickup_access_instruction_events rows are immutable; append a governed pickup event instead',
   'pickup access-instruction history is immutable'
 );
+SELECT throws_ok(
+  $$ SELECT public.record_rental_pickup_customer_exception_report(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007102',
+    'The site gate is unavailable', 'vendor-customer-report-1'
+  ) $$,
+  'P0001',
+  'Actor 00000000-0000-4000-8000-000000007102 lacks customer pickup exception-report authority for RFQ 00000000-0000-4000-8000-000000007301',
+  'the accepted vendor cannot create a customer exception report'
+);
+SELECT lives_ok(
+  $$ SELECT public.record_rental_pickup_customer_exception_report(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007101',
+    'The site gate is unavailable', 'customer-report-1'
+  ) $$,
+  'the owning customer can append an RFQ-wide exception report'
+);
+SELECT is(
+  (SELECT count(*)::integer
+   FROM public.rental_pickup_customer_exception_report_events
+   WHERE rfq_id = '00000000-0000-4000-8000-000000007301'),
+  1,
+  'the governed command appends exactly one customer exception-report event'
+);
+SELECT lives_ok(
+  $$ SELECT public.record_rental_pickup_customer_exception_report(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007101',
+    'The site gate is unavailable', 'customer-report-1'
+  ) $$,
+  'an identical customer exception-report replay succeeds'
+);
+SELECT is(
+  (SELECT count(*)::integer
+   FROM public.rental_pickup_customer_exception_report_events
+   WHERE rfq_id = '00000000-0000-4000-8000-000000007301'),
+  1,
+  'an idempotent customer exception-report replay creates no duplicate event'
+);
+SELECT is(
+  (SELECT count(*)::integer
+   FROM public.audit_events
+   WHERE related_rfq_id = '00000000-0000-4000-8000-000000007301'
+     AND event_type = 'pickup.customer_exception_reported'),
+  1,
+  'the accepted customer exception report appends one atomic audit event'
+);
+SELECT throws_ok(
+  $$ SELECT public.record_rental_pickup_customer_exception_report(
+    '00000000-0000-4000-8000-000000007301',
+    '00000000-0000-4000-8000-000000007101',
+    'A different report', 'customer-report-1'
+  ) $$,
+  'P0001',
+  'Pickup customer exception idempotency key conflicts with an existing command',
+  'a customer exception-report idempotency conflict fails closed'
+);
+SELECT is(
+  (SELECT review_state
+   FROM public.get_rental_pickup_customer_exception_report_queue(
+     '00000000-0000-4000-8000-000000007105'
+   )),
+  'review_required',
+  'the operations queue keeps the customer report review-required'
+);
+SELECT is(
+  (SELECT resolution_state
+   FROM public.get_rental_pickup_customer_exception_report_queue(
+     '00000000-0000-4000-8000-000000007105'
+   )),
+  'blocked',
+  'the operations queue keeps customer exception resolution blocked'
+);
+SELECT throws_ok(
+  $$ SELECT * FROM public.get_rental_pickup_customer_exception_report_queue(
+    '00000000-0000-4000-8000-000000007101'
+  ) $$,
+  'P0001',
+  'Actor 00000000-0000-4000-8000-000000007101 lacks pickup exception triage authority',
+  'a customer cannot access the internal operations report queue'
+);
+SELECT throws_ok(
+  $$ DELETE FROM public.rental_pickup_customer_exception_report_events
+     WHERE rfq_id = '00000000-0000-4000-8000-000000007301' $$,
+  'P0001',
+  'rental_pickup_customer_exception_report_events rows are immutable; append a governed pickup event instead',
+  'customer exception-report history is immutable'
+);
 SELECT is(
   (SELECT event_type FROM public.rental_pickup_schedule_events
    WHERE rfq_id = '00000000-0000-4000-8000-000000007301'),
@@ -823,7 +972,7 @@ SELECT is(
   (SELECT count(*)::integer FROM public.audit_events
    WHERE related_rfq_id = '00000000-0000-4000-8000-000000007301'
      AND event_type LIKE 'pickup.%'),
-  8,
+  9,
   'each accepted PickupTask command produces one atomic audit event'
 );
 
