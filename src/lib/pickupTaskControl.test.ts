@@ -43,6 +43,9 @@ const completeRecord = {
   exception_resolution_state: 'blocked',
   current_access_instructions: null,
   access_instruction_timeline: [],
+  current_customer_exception_state: 'none_recorded',
+  current_customer_exception_report: null,
+  customer_exception_report_timeline: [],
   caller_can_record_attempt: false,
   authority_boundary: {
     object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
@@ -91,10 +94,54 @@ describe('PickupTask control projection', () => {
       current_exception_coordination_state: 'not_applicable',
       exception_resolution_state: 'blocked',
       current_access_instructions: null, access_instruction_timeline: [],
+      current_customer_exception_state: 'none_recorded',
+      current_customer_exception_report: null,
+      customer_exception_report_timeline: [],
       authority_boundary: {
         object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
       },
     })?.current_schedule_state).toBe('unscheduled')
+  })
+
+  it('accepts strict customer exception evidence and keeps resolution blocked', () => {
+    const report = {
+      id: 'customer-exception-1', event_sequence: 1,
+      event_type: 'customer_exception_reported', actor_role: 'customer',
+      description: 'Gate access is unavailable.', created_at: '2026-08-26T12:00:00Z',
+    }
+    expect(normalizePickupTaskRecord({
+      ...completeRecord,
+      current_customer_exception_state: 'review_required',
+      current_customer_exception_report: report,
+      customer_exception_report_timeline: [report],
+    })).toMatchObject({
+      current_customer_exception_state: 'review_required',
+      exception_resolution_state: 'blocked',
+    })
+    expect(normalizePickupTaskRecord({
+      ...completeRecord,
+      current_customer_exception_state: 'none_recorded',
+      current_customer_exception_report: report,
+      customer_exception_report_timeline: [report],
+    })).toBeNull()
+    expect(normalizePickupTaskRecord({
+      ...completeRecord,
+      current_customer_exception_state: 'review_required',
+      current_customer_exception_report: { ...report, actor_role: 'vendor_scheduler' },
+      customer_exception_report_timeline: [{ ...report, actor_role: 'vendor_scheduler' }],
+    })).toBeNull()
+    expect(normalizePickupTaskRecord({
+      ...completeRecord,
+      current_customer_exception_state: 'review_required',
+      current_customer_exception_report: { ...report, event_sequence: 2 },
+      customer_exception_report_timeline: [{ ...report, event_sequence: 2 }],
+    })).toBeNull()
+    expect(normalizePickupTaskRecord({
+      ...completeRecord,
+      current_customer_exception_state: 'review_required',
+      current_customer_exception_report: { ...report, created_at: 'not-a-date' },
+      customer_exception_report_timeline: [{ ...report, created_at: 'not-a-date' }],
+    })).toBeNull()
   })
 
   it('fails closed if billing, custody, scope, or current-state evidence conflicts', () => {

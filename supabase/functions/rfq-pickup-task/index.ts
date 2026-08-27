@@ -1,6 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
-  buildPickupAccessInstructionProjection,
   BACKEND_SECRET_KEY_NAME,
   KeyConfigError,
   preferProductionValue,
@@ -8,7 +7,9 @@ import {
   selectSecretKey,
 } from '../rfq-transition/keys.ts'
 import {
+  buildPickupAccessInstructionProjection,
   buildPickupAttemptProjection,
+  buildPickupCustomerExceptionReportProjection,
   buildPickupExceptionPublicProjection,
   buildPickupDispatchProjection,
   buildPickupScheduleProjection,
@@ -135,8 +136,20 @@ Deno.serve(async (req: Request) => {
       console.error('rfq-pickup-task triage queue error:', error.message ?? 'unknown')
       return mapCommandError(error.message ?? '')
     }
+    const { data: customerReports, error: customerReportsError } = await svc.rpc(
+      'get_rental_pickup_customer_exception_report_queue',
+      { p_actor_id: user.id },
+    )
+    if (customerReportsError) {
+      console.error(
+        'rfq-pickup-task customer exception-report queue error:',
+        customerReportsError.message ?? 'unknown',
+      )
+      return mapCommandError(customerReportsError.message ?? '')
+    }
     return json(200, {
       items: data ?? [],
+      customer_reports: customerReports ?? [],
       authority_boundary: {
         object_scope: 'rfq',
         non_authoritative_triage: true,
@@ -197,6 +210,9 @@ Deno.serve(async (req: Request) => {
         exception_resolution_state: 'blocked',
         current_access_instructions: null,
         access_instruction_timeline: [],
+        current_customer_exception_state: 'none_recorded',
+        current_customer_exception_report: null,
+        customer_exception_report_timeline: [],
         caller_can_record_attempt: false,
         authority_boundary: {
           object_scope: 'rfq',
@@ -290,6 +306,28 @@ Deno.serve(async (req: Request) => {
       return jsonError(500, 'Pickup access instructions require review')
     }
 
+    const customerExceptionProjection = 'id, event_sequence, event_type, actor_role, description, created_at'
+    const { data: customerExceptionEvents, error: customerExceptionError } = await svc
+      .from('rental_pickup_customer_exception_report_events')
+      .select(customerExceptionProjection)
+      .eq('pickup_task_id', task.id)
+      .order('event_sequence', { ascending: true })
+
+    if (customerExceptionError) {
+      console.error('rfq-pickup-task customer exception-report projection error:', customerExceptionError)
+      return jsonError(500, 'Pickup customer exception reports require review')
+    }
+
+    let customerExceptionReports
+    try {
+      customerExceptionReports = buildPickupCustomerExceptionReportProjection(
+        customerExceptionEvents ?? [],
+      )
+    } catch (error) {
+      console.error('rfq-pickup-task malformed customer exception-report projection:', error)
+      return jsonError(500, 'Pickup customer exception reports require review')
+    }
+
     const attemptEventProjection = 'id, event_sequence, event_type, actor_role, assigned_actor_id, reason_code, notes, created_at'
     const { data: attemptEvents, error: attemptError } = await svc
       .from('rental_pickup_attempt_events')
@@ -348,6 +386,7 @@ Deno.serve(async (req: Request) => {
       ...scheduleProjection,
       ...dispatchProjection,
       ...accessInstructions,
+      ...customerExceptionReports,
       ...attemptProjection,
       ...publicTriageProjection,
       authority_boundary: {
@@ -409,14 +448,21 @@ Deno.serve(async (req: Request) => {
                   p_instructions: input.instructions,
                   p_idempotency_key: input.idempotencyKey,
                 })
-              : svc.rpc('record_rental_pickup_exception_triage', {
-                p_rfq_id: input.rfqId,
-                p_actor_id: user.id,
-                p_action: input.triageAction,
-                p_escalation_reason: input.escalationReason,
-                p_notes: input.notes,
-                p_idempotency_key: input.idempotencyKey,
-              })
+              : input.action === 'report_exception'
+                ? svc.rpc('record_rental_pickup_customer_exception_report', {
+                    p_rfq_id: input.rfqId,
+                    p_actor_id: user.id,
+                    p_description: input.description,
+                    p_idempotency_key: input.idempotencyKey,
+                  })
+                : svc.rpc('record_rental_pickup_exception_triage', {
+                    p_rfq_id: input.rfqId,
+                    p_actor_id: user.id,
+                    p_action: input.triageAction,
+                    p_escalation_reason: input.escalationReason,
+                    p_notes: input.notes,
+                    p_idempotency_key: input.idempotencyKey,
+                  })
 
   const { data, error } = await rpc
   if (error) {

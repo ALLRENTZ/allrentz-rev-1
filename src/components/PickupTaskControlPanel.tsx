@@ -56,6 +56,7 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
   const [attemptNotes, setAttemptNotes] = useState('')
   const [accessInstructionType, setAccessInstructionType] = useState<PickupAccessInstructionType | ''>('')
   const [accessInstructions, setAccessInstructions] = useState('')
+  const [customerExceptionDescription, setCustomerExceptionDescription] = useState('')
 
   const loadRecord = useCallback(async () => {
     setLoading(true)
@@ -281,6 +282,32 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
     setSubmitting(false)
   }
 
+  const submitCustomerExceptionReport = async () => {
+    if (!customerExceptionDescription.trim()) {
+      setError('Describe the pickup issue for operations review.')
+      return
+    }
+    setSubmitting(true)
+    setError(null)
+    setSuccess(null)
+    const { error: invokeError } = await supabase.functions.invoke('rfq-pickup-task', {
+      body: {
+        action: 'report_exception',
+        rfq_id: rfqId,
+        description: customerExceptionDescription,
+        idempotency_key: crypto.randomUUID(),
+      },
+    })
+    if (invokeError) {
+      setError(invokeError.message || 'Unable to record the customer pickup issue.')
+    } else {
+      setSuccess('Pickup issue recorded for operations review. Pickup and billing state remain unchanged.')
+      setCustomerExceptionDescription('')
+      await loadRecord()
+    }
+    setSubmitting(false)
+  }
+
   if (loading) {
     return <div className="mt-4 rounded-lg border bg-slate-50 p-3 text-sm text-slate-600">Loading PickupTask progress…</div>
   }
@@ -472,6 +499,68 @@ export default function PickupTaskControlPanel({ rfqId, actorMode }: PickupTaskC
                 </li>
               ))}
             </ol>
+          )}
+        </div>
+      )}
+
+      {record.pickup_task && (
+        <div className="mt-4 rounded-md border border-amber-200 bg-amber-50/40 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-700" />
+            <p className="text-sm font-medium text-slate-900">Customer pickup issue reports</p>
+            {record.current_customer_exception_state === 'review_required' && (
+              <Badge variant="outline" className="border-amber-300 text-amber-900">
+                REVIEW REQUIRED
+              </Badge>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-slate-600">
+            Customer-reported operational evidence only. A report does not establish a failed pickup,
+            resolution, custody, return completion, stop-rent, billing, condition, or invoice authority.
+          </p>
+
+          {actorMode === 'customer' && (
+            <div className="mt-3 rounded-md border bg-white p-3">
+              <label className="text-xs font-medium" htmlFor={`pickup-customer-exception-${rfqId}`}>
+                Describe the pickup issue
+              </label>
+              <Textarea
+                id={`pickup-customer-exception-${rfqId}`}
+                className="mt-1"
+                value={customerExceptionDescription}
+                onChange={(event) => setCustomerExceptionDescription(event.target.value)}
+                maxLength={4000}
+                rows={3}
+                placeholder="Describe the observed access, coordination, or equipment issue without making custody or billing conclusions"
+              />
+              <Button
+                className="mt-2"
+                variant="outline"
+                disabled={submitting || !customerExceptionDescription.trim()}
+                onClick={() => void submitCustomerExceptionReport()}
+              >
+                Report issue for review
+              </Button>
+            </div>
+          )}
+
+          {record.customer_exception_report_timeline.length === 0 ? (
+            <p className="mt-3 text-xs text-slate-500">No customer pickup issues have been reported.</p>
+          ) : (
+            <ol className="mt-3 space-y-2 border-l border-amber-200 pl-4">
+              {record.customer_exception_report_timeline.map((event) => (
+                <li key={event.id} className="text-xs text-slate-600">
+                  <p className="font-medium text-slate-800">Customer issue reported</p>
+                  <p>{formatDate(event.created_at)} · customer · REVIEW REQUIRED</p>
+                  <p className="mt-0.5 whitespace-pre-wrap">{event.description}</p>
+                </li>
+              ))}
+            </ol>
+          )}
+          {record.current_customer_exception_state === 'review_required' && (
+            <p className="mt-3 text-xs font-medium text-amber-900">
+              Resolution authority is blocked. Operations may review the report but cannot resolve it through this workflow.
+            </p>
           )}
         </div>
       )}
