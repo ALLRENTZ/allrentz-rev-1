@@ -110,6 +110,15 @@ export interface PickupAccessInstructionEvent {
   created_at: string
 }
 
+export interface PickupCustomerExceptionReportEvent {
+  id: string
+  event_sequence: number
+  event_type: 'customer_exception_reported'
+  actor_role: 'customer'
+  description: string
+  created_at: string
+}
+
 export interface PickupTaskControlRecord {
   rfq_id: string
   operational_status: string
@@ -140,6 +149,9 @@ export interface PickupTaskControlRecord {
   exception_resolution_state: 'blocked'
   current_access_instructions: PickupAccessInstructionEvent | null
   access_instruction_timeline: PickupAccessInstructionEvent[]
+  current_customer_exception_state: 'none_recorded' | 'review_required'
+  current_customer_exception_report: PickupCustomerExceptionReportEvent | null
+  customer_exception_report_timeline: PickupCustomerExceptionReportEvent[]
   caller_can_record_attempt: boolean
   authority_boundary: {
     object_scope: 'rfq'
@@ -314,6 +326,32 @@ function normalizeAccessInstructionEvent(value: unknown): PickupAccessInstructio
   }
 }
 
+function normalizeCustomerExceptionReportEvent(
+  value: unknown,
+): PickupCustomerExceptionReportEvent | null {
+  if (!isRecord(value)) return null
+  const allowedKeys = new Set([
+    'id', 'event_sequence', 'event_type', 'actor_role', 'description', 'created_at',
+  ])
+  if (Object.keys(value).some((key) => !allowedKeys.has(key))) return null
+  const id = requiredString(value.id)
+  const description = requiredString(value.description)
+  if (!id || !description || description.length > 4000
+      || value.event_type !== 'customer_exception_reported'
+      || value.actor_role !== 'customer'
+      || typeof value.event_sequence !== 'number'
+      || !Number.isInteger(value.event_sequence) || value.event_sequence < 1
+      || !validDate(value.created_at)) return null
+  return {
+    id,
+    event_sequence: value.event_sequence,
+    event_type: 'customer_exception_reported',
+    actor_role: 'customer',
+    description,
+    created_at: value.created_at,
+  }
+}
+
 function windowsMatch(left: PickupScheduleWindow | null, right: PickupScheduleEvent | null): boolean {
   if (!left || !right) return left === null && right === null
   return left.pickup_window_start === right.pickup_window_start
@@ -353,6 +391,10 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
         || value.current_access_instructions !== null
         || !Array.isArray(value.access_instruction_timeline)
         || value.access_instruction_timeline.length !== 0
+        || value.current_customer_exception_state !== 'none_recorded'
+        || value.current_customer_exception_report !== null
+        || !Array.isArray(value.customer_exception_report_timeline)
+        || value.customer_exception_report_timeline.length !== 0
         || value.caller_can_record_attempt !== false) return null
     return {
       rfq_id: rfqId,
@@ -377,6 +419,9 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
       exception_resolution_state: 'blocked',
       current_access_instructions: null,
       access_instruction_timeline: [],
+      current_customer_exception_state: 'none_recorded',
+      current_customer_exception_report: null,
+      customer_exception_report_timeline: [],
       caller_can_record_attempt: false,
       authority_boundary: {
         object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
@@ -478,6 +523,31 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
   if ((currentAccessInstructions === null) !== (latestAccessInstructions === null)
       || (currentAccessInstructions && latestAccessInstructions
         && currentAccessInstructions.id !== latestAccessInstructions.id)) return null
+  const customerExceptionState = value.current_customer_exception_state
+  if (customerExceptionState !== 'none_recorded' && customerExceptionState !== 'review_required') {
+    return null
+  }
+  if (!Array.isArray(value.customer_exception_report_timeline)) return null
+  const customerExceptionTimeline: PickupCustomerExceptionReportEvent[] = []
+  for (const entry of value.customer_exception_report_timeline) {
+    const normalized = normalizeCustomerExceptionReportEvent(entry)
+    if (!normalized) return null
+    customerExceptionTimeline.push(normalized)
+  }
+  for (let index = 0; index < customerExceptionTimeline.length; index += 1) {
+    if (customerExceptionTimeline[index].event_sequence !== index + 1) return null
+  }
+  const currentCustomerExceptionReport = value.current_customer_exception_report === null
+    ? null
+    : normalizeCustomerExceptionReportEvent(value.current_customer_exception_report)
+  const latestCustomerExceptionReport = customerExceptionTimeline.at(-1) ?? null
+  if ((currentCustomerExceptionReport === null) !== (latestCustomerExceptionReport === null)
+      || (currentCustomerExceptionReport && latestCustomerExceptionReport
+        && currentCustomerExceptionReport.id !== latestCustomerExceptionReport.id)
+      || (customerExceptionState === 'none_recorded'
+        && currentCustomerExceptionReport !== null)
+      || (customerExceptionState === 'review_required'
+        && currentCustomerExceptionReport === null)) return null
   if (!attemptState || !exceptionState || !triageState
       || !coordinationState
       || !coordinationStates.has(coordinationState as PickupExceptionCoordinationState)
@@ -543,6 +613,9 @@ export function normalizePickupTaskRecord(value: unknown): PickupTaskControlReco
     exception_resolution_state: 'blocked',
     current_access_instructions: currentAccessInstructions,
     access_instruction_timeline: accessInstructionTimeline,
+    current_customer_exception_state: customerExceptionState,
+    current_customer_exception_report: currentCustomerExceptionReport,
+    customer_exception_report_timeline: customerExceptionTimeline,
     caller_can_record_attempt: value.caller_can_record_attempt,
     authority_boundary: {
       object_scope: 'rfq', pickup_controls_billing: false, custody_recorded: false,
