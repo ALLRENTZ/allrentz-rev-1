@@ -31,6 +31,24 @@ const projection = {
     created_at: '2026-08-25T12:00:00.000Z',
     updated_at: '2026-08-26T11:00:00.000Z',
     pre_dispatch: null,
+    field_acceptance: {
+      authority: 'READ_ONLY_FIELD_ACCEPTANCE_PROJECTION',
+      scope: 'RFQ_WIDE',
+      current_status: 'on_rent',
+      field_acceptance_state: 'RECORDED',
+      delivery_evidence_state: 'RECORDED_NOT_EXPOSED',
+      on_rent_determination: 'SYSTEM_RECORDED',
+      accepted_at: '2026-08-26T11:00:00.000Z',
+      next_step: 'MONITOR_RENTAL',
+      authority_boundary: {
+        mutations_permitted: false,
+        billing_calculation_authority: false,
+        custody_authority: false,
+        condition_liability_authority: false,
+        legal_evidence_sufficiency_authority: false,
+        granular_object_authority: false,
+      },
+    },
     timeline: [
       {
         previous_status: 'in_transit',
@@ -82,6 +100,7 @@ describe('operations lifecycle projection', () => {
     const preDispatchItem = {
       ...projection.items[0],
       current_status: 'vendor_confirmed',
+      field_acceptance: null,
       pre_dispatch: {
         authority: 'READ_ONLY_PRE_DISPATCH_PROJECTION',
         scope: 'RFQ_WIDE',
@@ -135,6 +154,47 @@ describe('operations lifecycle projection', () => {
     expect(normalizeOperationsLifecycleProjection({
       ...projection,
       authority_boundary: { ...projection.authority_boundary, release_authority: true },
+    })).toBeNull()
+  })
+
+  it('rejects missing, misplaced, or authority-expanding field acceptance status', () => {
+    expect(normalizeOperationsLifecycleProjection({
+      ...projection,
+      items: [{ ...projection.items[0], field_acceptance: null }],
+    })).toBeNull()
+    expect(normalizeOperationsLifecycleProjection({
+      ...projection,
+      items: [{
+        ...projection.items[0],
+        field_acceptance: {
+          ...projection.items[0].field_acceptance,
+          authority_boundary: {
+            ...projection.items[0].field_acceptance.authority_boundary,
+            condition_liability_authority: true,
+          },
+        },
+      }],
+    })).toBeNull()
+    expect(normalizeOperationsLifecycleProjection({
+      ...projection,
+      items: [{
+        ...projection.items[0],
+        current_status: 'vendor_confirmed',
+        pre_dispatch: {
+          authority: 'READ_ONLY_PRE_DISPATCH_PROJECTION',
+          scope: 'RFQ_WIDE',
+          packet_state: 'REVIEW_REQUIRED',
+          release_readiness: 'BLOCKED',
+          release_authority: 'NOT_IMPLEMENTED',
+          accepted_quote_state: 'RECORDED',
+          vendor_confirmation_state: 'RECORDED',
+          requirements: [
+            { key: 'twic', requirement_status: 'UNKNOWN', evidence_status: 'UNKNOWN' },
+            { key: 'isnet', requirement_status: 'UNKNOWN', evidence_status: 'UNKNOWN' },
+            { key: 'purchase_order', requirement_status: 'UNKNOWN', evidence_status: 'UNKNOWN' },
+          ],
+        },
+      }],
     })).toBeNull()
   })
 
