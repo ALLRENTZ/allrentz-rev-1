@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Clock3, RefreshCw, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, Clock3, FileCheck2, LockKeyhole, RefreshCw, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -36,6 +36,65 @@ function Timeline({ item }: { item: OperationsLifecycleItem }) {
         </li>
       ))}
     </ol>
+  )
+}
+
+const REQUIREMENT_LABELS = {
+  twic: 'TWIC access credential',
+  isnet: 'ISNetworld qualification',
+  purchase_order: 'Purchase order control',
+} as const
+
+function PreDispatchReadiness({ item }: { item: OperationsLifecycleItem }) {
+  const readiness = item.pre_dispatch
+  if (!readiness) return null
+
+  return (
+    <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <FileCheck2 className="h-4 w-4 text-amber-800" />
+            <p className="font-medium text-amber-950">Pre-dispatch packet visibility</p>
+          </div>
+          <p className="mt-1 text-sm text-amber-900">
+            Recorded facts only. No document evidence or release decision is available.
+          </p>
+        </div>
+        <Badge className="bg-amber-200 text-amber-950">Release: BLOCKED</Badge>
+      </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <div className="rounded border border-amber-200 bg-white p-3 text-sm">
+          <span className="text-slate-600">Accepted quote</span>
+          <p className="font-medium text-slate-900">{readiness.accepted_quote_state}</p>
+        </div>
+        <div className="rounded border border-amber-200 bg-white p-3 text-sm">
+          <span className="text-slate-600">Vendor confirmation</span>
+          <p className="font-medium text-slate-900">{readiness.vendor_confirmation_state}</p>
+        </div>
+      </div>
+
+      <ul className="mt-3 space-y-2">
+        {readiness.requirements.map((requirement) => (
+          <li key={requirement.key} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="text-slate-700">{REQUIREMENT_LABELS[requirement.key]}</span>
+            <span className="text-right text-slate-600">
+              Requirement: <strong>{requirement.requirement_status}</strong>
+              {' · '}Evidence: <strong>{requirement.evidence_status}</strong>
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-3 flex gap-2 border-t border-amber-200 pt-3 text-xs text-amber-950">
+        <LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <span>
+          Release authority is NOT IMPLEMENTED. This projection cannot release equipment,
+          dispatch a task, determine billing, establish custody, or approve document sufficiency.
+        </span>
+      </div>
+    </div>
   )
 }
 
@@ -137,6 +196,7 @@ export default function OperationsLifecycleQueue() {
                     Last record update {formatTimestamp(item.updated_at ?? item.created_at)}
                   </div>
                   <Timeline item={item} />
+                  <PreDispatchReadiness item={item} />
                 </article>
               ))}
             </div>

@@ -23,12 +23,14 @@ const projection = {
     billing_authority: false,
     custody_authority: false,
     granular_object_authority: false,
+    release_authority: false,
   },
   items: [{
     rfq_id: 'rfq-1',
     current_status: 'on_rent',
     created_at: '2026-08-25T12:00:00.000Z',
     updated_at: '2026-08-26T11:00:00.000Z',
+    pre_dispatch: null,
     timeline: [
       {
         previous_status: 'in_transit',
@@ -73,6 +75,66 @@ describe('operations lifecycle projection', () => {
           },
         ],
       }],
+    })).toBeNull()
+  })
+
+  it('accepts a blocked pre-dispatch packet without creating release authority', () => {
+    const preDispatchItem = {
+      ...projection.items[0],
+      current_status: 'vendor_confirmed',
+      pre_dispatch: {
+        authority: 'READ_ONLY_PRE_DISPATCH_PROJECTION',
+        scope: 'RFQ_WIDE',
+        packet_state: 'REVIEW_REQUIRED',
+        release_readiness: 'BLOCKED',
+        release_authority: 'NOT_IMPLEMENTED',
+        accepted_quote_state: 'RECORDED',
+        vendor_confirmation_state: 'RECORDED',
+        requirements: [
+          { key: 'twic', requirement_status: 'REQUIRED', evidence_status: 'UNKNOWN' },
+          { key: 'isnet', requirement_status: 'NOT_REQUIRED', evidence_status: 'NOT_APPLICABLE' },
+          { key: 'purchase_order', requirement_status: 'UNKNOWN', evidence_status: 'UNKNOWN' },
+        ],
+        extra_authority: false,
+      },
+      timeline: [{
+        previous_status: 'quote_accepted',
+        new_status: 'vendor_confirmed',
+        created_at: '2026-08-26T11:00:00.000Z',
+      }],
+    }
+    const normalized = normalizeOperationsLifecycleProjection({
+      ...projection,
+      items: [preDispatchItem],
+    })
+    expect(normalized?.items[0].pre_dispatch?.release_readiness).toBe('BLOCKED')
+    expect(normalized?.items[0].pre_dispatch).not.toHaveProperty('extra_authority')
+  })
+
+  it('rejects missing, misplaced, or authority-expanding pre-dispatch evidence', () => {
+    expect(normalizeOperationsLifecycleProjection({
+      ...projection,
+      items: [{ ...projection.items[0], current_status: 'vendor_confirmed' }],
+    })).toBeNull()
+    expect(normalizeOperationsLifecycleProjection({
+      ...projection,
+      items: [{
+        ...projection.items[0],
+        pre_dispatch: {
+          authority: 'READ_ONLY_PRE_DISPATCH_PROJECTION',
+          scope: 'RFQ_WIDE',
+          packet_state: 'REVIEW_REQUIRED',
+          release_readiness: 'BLOCKED',
+          release_authority: 'NOT_IMPLEMENTED',
+          accepted_quote_state: 'RECORDED',
+          vendor_confirmation_state: 'RECORDED',
+          requirements: [],
+        },
+      }],
+    })).toBeNull()
+    expect(normalizeOperationsLifecycleProjection({
+      ...projection,
+      authority_boundary: { ...projection.authority_boundary, release_authority: true },
     })).toBeNull()
   })
 

@@ -27,11 +27,29 @@ export interface OperationsLifecycleEvent {
   created_at: string
 }
 
+export interface PreDispatchRequirementProjection {
+  key: 'twic' | 'isnet' | 'purchase_order'
+  requirement_status: 'REQUIRED' | 'NOT_REQUIRED' | 'UNKNOWN'
+  evidence_status: 'UNKNOWN' | 'NOT_APPLICABLE'
+}
+
+export interface PreDispatchReadinessProjection {
+  authority: 'READ_ONLY_PRE_DISPATCH_PROJECTION'
+  scope: 'RFQ_WIDE'
+  packet_state: 'REVIEW_REQUIRED'
+  release_readiness: 'BLOCKED'
+  release_authority: 'NOT_IMPLEMENTED'
+  accepted_quote_state: 'RECORDED' | 'UNKNOWN'
+  vendor_confirmation_state: 'RECORDED' | 'REVIEW_REQUIRED'
+  requirements: PreDispatchRequirementProjection[]
+}
+
 export interface OperationsLifecycleItem {
   rfq_id: string
   current_status: AppRfqStatus
   created_at: string | null
   updated_at: string | null
+  pre_dispatch: PreDispatchReadinessProjection | null
   timeline: OperationsLifecycleEvent[]
 }
 
@@ -46,10 +64,17 @@ export interface OperationsLifecycleProjection {
     billing_authority: false
     custody_authority: false
     granular_object_authority: false
+    release_authority: false
   }
 }
 
 const STATUS_SET = new Set<string>(APP_RFQ_STATUSES)
+const PRE_DISPATCH_STATUS_SET = new Set<AppRfqStatus>([
+  'quote_accepted',
+  'vendor_confirmed',
+  'mobilizing',
+])
+const REQUIREMENT_KEYS = ['twic', 'isnet', 'purchase_order'] as const
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -67,6 +92,62 @@ function isStatus(value: unknown): value is AppRfqStatus {
   return typeof value === 'string' && STATUS_SET.has(value)
 }
 
+function normalizePreDispatchReadiness(
+  value: unknown,
+  status: AppRfqStatus,
+): PreDispatchReadinessProjection | null | undefined {
+  if (!PRE_DISPATCH_STATUS_SET.has(status)) return value === null ? null : undefined
+  if (!isRecord(value)
+      || value.authority !== 'READ_ONLY_PRE_DISPATCH_PROJECTION'
+      || value.scope !== 'RFQ_WIDE'
+      || value.packet_state !== 'REVIEW_REQUIRED'
+      || value.release_readiness !== 'BLOCKED'
+      || value.release_authority !== 'NOT_IMPLEMENTED'
+      || (value.accepted_quote_state !== 'RECORDED'
+        && value.accepted_quote_state !== 'UNKNOWN')
+      || (value.vendor_confirmation_state !== 'RECORDED'
+        && value.vendor_confirmation_state !== 'REVIEW_REQUIRED')
+      || !Array.isArray(value.requirements)
+      || value.requirements.length !== REQUIREMENT_KEYS.length) return undefined
+
+  if (status === 'quote_accepted' && value.vendor_confirmation_state !== 'REVIEW_REQUIRED') {
+    return undefined
+  }
+  if (status !== 'quote_accepted' && value.vendor_confirmation_state !== 'RECORDED') {
+    return undefined
+  }
+
+  const requirements: PreDispatchRequirementProjection[] = []
+  for (let index = 0; index < REQUIREMENT_KEYS.length; index += 1) {
+    const raw = value.requirements[index]
+    if (!isRecord(raw) || raw.key !== REQUIREMENT_KEYS[index]
+        || (raw.requirement_status !== 'REQUIRED'
+          && raw.requirement_status !== 'NOT_REQUIRED'
+          && raw.requirement_status !== 'UNKNOWN')
+        || (raw.evidence_status !== 'UNKNOWN'
+          && raw.evidence_status !== 'NOT_APPLICABLE')
+        || (raw.requirement_status === 'NOT_REQUIRED'
+          ? raw.evidence_status !== 'NOT_APPLICABLE'
+          : raw.evidence_status !== 'UNKNOWN')) return undefined
+    requirements.push({
+      key: raw.key,
+      requirement_status: raw.requirement_status,
+      evidence_status: raw.evidence_status,
+    })
+  }
+
+  return {
+    authority: 'READ_ONLY_PRE_DISPATCH_PROJECTION',
+    scope: 'RFQ_WIDE',
+    packet_state: 'REVIEW_REQUIRED',
+    release_readiness: 'BLOCKED',
+    release_authority: 'NOT_IMPLEMENTED',
+    accepted_quote_state: value.accepted_quote_state,
+    vendor_confirmation_state: value.vendor_confirmation_state,
+    requirements,
+  }
+}
+
 export function normalizeOperationsLifecycleProjection(
   value: unknown,
 ): OperationsLifecycleProjection | null {
@@ -80,7 +161,8 @@ export function normalizeOperationsLifecycleProjection(
   if (boundary.mutations_permitted !== false
       || boundary.billing_authority !== false
       || boundary.custody_authority !== false
-      || boundary.granular_object_authority !== false) return null
+      || boundary.granular_object_authority !== false
+      || boundary.release_authority !== false) return null
 
   const items: OperationsLifecycleItem[] = []
   const ids = new Set<string>()
@@ -90,6 +172,9 @@ export function normalizeOperationsLifecycleProjection(
         || !isNullableTimestamp(raw.created_at)
         || !isNullableTimestamp(raw.updated_at)
         || !Array.isArray(raw.timeline)) return null
+
+    const preDispatch = normalizePreDispatchReadiness(raw.pre_dispatch, raw.current_status)
+    if (preDispatch === undefined) return null
 
     const timeline: OperationsLifecycleEvent[] = []
     let previousNewStatus: AppRfqStatus | null = null
@@ -118,6 +203,7 @@ export function normalizeOperationsLifecycleProjection(
       current_status: raw.current_status,
       created_at: raw.created_at,
       updated_at: raw.updated_at,
+      pre_dispatch: preDispatch,
       timeline,
     })
   }
@@ -133,6 +219,7 @@ export function normalizeOperationsLifecycleProjection(
       billing_authority: false,
       custody_authority: false,
       granular_object_authority: false,
+      release_authority: false,
     },
   }
 }

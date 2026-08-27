@@ -7,6 +7,7 @@ import {
   selectSecretKey,
 } from '../rfq-transition/keys.ts'
 import {
+  buildPreDispatchReadinessProjection,
   hasOperationsLifecycleRole,
   lifecycleRowsAreConsistent,
   validateOperationsLifecycleAction,
@@ -119,7 +120,7 @@ Deno.serve(async (req: Request) => {
   const isSimulated = actorProfile.is_demo
   const { data: rfqs, error: rfqError } = await svc
     .from('rental_requests')
-    .select('id, operational_status, created_at, updated_at')
+    .select('id, customer_id, operational_status, created_at, updated_at')
     .eq('is_simulated', isSimulated)
     .order('updated_at', { ascending: false, nullsFirst: false })
     .limit(50)
@@ -130,6 +131,69 @@ Deno.serve(async (req: Request) => {
   }
 
   const rfqIds = (rfqs ?? []).map((rfq) => rfq.id)
+  const preDispatchRfqIds = (rfqs ?? [])
+    .filter((rfq) => ['quote_accepted', 'vendor_confirmed', 'mobilizing']
+      .includes(rfq.operational_status))
+    .map((rfq) => rfq.id)
+  const preDispatchCustomerIds = [...new Set((rfqs ?? [])
+    .filter((rfq) => preDispatchRfqIds.includes(rfq.id))
+    .map((rfq) => rfq.customer_id))]
+
+  let acceptedQuoteRows: Array<{
+    rfq_id: string
+    status: unknown
+    accepted_at: unknown
+  }> = []
+  if (preDispatchRfqIds.length > 0) {
+    const { data: acceptedQuotes, error: acceptedQuoteError } = await svc
+      .from('vendor_quote_responses')
+      .select('rfq_id, status, accepted_at')
+      .in('rfq_id', preDispatchRfqIds)
+      .eq('is_simulated', isSimulated)
+      .eq('status', 'accepted')
+
+    if (acceptedQuoteError) {
+      console.error('operations-lifecycle accepted-quote projection error:', acceptedQuoteError.message)
+      return jsonError(500, 'Unable to load pre-dispatch readiness')
+    }
+    acceptedQuoteRows = acceptedQuotes ?? []
+  }
+
+  const eligibleCustomerIds = new Set<string>()
+  if (preDispatchCustomerIds.length > 0) {
+    const { data: customerActors, error: customerActorError } = await svc
+      .from('profiles')
+      .select('id, is_demo')
+      .in('id', preDispatchCustomerIds)
+
+    if (customerActorError) {
+      console.error('operations-lifecycle customer boundary error:', customerActorError.message)
+      return jsonError(500, 'Unable to load pre-dispatch readiness')
+    }
+    for (const customerActor of customerActors ?? []) {
+      if (customerActor.is_demo === isSimulated) eligibleCustomerIds.add(customerActor.id)
+    }
+  }
+
+  let customerRequirementRows: Array<{
+    user_id: string
+    twic_required: unknown
+    isnet_required: unknown
+    purchase_order_required: unknown
+  }> = []
+  if (eligibleCustomerIds.size > 0) {
+    const { data: customerRequirements, error: customerRequirementsError } = await svc
+      .from('customer_profiles')
+      .select('user_id, twic_required, isnet_required, purchase_order_required')
+      .in('user_id', [...eligibleCustomerIds])
+
+    if (customerRequirementsError) {
+      console.error('operations-lifecycle requirement projection error:', customerRequirementsError.message)
+      return jsonError(500, 'Unable to load pre-dispatch readiness')
+    }
+    customerRequirementRows = customerRequirements ?? []
+  }
+
   let eventRows: Array<{
     rfq_id: string
     previous_status: unknown
@@ -160,6 +224,16 @@ Deno.serve(async (req: Request) => {
     grouped.set(event.rfq_id, existing)
   }
 
+  const acceptedQuotesByRfq = new Map<string, typeof acceptedQuoteRows>()
+  for (const quote of acceptedQuoteRows) {
+    const existing = acceptedQuotesByRfq.get(quote.rfq_id) ?? []
+    existing.push(quote)
+    acceptedQuotesByRfq.set(quote.rfq_id, existing)
+  }
+  const customerRequirementsByUser = new Map(
+    customerRequirementRows.map((requirements) => [requirements.user_id, requirements]),
+  )
+
   const items = []
   for (const rfq of rfqs ?? []) {
     const events = grouped.get(rfq.id) ?? []
@@ -172,6 +246,13 @@ Deno.serve(async (req: Request) => {
       current_status: rfq.operational_status,
       created_at: rfq.created_at,
       updated_at: rfq.updated_at,
+      pre_dispatch: buildPreDispatchReadinessProjection({
+        currentStatus: rfq.operational_status,
+        acceptedQuotes: acceptedQuotesByRfq.get(rfq.id),
+        customerRequirements: eligibleCustomerIds.has(rfq.customer_id)
+          ? customerRequirementsByUser.get(rfq.customer_id)
+          : null,
+      }),
       timeline: events.map((event) => ({
         previous_status: event.previous_status,
         new_status: event.new_status,
@@ -191,6 +272,7 @@ Deno.serve(async (req: Request) => {
       billing_authority: false,
       custody_authority: false,
       granular_object_authority: false,
+      release_authority: false,
     },
   })
 })
