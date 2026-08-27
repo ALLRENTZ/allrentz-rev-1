@@ -1,0 +1,148 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, Clock3, RefreshCw, ShieldCheck } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  formatLifecycleStatus,
+  lifecycleReviewLabel,
+  loadOperationsLifecycle,
+  type OperationsLifecycleItem,
+  type OperationsLifecycleProjection,
+} from '@/lib/operationsLifecycle'
+
+const TERMINAL_STATUSES = new Set(['completed', 'cancelled', 'rejected'])
+
+function formatTimestamp(value: string | null): string {
+  if (!value) return 'Timestamp unavailable'
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value))
+}
+
+function Timeline({ item }: { item: OperationsLifecycleItem }) {
+  const visibleEvents = item.timeline.slice(-6)
+  if (visibleEvents.length === 0) {
+    return <p className="mt-3 text-sm text-slate-500">No canonical transition event is recorded yet.</p>
+  }
+
+  return (
+    <ol className="mt-3 space-y-2 border-l border-slate-200 pl-4">
+      {visibleEvents.map((event, index) => (
+        <li key={`${event.created_at}-${event.new_status}-${index}`} className="relative text-sm">
+          <span className="absolute -left-[1.19rem] top-1.5 h-2 w-2 rounded-full bg-slate-400" />
+          <span className="font-medium text-slate-800">{formatLifecycleStatus(event.new_status)}</span>
+          <span className="ml-2 text-xs text-slate-500">{formatTimestamp(event.created_at)}</span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+export default function OperationsLifecycleQueue() {
+  const [projection, setProjection] = useState<OperationsLifecycleProjection | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      setProjection(await loadOperationsLifecycle())
+    } catch (caught) {
+      setProjection(null)
+      setError(caught instanceof Error ? caught.message : 'Operations lifecycle requires review')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { void load() }, [load])
+
+  const counts = useMemo(() => {
+    const items = projection?.items ?? []
+    return {
+      visible: items.length,
+      active: items.filter((item) => !TERMINAL_STATUSES.has(item.current_status)).length,
+      review: items.filter((item) => item.current_status === 'off_rent_requested'
+        || item.current_status === 'demobilizing').length,
+      terminal: items.filter((item) => TERMINAL_STATUSES.has(item.current_status)).length,
+    }
+  }, [projection])
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-5" aria-label="Operations lifecycle continuity">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-slate-700" />
+            <h2 className="text-lg font-semibold text-slate-900">Canonical lifecycle continuity</h2>
+          </div>
+          <p className="mt-1 max-w-3xl text-sm text-slate-600">
+            Read-only RFQ-wide operations projection. This view cannot change lifecycle state,
+            billing, custody, or granular rental scope.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" disabled={loading} onClick={() => void load()}>
+          <RefreshCw className={`mr-1 h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+        </Button>
+      </div>
+
+      {error && (
+        <div className="mt-4 flex gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}. State remains UNKNOWN / REVIEW REQUIRED.</span>
+        </div>
+      )}
+
+      {projection && (
+        <>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Badge variant="outline">{projection.mode}</Badge>
+            <Badge variant="secondary">RFQ-WIDE</Badge>
+            <span className="text-xs text-slate-500">
+              Generated {formatTimestamp(projection.generated_at)}
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ['Visible RFQs', counts.visible],
+              ['Active records', counts.active],
+              ['Off-rent review', counts.review],
+              ['Terminal records', counts.terminal],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+                <p className="mt-1 text-2xl font-semibold text-slate-900">{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {projection.items.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-600">No RFQs are visible in this operations boundary.</p>
+          ) : (
+            <div className="mt-5 space-y-4">
+              {projection.items.map((item) => (
+                <article key={item.rfq_id} className="rounded-md border border-slate-200 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-slate-900">RFQ {item.rfq_id.slice(0, 8)}</p>
+                      <p className="mt-1 text-sm text-slate-600">{lifecycleReviewLabel(item.current_status)}</p>
+                    </div>
+                    <Badge>{formatLifecycleStatus(item.current_status)}</Badge>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1 text-xs text-slate-500">
+                    <Clock3 className="h-3.5 w-3.5" />
+                    Last record update {formatTimestamp(item.updated_at ?? item.created_at)}
+                  </div>
+                  <Timeline item={item} />
+                </article>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  )
+}
