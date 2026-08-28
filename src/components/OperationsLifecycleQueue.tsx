@@ -143,6 +143,45 @@ function DeliveryAcceptanceContinuity({ item }: { item: OperationsLifecycleItem 
   )
 }
 
+function RentalOrderChangeReview({ item }: { item: OperationsLifecycleItem }) {
+  const review = item.change_review
+  if (!review) return null
+
+  return (
+    <div className="mt-4 rounded-md border border-violet-200 bg-violet-50 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <Clock3 className="h-4 w-4 text-violet-800" />
+            <p className="font-medium text-slate-950">Rental Order change-review intake</p>
+          </div>
+          <p className="mt-1 text-sm text-slate-700">
+            Counterparty requests awaiting a separate governed change-order decision.
+          </p>
+        </div>
+        <Badge variant="outline">{review.review_state.replaceAll('_', ' ')}</Badge>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <div className="rounded border bg-white p-3 text-sm">
+          <span className="text-slate-600">Recorded requests</span>
+          <p className="font-medium text-slate-900">{review.request_count}</p>
+        </div>
+        <div className="rounded border bg-white p-3 text-sm">
+          <span className="text-slate-600">Latest proposed end date</span>
+          <p className="font-medium text-slate-900">{review.latest_proposed_end_date ?? 'UNKNOWN'}</p>
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2 border-t border-violet-200 pt-3 text-xs text-slate-700">
+        <LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <span>
+          Base agreed end date remains UNKNOWN and decision authority is NOT IMPLEMENTED.
+          Requests cannot activate a new version, change lifecycle state, or affect billing.
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export default function OperationsLifecycleQueue() {
   const [projection, setProjection] = useState<OperationsLifecycleProjection | null>(null)
   const [loading, setLoading] = useState(true)
@@ -243,6 +282,7 @@ export default function OperationsLifecycleQueue() {
                   <Timeline item={item} />
                   <PreDispatchReadiness item={item} />
                   <DeliveryAcceptanceContinuity item={item} />
+                  <RentalOrderChangeReview item={item} />
                 </article>
               ))}
             </div>

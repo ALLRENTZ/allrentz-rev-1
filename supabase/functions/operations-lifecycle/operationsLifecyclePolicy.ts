@@ -26,6 +26,14 @@ const PRE_DISPATCH_STATUSES = new Set<AppRfqStatus>([
   'vendor_confirmed',
   'mobilizing',
 ])
+const CHANGE_REVIEW_STATUSES = new Set<AppRfqStatus>([
+  'quote_accepted',
+  'vendor_confirmed',
+  'mobilizing',
+  'in_transit',
+  'on_rent',
+  'rental_extended',
+])
 
 export type PreDispatchRequirementStatus = 'REQUIRED' | 'NOT_REQUIRED' | 'UNKNOWN'
 export type PreDispatchEvidenceStatus = 'UNKNOWN' | 'NOT_APPLICABLE' | 'RECORDED'
@@ -61,6 +69,27 @@ export interface CustomerRequirementReadinessRow {
 export interface CustomerPurchaseOrderReadinessRow {
   external_reference?: unknown
   customer_stated_issue_date?: unknown
+}
+
+export interface ChangeReviewReadinessRow {
+  id?: unknown
+  proposed_end_date?: unknown
+  created_at?: unknown
+}
+
+export interface ChangeReviewReadinessProjection {
+  authority: 'READ_ONLY_CHANGE_REVIEW_READINESS_PROJECTION'
+  scope: 'RFQ_WIDE'
+  review_state: 'NONE' | 'REVIEW_REQUIRED'
+  request_count: number
+  latest_proposed_end_date: string | null
+  base_end_date_state: 'UNKNOWN'
+  decision_authority: 'NOT_IMPLEMENTED'
+  authority_boundary: {
+    lifecycle_transition_authority: false
+    version_activation_authority: false
+    billing_authority: false
+  }
 }
 
 export type OperationsLifecycleInput = { action: 'list' }
@@ -149,6 +178,41 @@ export function buildPreDispatchReadinessProjection(input: {
         purchaseOrderIsRecorded,
       ),
     ],
+  }
+}
+
+export function buildChangeReviewReadinessProjection(input: {
+  currentStatus: unknown
+  requestRows: ChangeReviewReadinessRow[] | null | undefined
+}): ChangeReviewReadinessProjection | null {
+  if (!isAppRfqStatus(input.currentStatus)
+      || !CHANGE_REVIEW_STATUSES.has(input.currentStatus)) return null
+  const rows = Array.isArray(input.requestRows) ? input.requestRows : []
+  const validRows = rows.filter((row) => typeof row.id === 'string'
+    && typeof row.proposed_end_date === 'string'
+    && /^\d{4}-\d{2}-\d{2}$/.test(row.proposed_end_date)
+    && typeof row.created_at === 'string'
+    && Number.isFinite(Date.parse(row.created_at)))
+  const dataValid = validRows.length === rows.length
+  const latest = dataValid && validRows.length > 0
+    ? [...validRows].sort((left, right) => Date.parse(right.created_at as string)
+      - Date.parse(left.created_at as string))[0]
+    : null
+  return {
+    authority: 'READ_ONLY_CHANGE_REVIEW_READINESS_PROJECTION',
+    scope: 'RFQ_WIDE',
+    review_state: dataValid && rows.length === 0 ? 'NONE' : 'REVIEW_REQUIRED',
+    request_count: dataValid ? rows.length : 0,
+    latest_proposed_end_date: latest && typeof latest.proposed_end_date === 'string'
+      ? latest.proposed_end_date
+      : null,
+    base_end_date_state: 'UNKNOWN',
+    decision_authority: 'NOT_IMPLEMENTED',
+    authority_boundary: {
+      lifecycle_transition_authority: false,
+      version_activation_authority: false,
+      billing_authority: false,
+    },
   }
 }
 

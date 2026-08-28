@@ -24,6 +24,7 @@ import PickupTaskControlPanel from '@/components/PickupTaskControlPanel';
 import PickupExceptionReviewQueue from '@/components/PickupExceptionReviewQueue';
 import DeliveryAcceptanceStatusPanel from '@/components/DeliveryAcceptanceStatusPanel';
 import CustomerPurchaseOrderPanel from '@/components/CustomerPurchaseOrderPanel';
+import RentalOrderChangeReviewPanel from '@/components/RentalOrderChangeReviewPanel';
 import { demoCustomerRentalRequests, demoCustomerNotifications } from '@/data/demoDashboardData';
 import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
 
@@ -607,6 +608,16 @@ const CustomerDashboard = () => {
                           'off_rent',
                         ].includes(request.operational_status) && authority.canUseOperationalData && (
                           <CustomerPurchaseOrderPanel rfqId={request.id} actorMode="customer" />
+                        )}
+                        {[
+                          'quote_accepted',
+                          'vendor_confirmed',
+                          'mobilizing',
+                          'in_transit',
+                          'on_rent',
+                          'rental_extended',
+                        ].includes(request.operational_status) && authority.canUseOperationalData && (
+                          <RentalOrderChangeReviewPanel rfqId={request.id} actorMode="customer" />
                         )}
                         {[
                           'in_transit',

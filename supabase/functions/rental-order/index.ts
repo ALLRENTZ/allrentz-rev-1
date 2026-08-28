@@ -13,6 +13,11 @@ import {
   validateCustomerPurchaseOrderRequest,
   type PurchaseOrderVisibilityContext,
 } from './customerPurchaseOrderPolicy.ts'
+import {
+  buildRentalOrderChangeReviewProjection,
+  permittedChangeReviewParties,
+  validateRentalOrderChangeReviewRequest,
+} from './rentalOrderChangeReviewPolicy.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -33,9 +38,12 @@ function jsonError(status: number, message: string): Response {
 
 function commandErrorStatus(message: string): number {
   if (message.includes('not found')) return 404
-  if (message.includes('lacks customer') || message.includes('simulation scope')) return 403
-  if (message.includes('already recorded') || message.includes('outside')) return 409
-  if (message.includes('required') || message.includes('cannot be future-dated')) return 422
+  if (message.includes('lacks customer') || message.includes('lacks vendor')
+      || message.includes('simulation scope')) return 403
+  if (message.includes('already recorded') || message.includes('outside')
+      || message.includes('conflicts')) return 409
+  if (message.includes('required') || message.includes('cannot be future-dated')
+      || message.includes('must be a future date') || message.includes('must contain')) return 422
   return 500
 }
 
@@ -52,7 +60,14 @@ Deno.serve(async (req: Request) => {
   } catch {
     return jsonError(400, 'Invalid JSON body')
   }
-  const validation = validateCustomerPurchaseOrderRequest(body)
+  const bodyAction = body && typeof body === 'object' && !Array.isArray(body)
+    ? (body as Record<string, unknown>).action
+    : null
+  const isChangeReviewAction = bodyAction === 'change_review_status'
+    || bodyAction === 'request_end_date_change_review'
+  const validation = isChangeReviewAction
+    ? validateRentalOrderChangeReviewRequest(body)
+    : validateCustomerPurchaseOrderRequest(body)
   if (!validation.valid || !validation.input) {
     return jsonError(400, validation.error ?? 'Invalid Rental Order request')
   }
@@ -101,9 +116,13 @@ Deno.serve(async (req: Request) => {
 
   const orderQuery = svc
     .from('rental_orders')
-    .select('id, order_reference, rfq_id, customer_organization_id, customer_organization_state, vendor_organization_id, is_simulated')
-  const { data: rentalOrder, error: rentalOrderError } = validation.input.action === 'status'
-    ? await orderQuery.eq('rfq_id', validation.input.rfqId).maybeSingle()
+    .select('id, order_reference, rfq_id, customer_organization_id, customer_organization_state, vendor_organization_id, current_version_number, is_simulated')
+  const statusRfqId = validation.input.action === 'status'
+    || validation.input.action === 'change_review_status'
+    ? validation.input.rfqId
+    : null
+  const { data: rentalOrder, error: rentalOrderError } = statusRfqId
+    ? await orderQuery.eq('rfq_id', statusRfqId).maybeSingle()
     : await orderQuery.eq('id', validation.input.rentalOrderId).maybeSingle()
 
   if (rentalOrderError) {
@@ -157,6 +176,54 @@ Deno.serve(async (req: Request) => {
     return jsonError(403, 'Rental Order visibility required')
   }
   const canRecord = canRecordCustomerPurchaseOrder(context)
+
+  if (validation.input.action === 'change_review_status'
+      || validation.input.action === 'request_end_date_change_review') {
+    const permittedParties = permittedChangeReviewParties(context)
+    if (validation.input.action === 'request_end_date_change_review') {
+      if (!permittedParties.includes(validation.input.requesterParty)) {
+        return jsonError(403, 'Rental Order counterparty change-review authority required')
+      }
+      const { error: commandError } = await svc.rpc(
+        'request_rental_order_end_date_change_review',
+        {
+          p_rental_order_id: validation.input.rentalOrderId,
+          p_actor_id: user.id,
+          p_requester_party: validation.input.requesterParty,
+          p_proposed_end_date: validation.input.proposedEndDate,
+          p_request_reason: validation.input.requestReason,
+          p_idempotency_key: validation.input.idempotencyKey,
+        },
+      )
+      if (commandError) {
+        const status = commandErrorStatus(commandError.message)
+        if (status === 500) console.error('rental-order change-review command error:', commandError.message)
+        return jsonError(status, status === 500
+          ? 'Unable to record Rental Order change review'
+          : commandError.message)
+      }
+    }
+
+    const { data: requestRows, error: requestError } = await svc
+      .from('rental_order_change_review_requests')
+      .select('id, requester_party, proposed_end_date, request_reason, created_at')
+      .eq('rental_order_id', rentalOrder.id)
+      .eq('is_simulated', rentalOrder.is_simulated)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (requestError) {
+      console.error('rental-order change-review projection error:', requestError.message)
+      return jsonError(500, 'Unable to load Rental Order change review')
+    }
+    return json(200, buildRentalOrderChangeReviewProjection({
+      rentalOrderId: rentalOrder.id,
+      orderReference: rentalOrder.order_reference,
+      currentStatus: rfqResult.data.operational_status,
+      baseVersionNumber: rentalOrder.current_version_number,
+      requestRows,
+      permittedParties,
+    }))
+  }
 
   if (validation.input.action === 'record_customer_purchase_order') {
     if (!canRecord) return jsonError(403, 'Customer purchase-order recording authority required')
