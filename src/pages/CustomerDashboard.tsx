@@ -24,7 +24,9 @@ import PickupTaskControlPanel from '@/components/PickupTaskControlPanel';
 import PickupExceptionReviewQueue from '@/components/PickupExceptionReviewQueue';
 import DeliveryAcceptanceStatusPanel from '@/components/DeliveryAcceptanceStatusPanel';
 import CustomerPurchaseOrderPanel from '@/components/CustomerPurchaseOrderPanel';
+import RentalOrderChangeReviewPanel from '@/components/RentalOrderChangeReviewPanel';
 import { demoCustomerRentalRequests, demoCustomerNotifications } from '@/data/demoDashboardData';
+import { formatDateOnly } from '@/lib/dateOnly';
 import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
 
 const CustomerDashboard = () => {
@@ -536,22 +538,29 @@ const CustomerDashboard = () => {
                         
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
-                            <p className="text-gray-500">Start Date</p>
-                            <p className="font-medium">{new Date(request.start_date).toLocaleDateString()}</p>
+                            <p className="text-gray-500">RFQ Requested Start</p>
+                            <p className="font-medium">{formatDateOnly(request.start_date)}</p>
                           </div>
                           <div>
-                            <p className="text-gray-500">End Date</p>
-                            <p className="font-medium">{new Date(request.end_date).toLocaleDateString()}</p>
+                            <p className="text-gray-500">RFQ Requested End</p>
+                            <p className="font-medium">{formatDateOnly(request.end_date)}</p>
                           </div>
                           <div>
-                            <p className="text-gray-500">Daily Rate</p>
-                            <p className="font-medium">${request.equipment?.daily_rate}/day</p>
+                            <p className="text-gray-500">Catalog Listing Rate</p>
+                            <p className="font-medium">
+                              {request.equipment?.daily_rate != null
+                                ? `$${request.equipment.daily_rate}/day`
+                                : 'Not available'}
+                            </p>
                           </div>
                           <div>
-                            <p className="text-gray-500">Total</p>
-                            <p className="font-medium">{request.total_amount != null ? `$${request.total_amount.toLocaleString()}` : 'Quote pending'}</p>
+                            <p className="text-gray-500">Rental Order Total</p>
+                            <p className="font-medium">NOT DETERMINED</p>
                           </div>
                         </div>
+                        <p className="mt-2 text-xs text-gray-500">
+                          Catalog pricing is informational. Accepted-quote terms and billing authority are governed separately.
+                        </p>
                         
                         {request.delivery_address && (
                           <div className="mt-3 flex items-center space-x-2 text-sm text-gray-600">
@@ -607,6 +616,16 @@ const CustomerDashboard = () => {
                           'off_rent',
                         ].includes(request.operational_status) && authority.canUseOperationalData && (
                           <CustomerPurchaseOrderPanel rfqId={request.id} actorMode="customer" />
+                        )}
+                        {[
+                          'quote_accepted',
+                          'vendor_confirmed',
+                          'mobilizing',
+                          'in_transit',
+                          'on_rent',
+                          'rental_extended',
+                        ].includes(request.operational_status) && authority.canUseOperationalData && (
+                          <RentalOrderChangeReviewPanel rfqId={request.id} actorMode="customer" />
                         )}
                         {[
                           'in_transit',
@@ -666,7 +685,7 @@ const CustomerDashboard = () => {
                                     <div><span className="text-teal-600">Mobilization: </span>${vqr.mobilization_fee.toFixed(2)}</div>
                                   )}
                                   {vqr.available_start_date && (
-                                    <div><span className="text-teal-600">Available: </span>{new Date(vqr.available_start_date).toLocaleDateString()}</div>
+                                    <div><span className="text-teal-600">Available: </span>{formatDateOnly(vqr.available_start_date)}</div>
                                   )}
                                   <div><span className="text-teal-600">Compliance: </span>{vqr.compliance_confirmed ? 'Confirmed' : 'Pending'}</div>
                                 </div>

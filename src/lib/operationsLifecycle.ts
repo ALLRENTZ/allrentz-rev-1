@@ -48,6 +48,21 @@ export interface PreDispatchReadinessProjection {
   requirements: PreDispatchRequirementProjection[]
 }
 
+export interface ChangeReviewReadinessProjection {
+  authority: 'READ_ONLY_CHANGE_REVIEW_READINESS_PROJECTION'
+  scope: 'RFQ_WIDE'
+  review_state: 'NONE' | 'REVIEW_REQUIRED'
+  request_count: number
+  latest_proposed_end_date: string | null
+  base_end_date_state: 'UNKNOWN'
+  decision_authority: 'NOT_IMPLEMENTED'
+  authority_boundary: {
+    lifecycle_transition_authority: false
+    version_activation_authority: false
+    billing_authority: false
+  }
+}
+
 export interface OperationsLifecycleItem {
   rfq_id: string
   current_status: AppRfqStatus
@@ -55,6 +70,7 @@ export interface OperationsLifecycleItem {
   updated_at: string | null
   pre_dispatch: PreDispatchReadinessProjection | null
   field_acceptance: FieldAcceptanceStatusProjection | null
+  change_review: ChangeReviewReadinessProjection | null
   timeline: OperationsLifecycleEvent[]
 }
 
@@ -87,6 +103,14 @@ const FIELD_ACCEPTANCE_STATUS_SET = new Set<AppRfqStatus>([
   'demobilizing',
   'off_rent',
   'completed',
+])
+const CHANGE_REVIEW_STATUS_SET = new Set<AppRfqStatus>([
+  'quote_accepted',
+  'vendor_confirmed',
+  'mobilizing',
+  'in_transit',
+  'on_rent',
+  'rental_extended',
 ])
 const REQUIREMENT_KEYS = ['twic', 'isnet', 'purchase_order'] as const
 
@@ -164,6 +188,50 @@ function normalizePreDispatchReadiness(
   }
 }
 
+function normalizeChangeReviewReadiness(
+  value: unknown,
+  status: AppRfqStatus,
+): ChangeReviewReadinessProjection | null | undefined {
+  if (!CHANGE_REVIEW_STATUS_SET.has(status)) return value === null ? null : undefined
+  if (!isRecord(value)
+      || value.authority !== 'READ_ONLY_CHANGE_REVIEW_READINESS_PROJECTION'
+      || value.scope !== 'RFQ_WIDE'
+      || (value.review_state !== 'NONE' && value.review_state !== 'REVIEW_REQUIRED')
+      || !Number.isInteger(value.request_count)
+      || (value.request_count as number) < 0
+      || (value.latest_proposed_end_date !== null
+        && (!isString(value.latest_proposed_end_date)
+          || !/^\d{4}-\d{2}-\d{2}$/.test(value.latest_proposed_end_date)))
+      || value.base_end_date_state !== 'UNKNOWN'
+      || value.decision_authority !== 'NOT_IMPLEMENTED'
+      || !isRecord(value.authority_boundary)) return undefined
+
+  const boundary = value.authority_boundary
+  if (boundary.lifecycle_transition_authority !== false
+      || boundary.version_activation_authority !== false
+      || boundary.billing_authority !== false) return undefined
+  if ((value.review_state === 'NONE'
+      && (value.request_count !== 0 || value.latest_proposed_end_date !== null))
+      || (value.review_state === 'REVIEW_REQUIRED'
+        && (value.request_count as number) > 0
+        && value.latest_proposed_end_date === null)) return undefined
+
+  return {
+    authority: 'READ_ONLY_CHANGE_REVIEW_READINESS_PROJECTION',
+    scope: 'RFQ_WIDE',
+    review_state: value.review_state,
+    request_count: value.request_count as number,
+    latest_proposed_end_date: value.latest_proposed_end_date as string | null,
+    base_end_date_state: 'UNKNOWN',
+    decision_authority: 'NOT_IMPLEMENTED',
+    authority_boundary: {
+      lifecycle_transition_authority: false,
+      version_activation_authority: false,
+      billing_authority: false,
+    },
+  }
+}
+
 export function normalizeOperationsLifecycleProjection(
   value: unknown,
 ): OperationsLifecycleProjection | null {
@@ -197,6 +265,8 @@ export function normalizeOperationsLifecycleProjection(
     if (fieldAcceptance === undefined
         || (FIELD_ACCEPTANCE_STATUS_SET.has(raw.current_status) && fieldAcceptance === null)) return null
     if (fieldAcceptance && fieldAcceptance.current_status !== raw.current_status) return null
+    const changeReview = normalizeChangeReviewReadiness(raw.change_review, raw.current_status)
+    if (changeReview === undefined) return null
 
     const timeline: OperationsLifecycleEvent[] = []
     let previousNewStatus: AppRfqStatus | null = null
@@ -227,6 +297,7 @@ export function normalizeOperationsLifecycleProjection(
       updated_at: raw.updated_at,
       pre_dispatch: preDispatch,
       field_acceptance: fieldAcceptance,
+      change_review: changeReview,
       timeline,
     })
   }

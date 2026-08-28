@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildChangeReviewReadinessProjection,
   buildPreDispatchReadinessProjection,
   hasOperationsLifecycleRole,
   isAppRfqStatus,
@@ -115,5 +116,33 @@ describe('operations lifecycle policy', () => {
       expect(projection?.accepted_quote_state).toBe('UNKNOWN')
       expect(projection?.release_authority).toBe('NOT_IMPLEMENTED')
     }
+  })
+
+  it('projects change requests as review-only with no decision authority', () => {
+    expect(buildChangeReviewReadinessProjection({
+      currentStatus: 'on_rent',
+      requestRows: [{
+        id: 'request-1',
+        proposed_end_date: '2026-09-30',
+        created_at: '2026-08-28T12:00:00.000Z',
+      }],
+    })).toEqual({
+      authority: 'READ_ONLY_CHANGE_REVIEW_READINESS_PROJECTION',
+      scope: 'RFQ_WIDE',
+      review_state: 'REVIEW_REQUIRED',
+      request_count: 1,
+      latest_proposed_end_date: '2026-09-30',
+      base_end_date_state: 'UNKNOWN',
+      decision_authority: 'NOT_IMPLEMENTED',
+      authority_boundary: {
+        lifecycle_transition_authority: false,
+        version_activation_authority: false,
+        billing_authority: false,
+      },
+    })
+    expect(buildChangeReviewReadinessProjection({
+      currentStatus: 'off_rent_requested',
+      requestRows: [],
+    })).toBeNull()
   })
 })

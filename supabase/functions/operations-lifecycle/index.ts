@@ -7,6 +7,7 @@ import {
   selectSecretKey,
 } from '../rfq-transition/keys.ts'
 import {
+  buildChangeReviewReadinessProjection,
   buildPreDispatchReadinessProjection,
   hasOperationsLifecycleRole,
   lifecycleRowsAreConsistent,
@@ -139,6 +140,10 @@ Deno.serve(async (req: Request) => {
   const preDispatchCustomerIds = [...new Set((rfqs ?? [])
     .filter((rfq) => preDispatchRfqIds.includes(rfq.id))
     .map((rfq) => rfq.customer_id))]
+  const changeReviewRfqIds = (rfqs ?? [])
+    .filter((rfq) => ['quote_accepted', 'vendor_confirmed', 'mobilizing', 'in_transit', 'on_rent', 'rental_extended']
+      .includes(rfq.operational_status))
+    .map((rfq) => rfq.id)
 
   let acceptedQuoteRows: Array<{
     rfq_id: string
@@ -223,6 +228,26 @@ Deno.serve(async (req: Request) => {
     created_at: string
   }> = []
 
+  let changeReviewRows: Array<{
+    rfq_id: string
+    id: unknown
+    proposed_end_date: unknown
+    created_at: unknown
+  }> = []
+  if (changeReviewRfqIds.length > 0) {
+    const { data: changeReviews, error: changeReviewError } = await svc
+      .from('rental_order_change_review_requests')
+      .select('rfq_id, id, proposed_end_date, created_at')
+      .in('rfq_id', changeReviewRfqIds)
+      .eq('is_simulated', isSimulated)
+
+    if (changeReviewError) {
+      console.error('operations-lifecycle change-review projection error:', changeReviewError.message)
+      return jsonError(500, 'Unable to load Rental Order change-review readiness')
+    }
+    changeReviewRows = changeReviews ?? []
+  }
+
   if (rfqIds.length > 0) {
     const { data: events, error: eventError } = await svc
       .from('rfq_operational_status')
@@ -261,6 +286,12 @@ Deno.serve(async (req: Request) => {
     existing.push(purchaseOrder)
     purchaseOrdersByRfq.set(purchaseOrder.rfq_id, existing)
   }
+  const changeReviewsByRfq = new Map<string, typeof changeReviewRows>()
+  for (const changeReview of changeReviewRows) {
+    const existing = changeReviewsByRfq.get(changeReview.rfq_id) ?? []
+    existing.push(changeReview)
+    changeReviewsByRfq.set(changeReview.rfq_id, existing)
+  }
 
   const items = []
   for (const rfq of rfqs ?? []) {
@@ -286,6 +317,10 @@ Deno.serve(async (req: Request) => {
         currentStatus: rfq.operational_status,
         onRentAt: rfq.on_rent_at,
         timelineRows: events,
+      }),
+      change_review: buildChangeReviewReadinessProjection({
+        currentStatus: rfq.operational_status,
+        requestRows: changeReviewsByRfq.get(rfq.id),
       }),
       timeline: events.map((event) => ({
         previous_status: event.previous_status,

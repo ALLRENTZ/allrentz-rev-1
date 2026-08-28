@@ -31,6 +31,20 @@ const projection = {
     created_at: '2026-08-25T12:00:00.000Z',
     updated_at: '2026-08-26T11:00:00.000Z',
     pre_dispatch: null,
+    change_review: {
+      authority: 'READ_ONLY_CHANGE_REVIEW_READINESS_PROJECTION',
+      scope: 'RFQ_WIDE',
+      review_state: 'NONE',
+      request_count: 0,
+      latest_proposed_end_date: null,
+      base_end_date_state: 'UNKNOWN',
+      decision_authority: 'NOT_IMPLEMENTED',
+      authority_boundary: {
+        lifecycle_transition_authority: false,
+        version_activation_authority: false,
+        billing_authority: false,
+      },
+    },
     field_acceptance: {
       authority: 'READ_ONLY_FIELD_ACCEPTANCE_PROJECTION',
       scope: 'RFQ_WIDE',
@@ -193,6 +207,39 @@ describe('operations lifecycle projection', () => {
             { key: 'isnet', requirement_status: 'UNKNOWN', evidence_status: 'UNKNOWN' },
             { key: 'purchase_order', requirement_status: 'UNKNOWN', evidence_status: 'UNKNOWN' },
           ],
+        },
+      }],
+    })).toBeNull()
+  })
+
+  it('accepts read-only change-review readiness and rejects decision authority', () => {
+    const withReview = {
+      ...projection,
+      items: [{
+        ...projection.items[0],
+        change_review: {
+          ...projection.items[0].change_review,
+          review_state: 'REVIEW_REQUIRED',
+          request_count: 2,
+          latest_proposed_end_date: '2026-10-01',
+        },
+      }],
+    }
+    expect(normalizeOperationsLifecycleProjection(withReview)?.items[0].change_review).toMatchObject({
+      review_state: 'REVIEW_REQUIRED',
+      request_count: 2,
+      decision_authority: 'NOT_IMPLEMENTED',
+    })
+    expect(normalizeOperationsLifecycleProjection({
+      ...withReview,
+      items: [{
+        ...withReview.items[0],
+        change_review: {
+          ...withReview.items[0].change_review,
+          authority_boundary: {
+            ...withReview.items[0].change_review.authority_boundary,
+            version_activation_authority: true,
+          },
         },
       }],
     })).toBeNull()
