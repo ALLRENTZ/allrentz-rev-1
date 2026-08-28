@@ -58,7 +58,7 @@ function PreDispatchReadiness({ item }: { item: OperationsLifecycleItem }) {
             <p className="font-medium text-amber-950">Pre-dispatch packet visibility</p>
           </div>
           <p className="mt-1 text-sm text-amber-900">
-            Recorded facts only. No document evidence or release decision is available.
+            Recorded facts only. A recorded PO is a customer assertion, not validated document evidence or a release decision.
           </p>
         </div>
         <Badge className="bg-amber-200 text-amber-950">Release: BLOCKED</Badge>

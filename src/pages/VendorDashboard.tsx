@@ -26,6 +26,7 @@ import OffRentControlPanel from '@/components/OffRentControlPanel';
 import PickupTaskControlPanel from '@/components/PickupTaskControlPanel';
 import PickupExceptionReviewQueue from '@/components/PickupExceptionReviewQueue';
 import DeliveryAcceptanceStatusPanel from '@/components/DeliveryAcceptanceStatusPanel';
+import CustomerPurchaseOrderPanel from '@/components/CustomerPurchaseOrderPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -872,6 +873,19 @@ const VendorDashboard = () => {
                           )}
                           {['demobilizing', 'off_rent'].includes(rfq.operational_status) && (
                             <PickupTaskControlPanel rfqId={rfq.id} actorMode="vendor" />
+                          )}
+                          {[
+                            'quote_accepted',
+                            'vendor_confirmed',
+                            'mobilizing',
+                            'in_transit',
+                            'on_rent',
+                            'rental_extended',
+                            'off_rent_requested',
+                            'demobilizing',
+                            'off_rent',
+                          ].includes(rfq.operational_status) && (
+                            <CustomerPurchaseOrderPanel rfqId={rfq.id} actorMode="vendor" />
                           )}
                           {[
                             'in_transit',

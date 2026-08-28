@@ -58,6 +58,10 @@ describe('operations lifecycle policy', () => {
         isnet_required: false,
         purchase_order_required: null,
       },
+      purchaseOrderRows: [{
+        external_reference: 'PO-1042',
+        customer_stated_issue_date: '2026-08-27',
+      }],
     })).toEqual({
       authority: 'READ_ONLY_PRE_DISPATCH_PROJECTION',
       scope: 'RFQ_WIDE',
@@ -69,7 +73,7 @@ describe('operations lifecycle policy', () => {
       requirements: [
         { key: 'twic', requirement_status: 'REQUIRED', evidence_status: 'UNKNOWN' },
         { key: 'isnet', requirement_status: 'NOT_REQUIRED', evidence_status: 'NOT_APPLICABLE' },
-        { key: 'purchase_order', requirement_status: 'UNKNOWN', evidence_status: 'UNKNOWN' },
+        { key: 'purchase_order', requirement_status: 'UNKNOWN', evidence_status: 'RECORDED' },
       ],
     })
   })
@@ -79,6 +83,7 @@ describe('operations lifecycle policy', () => {
       currentStatus: 'quote_accepted',
       acceptedQuotes: [],
       customerRequirements: null,
+      purchaseOrderRows: [],
     })
     expect(projection?.accepted_quote_state).toBe('UNKNOWN')
     expect(projection?.vendor_confirmation_state).toBe('REVIEW_REQUIRED')
@@ -88,6 +93,7 @@ describe('operations lifecycle policy', () => {
       currentStatus: 'on_rent',
       acceptedQuotes: [],
       customerRequirements: null,
+      purchaseOrderRows: [],
     })).toBeNull()
   })
 
@@ -104,6 +110,7 @@ describe('operations lifecycle policy', () => {
         currentStatus: 'mobilizing',
         acceptedQuotes,
         customerRequirements: null,
+        purchaseOrderRows: [],
       })
       expect(projection?.accepted_quote_state).toBe('UNKNOWN')
       expect(projection?.release_authority).toBe('NOT_IMPLEMENTED')

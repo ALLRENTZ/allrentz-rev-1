@@ -28,7 +28,7 @@ const PRE_DISPATCH_STATUSES = new Set<AppRfqStatus>([
 ])
 
 export type PreDispatchRequirementStatus = 'REQUIRED' | 'NOT_REQUIRED' | 'UNKNOWN'
-export type PreDispatchEvidenceStatus = 'UNKNOWN' | 'NOT_APPLICABLE'
+export type PreDispatchEvidenceStatus = 'UNKNOWN' | 'NOT_APPLICABLE' | 'RECORDED'
 
 export interface PreDispatchRequirementProjection {
   key: 'twic' | 'isnet' | 'purchase_order'
@@ -56,6 +56,11 @@ export interface CustomerRequirementReadinessRow {
   twic_required?: unknown
   isnet_required?: unknown
   purchase_order_required?: unknown
+}
+
+export interface CustomerPurchaseOrderReadinessRow {
+  external_reference?: unknown
+  customer_stated_issue_date?: unknown
 }
 
 export type OperationsLifecycleInput = { action: 'list' }
@@ -90,6 +95,7 @@ export function isAppRfqStatus(value: unknown): value is AppRfqStatus {
 function requirementProjection(
   key: PreDispatchRequirementProjection['key'],
   value: unknown,
+  recordedEvidence = false,
 ): PreDispatchRequirementProjection {
   const requirementStatus: PreDispatchRequirementStatus = value === true
     ? 'REQUIRED'
@@ -97,7 +103,9 @@ function requirementProjection(
   return {
     key,
     requirement_status: requirementStatus,
-    evidence_status: requirementStatus === 'NOT_REQUIRED' ? 'NOT_APPLICABLE' : 'UNKNOWN',
+    evidence_status: recordedEvidence
+      ? 'RECORDED'
+      : requirementStatus === 'NOT_REQUIRED' ? 'NOT_APPLICABLE' : 'UNKNOWN',
   }
 }
 
@@ -105,6 +113,7 @@ export function buildPreDispatchReadinessProjection(input: {
   currentStatus: unknown
   acceptedQuotes: AcceptedQuoteReadinessRow[] | null | undefined
   customerRequirements: CustomerRequirementReadinessRow | null | undefined
+  purchaseOrderRows: CustomerPurchaseOrderReadinessRow[] | null | undefined
 }): PreDispatchReadinessProjection | null {
   if (!isAppRfqStatus(input.currentStatus)
       || !PRE_DISPATCH_STATUSES.has(input.currentStatus)) return null
@@ -114,6 +123,12 @@ export function buildPreDispatchReadinessProjection(input: {
     && acceptedQuotes[0]?.status === 'accepted'
     && typeof acceptedQuotes[0]?.accepted_at === 'string'
     && Number.isFinite(Date.parse(acceptedQuotes[0].accepted_at as string))
+  const purchaseOrderRows = Array.isArray(input.purchaseOrderRows) ? input.purchaseOrderRows : []
+  const purchaseOrderIsRecorded = purchaseOrderRows.length === 1
+    && typeof purchaseOrderRows[0]?.external_reference === 'string'
+    && purchaseOrderRows[0].external_reference.trim().length > 0
+    && typeof purchaseOrderRows[0]?.customer_stated_issue_date === 'string'
+    && /^\d{4}-\d{2}-\d{2}$/.test(purchaseOrderRows[0].customer_stated_issue_date)
 
   return {
     authority: 'READ_ONLY_PRE_DISPATCH_PROJECTION',
@@ -128,7 +143,11 @@ export function buildPreDispatchReadinessProjection(input: {
     requirements: [
       requirementProjection('twic', input.customerRequirements?.twic_required),
       requirementProjection('isnet', input.customerRequirements?.isnet_required),
-      requirementProjection('purchase_order', input.customerRequirements?.purchase_order_required),
+      requirementProjection(
+        'purchase_order',
+        input.customerRequirements?.purchase_order_required,
+        purchaseOrderIsRecorded,
+      ),
     ],
   }
 }

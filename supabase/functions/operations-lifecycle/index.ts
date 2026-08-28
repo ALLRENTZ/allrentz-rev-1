@@ -195,6 +195,25 @@ Deno.serve(async (req: Request) => {
     customerRequirementRows = customerRequirements ?? []
   }
 
+  let purchaseOrderRows: Array<{
+    rfq_id: string
+    external_reference: unknown
+    customer_stated_issue_date: unknown
+  }> = []
+  if (preDispatchRfqIds.length > 0) {
+    const { data: purchaseOrders, error: purchaseOrderError } = await svc
+      .from('rental_customer_purchase_order_records')
+      .select('rfq_id, external_reference, customer_stated_issue_date')
+      .in('rfq_id', preDispatchRfqIds)
+      .eq('is_simulated', isSimulated)
+
+    if (purchaseOrderError) {
+      console.error('operations-lifecycle purchase-order projection error:', purchaseOrderError.message)
+      return jsonError(500, 'Unable to load pre-dispatch purchase-order readiness')
+    }
+    purchaseOrderRows = purchaseOrders ?? []
+  }
+
   let eventRows: Array<{
     rfq_id: string
     previous_status: unknown
@@ -236,6 +255,12 @@ Deno.serve(async (req: Request) => {
   const customerRequirementsByUser = new Map(
     customerRequirementRows.map((requirements) => [requirements.user_id, requirements]),
   )
+  const purchaseOrdersByRfq = new Map<string, typeof purchaseOrderRows>()
+  for (const purchaseOrder of purchaseOrderRows) {
+    const existing = purchaseOrdersByRfq.get(purchaseOrder.rfq_id) ?? []
+    existing.push(purchaseOrder)
+    purchaseOrdersByRfq.set(purchaseOrder.rfq_id, existing)
+  }
 
   const items = []
   for (const rfq of rfqs ?? []) {
@@ -255,6 +280,7 @@ Deno.serve(async (req: Request) => {
         customerRequirements: eligibleCustomerIds.has(rfq.customer_id)
           ? customerRequirementsByUser.get(rfq.customer_id)
           : null,
+        purchaseOrderRows: purchaseOrdersByRfq.get(rfq.id),
       }),
       field_acceptance: buildFieldAcceptanceStatusProjection({
         currentStatus: rfq.operational_status,
