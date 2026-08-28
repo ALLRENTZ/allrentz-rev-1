@@ -545,14 +545,21 @@ const CustomerDashboard = () => {
                             <p className="font-medium">{new Date(request.end_date).toLocaleDateString()}</p>
                           </div>
                           <div>
-                            <p className="text-gray-500">Daily Rate</p>
-                            <p className="font-medium">${request.equipment?.daily_rate}/day</p>
+                            <p className="text-gray-500">Catalog Listing Rate</p>
+                            <p className="font-medium">
+                              {request.equipment?.daily_rate != null
+                                ? `$${request.equipment.daily_rate}/day`
+                                : 'Not available'}
+                            </p>
                           </div>
                           <div>
-                            <p className="text-gray-500">Total</p>
-                            <p className="font-medium">{request.total_amount != null ? `$${request.total_amount.toLocaleString()}` : 'Quote pending'}</p>
+                            <p className="text-gray-500">Rental Order Total</p>
+                            <p className="font-medium">NOT DETERMINED</p>
                           </div>
                         </div>
+                        <p className="mt-2 text-xs text-gray-500">
+                          Catalog pricing is informational. Accepted-quote terms and billing authority are governed separately.
+                        </p>
                         
                         {request.delivery_address && (
                           <div className="mt-3 flex items-center space-x-2 text-sm text-gray-600">
