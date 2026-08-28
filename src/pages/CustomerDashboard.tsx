@@ -26,6 +26,7 @@ import DeliveryAcceptanceStatusPanel from '@/components/DeliveryAcceptanceStatus
 import CustomerPurchaseOrderPanel from '@/components/CustomerPurchaseOrderPanel';
 import RentalOrderChangeReviewPanel from '@/components/RentalOrderChangeReviewPanel';
 import { demoCustomerRentalRequests, demoCustomerNotifications } from '@/data/demoDashboardData';
+import { formatDateOnly } from '@/lib/dateOnly';
 import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
 
 const CustomerDashboard = () => {
@@ -538,11 +539,11 @@ const CustomerDashboard = () => {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
                             <p className="text-gray-500">RFQ Requested Start</p>
-                            <p className="font-medium">{new Date(request.start_date).toLocaleDateString()}</p>
+                            <p className="font-medium">{formatDateOnly(request.start_date)}</p>
                           </div>
                           <div>
                             <p className="text-gray-500">RFQ Requested End</p>
-                            <p className="font-medium">{new Date(request.end_date).toLocaleDateString()}</p>
+                            <p className="font-medium">{formatDateOnly(request.end_date)}</p>
                           </div>
                           <div>
                             <p className="text-gray-500">Catalog Listing Rate</p>
@@ -684,7 +685,7 @@ const CustomerDashboard = () => {
                                     <div><span className="text-teal-600">Mobilization: </span>${vqr.mobilization_fee.toFixed(2)}</div>
                                   )}
                                   {vqr.available_start_date && (
-                                    <div><span className="text-teal-600">Available: </span>{new Date(vqr.available_start_date).toLocaleDateString()}</div>
+                                    <div><span className="text-teal-600">Available: </span>{formatDateOnly(vqr.available_start_date)}</div>
                                   )}
                                   <div><span className="text-teal-600">Compliance: </span>{vqr.compliance_confirmed ? 'Confirmed' : 'Pending'}</div>
                                 </div>
