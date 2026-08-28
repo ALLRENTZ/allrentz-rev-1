@@ -34,7 +34,7 @@ export interface OperationsLifecycleEvent {
 export interface PreDispatchRequirementProjection {
   key: 'twic' | 'isnet' | 'purchase_order'
   requirement_status: 'REQUIRED' | 'NOT_REQUIRED' | 'UNKNOWN'
-  evidence_status: 'UNKNOWN' | 'NOT_APPLICABLE'
+  evidence_status: 'UNKNOWN' | 'NOT_APPLICABLE' | 'RECORDED'
 }
 
 export interface PreDispatchReadinessProjection {
@@ -139,10 +139,12 @@ function normalizePreDispatchReadiness(
           && raw.requirement_status !== 'NOT_REQUIRED'
           && raw.requirement_status !== 'UNKNOWN')
         || (raw.evidence_status !== 'UNKNOWN'
-          && raw.evidence_status !== 'NOT_APPLICABLE')
-        || (raw.requirement_status === 'NOT_REQUIRED'
-          ? raw.evidence_status !== 'NOT_APPLICABLE'
-          : raw.evidence_status !== 'UNKNOWN')) return undefined
+          && raw.evidence_status !== 'NOT_APPLICABLE'
+          && raw.evidence_status !== 'RECORDED')
+        || (raw.evidence_status !== 'RECORDED'
+          && (raw.requirement_status === 'NOT_REQUIRED'
+            ? raw.evidence_status !== 'NOT_APPLICABLE'
+            : raw.evidence_status !== 'UNKNOWN'))) return undefined
     requirements.push({
       key: raw.key,
       requirement_status: raw.requirement_status,

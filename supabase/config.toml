@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.operations-lifecycle]
 verify_jwt = true
+
+[functions.rental-order]
+verify_jwt = true

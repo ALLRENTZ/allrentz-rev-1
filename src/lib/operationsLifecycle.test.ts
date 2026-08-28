@@ -112,7 +112,7 @@ describe('operations lifecycle projection', () => {
         requirements: [
           { key: 'twic', requirement_status: 'REQUIRED', evidence_status: 'UNKNOWN' },
           { key: 'isnet', requirement_status: 'NOT_REQUIRED', evidence_status: 'NOT_APPLICABLE' },
-          { key: 'purchase_order', requirement_status: 'UNKNOWN', evidence_status: 'UNKNOWN' },
+          { key: 'purchase_order', requirement_status: 'UNKNOWN', evidence_status: 'RECORDED' },
         ],
         extra_authority: false,
       },
