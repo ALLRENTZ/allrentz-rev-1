@@ -740,8 +740,8 @@ const VendorDashboard = () => {
                               </p>
                               <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mt-2">
                                 {rfq.delivery_address && <div><span className="font-medium">Location: </span>{rfq.delivery_address}</div>}
-                                {rfq.start_date && <div><span className="font-medium">Start: </span>{new Date(rfq.start_date).toLocaleDateString()}</div>}
-                                {rfq.end_date && <div><span className="font-medium">End: </span>{new Date(rfq.end_date).toLocaleDateString()}</div>}
+                                {rfq.start_date && <div><span className="font-medium">RFQ requested start: </span>{new Date(rfq.start_date).toLocaleDateString()}</div>}
+                                {rfq.end_date && <div><span className="font-medium">RFQ requested end: </span>{new Date(rfq.end_date).toLocaleDateString()}</div>}
                               </div>
                               {rfq.special_requirements && <p className="text-sm text-gray-600 mt-1">{rfq.special_requirements}</p>}
                               {rfq.operational_status === 'off_rent_requested' && offRentRequest && (
@@ -847,8 +847,8 @@ const VendorDashboard = () => {
                                 {rfq.equipment?.category && <p className="text-sm text-gray-500">{rfq.equipment.category}</p>}
                                 <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mt-2">
                                   {rfq.delivery_address && <div><span className="font-medium">Location: </span>{rfq.delivery_address}</div>}
-                                  {rfq.start_date && <div><span className="font-medium">Start: </span>{new Date(rfq.start_date).toLocaleDateString()}</div>}
-                                  {rfq.end_date && <div><span className="font-medium">End: </span>{new Date(rfq.end_date).toLocaleDateString()}</div>}
+                                  {rfq.start_date && <div><span className="font-medium">RFQ requested start: </span>{new Date(rfq.start_date).toLocaleDateString()}</div>}
+                                  {rfq.end_date && <div><span className="font-medium">RFQ requested end: </span>{new Date(rfq.end_date).toLocaleDateString()}</div>}
                                 </div>
                                 {rfq.special_requirements && <p className="text-sm text-gray-600 mt-1">{rfq.special_requirements}</p>}
                               </div>

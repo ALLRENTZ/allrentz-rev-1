@@ -537,11 +537,11 @@ const CustomerDashboard = () => {
                         
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
-                            <p className="text-gray-500">Start Date</p>
+                            <p className="text-gray-500">RFQ Requested Start</p>
                             <p className="font-medium">{new Date(request.start_date).toLocaleDateString()}</p>
                           </div>
                           <div>
-                            <p className="text-gray-500">End Date</p>
+                            <p className="text-gray-500">RFQ Requested End</p>
                             <p className="font-medium">{new Date(request.end_date).toLocaleDateString()}</p>
                           </div>
                           <div>
