@@ -20,7 +20,6 @@ import EnterpriseOnboarding from "./pages/EnterpriseOnboarding";
 import SmartMatchDemo from "./pages/SmartMatchDemo";
 import SmartDraft from "./pages/SmartDraft";
 import OperationsCenter from "./pages/OperationsCenter";
-import { SecurityProvider } from "@/components/SecurityProvider";
 import DeliveryTracking from "./pages/management/DeliveryTracking";
 import ComplianceDocumentRegister from "./pages/management/ComplianceDocumentRegister";
 import TurnaroundManagement from "./pages/management/TurnaroundManagement";
@@ -61,9 +60,7 @@ function App() {
                       path="/operations-center"
                       element={
                         <ProtectedRoute requiredRoles={['admin', 'manager'] as const}>
-                          <SecurityProvider>
-                            <OperationsCenter />
-                          </SecurityProvider>
+                          <OperationsCenter />
                         </ProtectedRoute>
                       }
                     />
