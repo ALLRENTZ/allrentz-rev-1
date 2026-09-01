@@ -27,7 +27,6 @@ CREATE TABLE public.rental_customer_purchase_order_records (
                              REFERENCES public.audit_events ON DELETE RESTRICT,
   is_simulated               boolean NOT NULL DEFAULT false,
   created_at                 timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (rental_order_id, idempotency_key),
   FOREIGN KEY (rental_order_id, is_simulated)
     REFERENCES public.rental_orders (id, is_simulated)
     ON DELETE RESTRICT
@@ -47,8 +46,6 @@ CREATE POLICY rental_customer_purchase_order_records_service_read
   FOR SELECT TO service_role
   USING (true);
 
-CREATE INDEX idx_rental_customer_po_rfq
-  ON public.rental_customer_purchase_order_records (rfq_id);
 CREATE INDEX idx_rental_customer_po_customer_organization
   ON public.rental_customer_purchase_order_records (customer_organization_id, created_at DESC);
 CREATE INDEX idx_rental_customer_po_vendor_organization
