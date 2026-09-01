@@ -18,6 +18,8 @@ export const CHARGE_STATUSES = [
   'priced', 'included', 'excluded', 'tbd', 'contingent', 'not_applicable',
 ] as const;
 
+export const REQUIRED_CHARGE_TYPES = ['delivery', 'pickup', 'environmental'] as const;
+
 export type RateBasis = (typeof RATE_BASES)[number];
 export type ChargeType = (typeof CHARGE_TYPES)[number];
 export type ChargeStatus = (typeof CHARGE_STATUSES)[number];
@@ -40,6 +42,7 @@ export type GovernedRateTermDraft = {
   prorationPolicy: ProrationPolicy;
   rentalPeriodDefinition: string;
   vendorCalculationTerms: string;
+  quotedLineAmount: string;
 };
 
 export type GovernedChargeLineDraft = {
@@ -55,6 +58,7 @@ export type GovernedChargeLineDraft = {
 export type GovernedQuoteDraft = {
   rateTerms: GovernedRateTermDraft[];
   chargeLines: GovernedChargeLineDraft[];
+  quotedTotalExcludingTax: string;
   vendorNotes: string;
   complianceConfirmed: boolean;
 };
@@ -75,6 +79,7 @@ export const createGovernedRateTerm = (lineKey = 'rate_1'): GovernedRateTermDraf
   prorationPolicy: 'unknown',
   rentalPeriodDefinition: '',
   vendorCalculationTerms: '',
+  quotedLineAmount: '',
 });
 
 export const createGovernedChargeLine = (
@@ -98,7 +103,9 @@ export const emptyGovernedQuoteDraft = (): GovernedQuoteDraft => ({
     createGovernedChargeLine('pickup', 'pickup', 'Pickup'),
     createGovernedChargeLine('mobilization', 'mobilization', 'Mobilization'),
     createGovernedChargeLine('demobilization', 'demobilization', 'Demobilization'),
+    createGovernedChargeLine('environmental', 'environmental', 'Environmental fee'),
   ],
+  quotedTotalExcludingTax: '',
   vendorNotes: '',
   complianceConfirmed: false,
 });
@@ -160,6 +167,7 @@ export const buildUsdPricingPayload = (draft: GovernedQuoteDraft) => {
     optionalPositiveDecimal(term.includedUsageQuantity, 4, `${label} included usage`);
     optionalPositiveDecimal(term.overtimeRate, 4, `${label} overtime rate`);
     optionalPositiveDecimal(term.overtimeMultiplier, 6, `${label} overtime multiplier`);
+    requireNonNegativeDecimal(term.quotedLineAmount, 2, `${label} quoted extension`);
     if ((term.includedUsageQuantity === '') !== (term.includedUsageUnit.trim() === '')) {
       throw new Error(`${label} included usage requires both a quantity and unit.`);
     }
@@ -193,11 +201,17 @@ export const buildUsdPricingPayload = (draft: GovernedQuoteDraft) => {
       vendor_calculation_terms: requireText(term.vendorCalculationTerms, `${label} calculation terms`, 1000),
       unit_rate: term.unitRate,
       amount_status: 'priced',
-      calculation_method: 'deterministic',
+      calculation_method: 'vendor_stated',
+      line_amount: term.quotedLineAmount,
     };
   });
 
   const rateKeys = new Set(draft.rateTerms.map((term) => term.lineKey));
+  for (const requiredType of REQUIRED_CHARGE_TYPES) {
+    if (!draft.chargeLines.some((line) => line.chargeType === requiredType)) {
+      throw new Error(`${chargeTypeLabel(requiredType)} requires an explicit commercial status.`);
+    }
+  }
   const chargeLines = draft.chargeLines.map((line, index) => {
     const label = `Charge ${index + 1}`;
     const description = requireText(line.description, `${label} description`);
@@ -234,6 +248,10 @@ export const buildUsdPricingPayload = (draft: GovernedQuoteDraft) => {
     calculation_policy_version: CALCULATION_POLICY_VERSION,
     tax_status: 'not_calculated',
     tax_exemption_claimed: false,
+    vendor_stated_total: (() => {
+      requireNonNegativeDecimal(draft.quotedTotalExcludingTax, 2, 'Quoted total excluding tax');
+      return draft.quotedTotalExcludingTax;
+    })(),
     rate_terms: rateTerms,
     charge_lines: chargeLines,
   };

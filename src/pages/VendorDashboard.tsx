@@ -11,6 +11,7 @@ import {
   CHARGE_STATUSES,
   CHARGE_TYPES,
   RATE_BASES,
+  REQUIRED_CHARGE_TYPES,
   buildUsdPricingPayload,
   chargeTypeLabel,
   createGovernedChargeLine,
@@ -954,6 +955,9 @@ const VendorDashboard = () => {
                                         <label className="text-xs font-medium text-gray-700">Unit rate (USD) *
                                           <input inputMode="decimal" value={term.unitRate} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { unitRate: event.target.value })} className="industrial-input w-full mt-1" placeholder="850.0000" />
                                         </label>
+                                        <label className="text-xs font-medium text-gray-700">Vendor quoted extension (USD) *
+                                          <input inputMode="decimal" value={term.quotedLineAmount} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { quotedLineAmount: event.target.value })} className="industrial-input w-full mt-1" placeholder="3500.00" />
+                                        </label>
                                         <label className="text-xs font-medium text-gray-700">Equipment quantity *
                                           <input inputMode="decimal" value={term.equipmentQuantity} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { equipmentQuantity: event.target.value })} className="industrial-input w-full mt-1" />
                                         </label>
@@ -1002,7 +1006,7 @@ const VendorDashboard = () => {
                                   {(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).chargeLines.map((line) => (
                                     <div key={line.lineKey} className="grid grid-cols-1 md:grid-cols-5 gap-3 rounded-md border border-gray-200 p-3">
                                       <label className="text-xs font-medium text-gray-700">Type
-                                        <select value={line.chargeType} onChange={(event) => updateChargeLine(rfq.id, line.lineKey, { chargeType: event.target.value as GovernedChargeLineDraft['chargeType'] })} className="industrial-input w-full mt-1">
+                                        <select disabled={REQUIRED_CHARGE_TYPES.includes(line.chargeType as typeof REQUIRED_CHARGE_TYPES[number])} value={line.chargeType} onChange={(event) => updateChargeLine(rfq.id, line.lineKey, { chargeType: event.target.value as GovernedChargeLineDraft['chargeType'] })} className="industrial-input w-full mt-1 disabled:bg-gray-100">
                                           {CHARGE_TYPES.map((type) => <option key={type} value={type}>{chargeTypeLabel(type)}</option>)}
                                         </select>
                                       </label>
@@ -1025,11 +1029,14 @@ const VendorDashboard = () => {
                                       {line.amountStatus === 'contingent' && <label className="text-xs font-medium text-gray-700 md:col-span-2">Contingent calculation terms *
                                         <input value={line.contingentTrigger} onChange={(event) => updateChargeLine(rfq.id, line.lineKey, { contingentTrigger: event.target.value })} className="industrial-input w-full mt-1" />
                                       </label>}
-                                      <button type="button" onClick={() => updateRealQuoteDraft(rfq.id, {
+                                      {!REQUIRED_CHARGE_TYPES.includes(line.chargeType as typeof REQUIRED_CHARGE_TYPES[number]) && <button type="button" onClick={() => updateRealQuoteDraft(rfq.id, {
                                         chargeLines: (realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).chargeLines.filter((item) => item.lineKey !== line.lineKey),
-                                      })} className="self-end text-xs text-red-700 hover:underline">Remove</button>
+                                      })} className="self-end text-xs text-red-700 hover:underline">Remove</button>}
                                     </div>
                                   ))}
+                                  <label className="block text-xs font-medium text-gray-700">Vendor quoted total excluding tax (USD) *
+                                    <input inputMode="decimal" value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).quotedTotalExcludingTax} onChange={(event) => updateRealQuoteDraft(rfq.id, { quotedTotalExcludingTax: event.target.value })} className="industrial-input w-full mt-1" placeholder="Server verifies this equals finalized line extensions" />
+                                  </label>
                                   <div>
                                     <label className="block text-xs font-medium text-gray-700 mb-1">Vendor Notes</label>
                                     <textarea value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).vendorNotes} onChange={(event) => updateRealQuoteDraft(rfq.id, { vendorNotes: event.target.value })} className="industrial-input w-full" rows={2} placeholder="Availability, delivery window, certifications..." />

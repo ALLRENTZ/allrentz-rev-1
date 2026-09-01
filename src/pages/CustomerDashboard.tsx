@@ -698,6 +698,7 @@ const CustomerDashboard = () => {
                                       {term.overtime_rate != null ? `; overtime ${formatStoredUsd(term.overtime_rate, 4)}` : ''}
                                       {term.overtime_multiplier != null ? `; overtime × ${String(term.overtime_multiplier)}` : ''}
                                       {`; proration ${term.proration_policy || 'UNKNOWN'}`}
+                                      <span className="block">Vendor quoted extension: {formatStoredUsd(term.line_amount)}</span>
                                       <span className="block">Period: {term.rental_period_definition || 'UNKNOWN'}</span>
                                       <span className="block">Calculation: {term.vendor_calculation_terms || 'UNKNOWN'}</span>
                                     </div>

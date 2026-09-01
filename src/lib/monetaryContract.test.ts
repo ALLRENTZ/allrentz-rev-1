@@ -14,10 +14,12 @@ const validDraft = (): GovernedQuoteDraft => {
     rateTerms: [{
       ...draft.rateTerms[0],
       unitRate: '1250.1250',
+      quotedLineAmount: '1250.13',
       rentalPeriodDefinition: 'Each 28-day period begins at governed dispatch.',
       vendorCalculationTerms: 'Rate times equipment count and billable 28-day periods.',
     }],
     chargeLines: draft.chargeLines.map((line) => ({ ...line, amountStatus: 'not_applicable' })),
+    quotedTotalExcludingTax: '1250.13',
   };
 };
 
@@ -37,6 +39,7 @@ describe('USD monetary contract payload', () => {
         includedUsageUnit: 'engine hours',
         overtimeMultiplier: '1.500000',
         prorationPolicy: 'not_allowed',
+        quotedLineAmount: '2500.25',
       }, {
         ...createGovernedRateTerm('rate_2'),
         rateBasis: 'per_week',
@@ -45,10 +48,12 @@ describe('USD monetary contract payload', () => {
         equipmentQuantity: '2',
         rentalPeriodDefinition: 'Seven consecutive 24-hour periods.',
         vendorCalculationTerms: 'One weekly amount for the complete equipment line.',
+        quotedLineAmount: '4500.00',
       }],
       chargeLines: draft.chargeLines.map((line) => line.lineKey === 'delivery'
         ? { ...line, amountStatus: 'priced', amount: '250.00' }
         : line),
+      quotedTotalExcludingTax: '7250.25',
     });
 
     expect(payload).toMatchObject({
@@ -65,7 +70,7 @@ describe('USD monetary contract payload', () => {
       rental_period_quantity: '1.5000', minimum_billable_quantity: '1',
       included_usage_quantity: '160', included_usage_unit: 'engine hours',
       overtime_multiplier: '1.500000', proration_policy: 'not_allowed',
-      calculation_method: 'deterministic',
+      calculation_method: 'vendor_stated', line_amount: '2500.25',
     });
     expect(payload.rate_terms[1]).toMatchObject({ rate_scope: 'entire_line', unit_rate: '4500.0000' });
     expect(payload.charge_lines[0]).toMatchObject({ amount_status: 'priced', amount: '250.00' });

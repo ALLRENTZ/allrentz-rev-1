@@ -332,6 +332,7 @@ DECLARE
   v_quote_status text;
   v_pricing_state text := 'acceptance_ready';
   v_total_method text := 'deterministic';
+  v_has_vendor_stated_line boolean := false;
   v_tax_status text;
   v_tax_exemption_claimed boolean;
   v_vendor_stated_total numeric(20, 2);
@@ -667,7 +668,7 @@ BEGIN
         v_line_amount := private.contract_decimal(
           v_rate ->> 'line_amount', 2, v_line_key || '.line_amount', true
         )::numeric(20, 2);
-        v_total_method := 'vendor_stated';
+        v_has_vendor_stated_line := true;
       ELSE
         RAISE EXCEPTION 'priced rate terms require deterministic or vendor_stated calculation'
           USING ERRCODE = '22023';
@@ -685,6 +686,19 @@ BEGIN
       v_total_method := 'incomplete';
     END IF;
   END LOOP;
+
+  IF EXISTS (
+    SELECT required.charge_type
+    FROM unnest(ARRAY['delivery', 'pickup', 'environmental']) AS required(charge_type)
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM jsonb_array_elements(COALESCE(p_pricing -> 'charge_lines', '[]'::jsonb)) AS charges(charge_value)
+      WHERE charge_value ->> 'charge_type' = required.charge_type
+    )
+  ) THEN
+    RAISE EXCEPTION 'delivery, pickup, and environmental charges require explicit commercial status'
+      USING ERRCODE = '22023';
+  END IF;
 
   FOR v_charge IN
     SELECT value FROM jsonb_array_elements(COALESCE(p_pricing -> 'charge_lines', '[]'::jsonb))
@@ -786,7 +800,7 @@ BEGIN
           v_charge ->> 'amount', 2, v_line_key || '.amount', true
         )::numeric(20, 2);
         IF v_calculation_method = 'vendor_stated' THEN
-          v_total_method := 'vendor_stated';
+          v_has_vendor_stated_line := true;
         END IF;
       ELSIF v_calculation_method = 'percentage' THEN
         SELECT COALESCE(sum(
@@ -867,11 +881,13 @@ BEGIN
 
   IF v_pricing_state <> 'acceptance_ready' THEN
     v_total_method := 'incomplete';
-  ELSIF v_vendor_stated_total IS NOT NULL THEN
-    v_total_method := 'vendor_stated';
-  ELSIF v_total_method = 'vendor_stated' THEN
-    v_total_method := 'incomplete';
-    v_pricing_state := 'incomplete';
+  ELSIF v_has_vendor_stated_line AND v_vendor_stated_total IS NULL THEN
+    RAISE EXCEPTION 'vendor-stated line extensions require quoted total excluding tax'
+      USING ERRCODE = '22023';
+  ELSIF v_has_vendor_stated_line
+        AND v_vendor_stated_total IS DISTINCT FROM v_calculated_total THEN
+    RAISE EXCEPTION 'quoted total excluding tax does not reconcile to finalized line extensions'
+      USING ERRCODE = '22023';
   END IF;
   IF v_total_method <> 'deterministic' THEN
     v_calculated_total := NULL;
