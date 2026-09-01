@@ -1061,6 +1061,117 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_quote_charge_lines: {
+        Row: {
+          amount: number | null
+          amount_status: string
+          calculation_method: string
+          charge_type: string
+          contingent_trigger: string | null
+          created_at: string
+          description: string
+          id: string
+          included_in_line_key: string | null
+          line_key: string
+          percentage_base_line_ids: string[] | null
+          percentage_rate: number | null
+          quote_id: string
+        }
+        Insert: {
+          amount?: number | null
+          amount_status: string
+          calculation_method: string
+          charge_type: string
+          contingent_trigger?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          included_in_line_key?: string | null
+          line_key: string
+          percentage_base_line_ids?: string[] | null
+          percentage_rate?: number | null
+          quote_id: string
+        }
+        Update: {
+          amount?: number | null
+          amount_status?: string
+          calculation_method?: string
+          charge_type?: string
+          contingent_trigger?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          included_in_line_key?: string | null
+          line_key?: string
+          percentage_base_line_ids?: string[] | null
+          percentage_rate?: number | null
+          quote_id?: string
+        }
+        Relationships: [{
+          foreignKeyName: "vendor_quote_charge_lines_quote_id_fkey"
+          columns: ["quote_id"]
+          isOneToOne: false
+          referencedRelation: "vendor_quote_responses"
+          referencedColumns: ["id"]
+        }]
+      }
+      vendor_quote_rate_terms: {
+        Row: {
+          amount_status: string
+          calculation_method: string
+          calendar_timezone: string | null
+          created_at: string
+          equipment_quantity: number
+          id: string
+          line_amount: number | null
+          line_key: string
+          minimum_billable_quantity: number | null
+          period_quantity_source: string
+          quote_id: string
+          rate_basis: string
+          rental_period_quantity: number
+          unit_rate: number | null
+        }
+        Insert: {
+          amount_status: string
+          calculation_method: string
+          calendar_timezone?: string | null
+          created_at?: string
+          equipment_quantity: number
+          id?: string
+          line_amount?: number | null
+          line_key: string
+          minimum_billable_quantity?: number | null
+          period_quantity_source: string
+          quote_id: string
+          rate_basis: string
+          rental_period_quantity: number
+          unit_rate?: number | null
+        }
+        Update: {
+          amount_status?: string
+          calculation_method?: string
+          calendar_timezone?: string | null
+          created_at?: string
+          equipment_quantity?: number
+          id?: string
+          line_amount?: number | null
+          line_key?: string
+          minimum_billable_quantity?: number | null
+          period_quantity_source?: string
+          quote_id?: string
+          rate_basis?: string
+          rental_period_quantity?: number
+          unit_rate?: number | null
+        }
+        Relationships: [{
+          foreignKeyName: "vendor_quote_rate_terms_quote_id_fkey"
+          columns: ["quote_id"]
+          isOneToOne: false
+          referencedRelation: "vendor_quote_responses"
+          referencedColumns: ["id"]
+        }]
+      }
       vendor_quote_responses: {
         Row: {
           accepted_at: string | null
@@ -1068,7 +1179,10 @@ export type Database = {
           available_start_date: string | null
           compliance_confirmed: boolean
           compliance_notes: string[] | null
+          calculation_policy_version: string | null
+          calculated_total: number | null
           created_at: string
+          currency_code: string | null
           daily_rate: number | null
           delivery_fee: number | null
           equipment_id: string | null
@@ -1077,6 +1191,10 @@ export type Database = {
           is_simulated: boolean
           minimum_rental_days: number | null
           mobilization_fee: number | null
+          monetary_contract_version: string | null
+          idempotency_key: string | null
+          pricing_payload: Json | null
+          pricing_state: string | null
           rejected_at: string | null
           rejected_by: string | null
           response_deadline: string | null
@@ -1084,8 +1202,15 @@ export type Database = {
           status: string
           submitted_at: string | null
           submitted_by: string
+          submission_audit_event_id: string | null
+          submission_correlation_id: string | null
           substitution_notes: string | null
           updated_at: string
+          tax_status: string | null
+          tax_exemption_claimed: boolean | null
+          tax_determination_status: string | null
+          total_calculation_method: string | null
+          vendor_stated_total: number | null
           vendor_notes: string | null
           vendor_organization_id: string
           version: number
@@ -1097,7 +1222,10 @@ export type Database = {
           available_start_date?: string | null
           compliance_confirmed?: boolean
           compliance_notes?: string[] | null
+          calculation_policy_version?: string | null
+          calculated_total?: number | null
           created_at?: string
+          currency_code?: string | null
           daily_rate?: number | null
           delivery_fee?: number | null
           equipment_id?: string | null
@@ -1106,6 +1234,10 @@ export type Database = {
           is_simulated?: boolean
           minimum_rental_days?: number | null
           mobilization_fee?: number | null
+          monetary_contract_version?: string | null
+          idempotency_key?: string | null
+          pricing_payload?: Json | null
+          pricing_state?: string | null
           rejected_at?: string | null
           rejected_by?: string | null
           response_deadline?: string | null
@@ -1113,8 +1245,15 @@ export type Database = {
           status?: string
           submitted_at?: string | null
           submitted_by: string
+          submission_audit_event_id?: string | null
+          submission_correlation_id?: string | null
           substitution_notes?: string | null
           updated_at?: string
+          tax_status?: string | null
+          tax_exemption_claimed?: boolean | null
+          tax_determination_status?: string | null
+          total_calculation_method?: string | null
+          vendor_stated_total?: number | null
           vendor_notes?: string | null
           vendor_organization_id: string
           version?: number
@@ -1126,7 +1265,10 @@ export type Database = {
           available_start_date?: string | null
           compliance_confirmed?: boolean
           compliance_notes?: string[] | null
+          calculation_policy_version?: string | null
+          calculated_total?: number | null
           created_at?: string
+          currency_code?: string | null
           daily_rate?: number | null
           delivery_fee?: number | null
           equipment_id?: string | null
@@ -1135,6 +1277,10 @@ export type Database = {
           is_simulated?: boolean
           minimum_rental_days?: number | null
           mobilization_fee?: number | null
+          monetary_contract_version?: string | null
+          idempotency_key?: string | null
+          pricing_payload?: Json | null
+          pricing_state?: string | null
           rejected_at?: string | null
           rejected_by?: string | null
           response_deadline?: string | null
@@ -1142,8 +1288,15 @@ export type Database = {
           status?: string
           submitted_at?: string | null
           submitted_by?: string
+          submission_audit_event_id?: string | null
+          submission_correlation_id?: string | null
           substitution_notes?: string | null
           updated_at?: string
+          tax_status?: string | null
+          tax_exemption_claimed?: boolean | null
+          tax_determination_status?: string | null
+          total_calculation_method?: string | null
+          vendor_stated_total?: number | null
           vendor_notes?: string | null
           vendor_organization_id?: string
           version?: number
@@ -1275,19 +1428,21 @@ export type Database = {
           p_available_start_date?: string
           p_compliance_confirmed?: boolean
           p_compliance_notes?: string[]
-          p_daily_rate: number
-          p_delivery_fee?: number
           p_equipment_substitution?: boolean
-          p_minimum_rental_days?: number
-          p_mobilization_fee?: number
+          p_idempotency_key: string
+          p_pricing: Json
           p_rfq_id: string
           p_substitution_notes?: string
           p_vendor_notes?: string
           p_vendor_organization_id: string
         }
         Returns: {
+          currency_code: string
           correlation_id: string
+          pricing_state: string
           quote_id: string
+          quote_version: number
+          replayed: boolean
         }[]
       }
       record_rental_field_acceptance: {

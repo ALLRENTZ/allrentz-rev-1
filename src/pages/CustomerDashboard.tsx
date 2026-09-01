@@ -25,6 +25,7 @@ import PickupExceptionReviewQueue from '@/components/PickupExceptionReviewQueue'
 import DeliveryAcceptanceStatusPanel from '@/components/DeliveryAcceptanceStatusPanel';
 import { demoCustomerRentalRequests, demoCustomerNotifications } from '@/data/demoDashboardData';
 import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
+import { formatStoredUsd, rateBasisLabel } from '@/lib/monetaryContract';
 
 const CustomerDashboard = () => {
   const { user, profile, showDemoTour, setShowDemoTour, loading: authLoading } = useAuth();
@@ -116,13 +117,43 @@ const CustomerDashboard = () => {
           ),
           vendor_quote_responses (
             id,
+            vendor_organization_id,
+            version,
             status,
-            daily_rate,
-            delivery_fee,
-            mobilization_fee,
+            currency_code,
+            pricing_state,
+            total_calculation_method,
+            calculation_policy_version,
+            tax_status,
+            tax_exemption_claimed,
+            tax_determination_status,
+            calculated_total,
+            vendor_stated_total,
             vendor_notes,
             compliance_confirmed,
-            available_start_date
+            available_start_date,
+            vendor_quote_rate_terms (
+              line_key,
+              rate_basis,
+              equipment_quantity,
+              rental_period_quantity,
+              period_quantity_source,
+              minimum_billable_quantity,
+              calendar_timezone,
+              unit_rate,
+              amount_status,
+              calculation_method,
+              line_amount
+            ),
+            vendor_quote_charge_lines (
+              line_key,
+              charge_type,
+              description,
+              amount_status,
+              calculation_method,
+              amount,
+              contingent_trigger
+            )
           )
         `)
         .eq('customer_id', user?.id)
@@ -637,20 +668,47 @@ const CustomerDashboard = () => {
                         {request.operational_status === 'vendor_quote_received' && authority.canUseOperationalData &&
                           (request.vendor_quote_responses || [])
                             .filter((v: any) => v.status === 'submitted' || v.status === 'revised')
-                            .slice(0, 1)
+                            .sort((left: any, right: any) => Number(right.version) - Number(left.version))
+                            .filter((quote: any, index: number, quotes: any[]) => (
+                              quotes.findIndex((candidate: any) => (
+                                candidate.vendor_organization_id === quote.vendor_organization_id
+                              )) === index
+                            ))
                             .map((vqr: any) => (
                               <div key={vqr.id} className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg space-y-2">
-                                <p className="text-sm font-semibold text-teal-900">Quote received</p>
+                                <p className="text-sm font-semibold text-teal-900">Quote revision {vqr.version}</p>
                                 <div className="grid grid-cols-2 gap-2 text-xs text-teal-800">
-                                  {vqr.daily_rate != null && (
-                                    <div><span className="text-teal-600">Daily Rate: </span>${vqr.daily_rate.toFixed(2)}/day</div>
-                                  )}
-                                  {vqr.delivery_fee != null && (
-                                    <div><span className="text-teal-600">Delivery Fee: </span>${vqr.delivery_fee.toFixed(2)}</div>
-                                  )}
-                                  {vqr.mobilization_fee != null && (
-                                    <div><span className="text-teal-600">Mobilization: </span>${vqr.mobilization_fee.toFixed(2)}</div>
-                                  )}
+                                  <div><span className="text-teal-600">Currency: </span>{vqr.currency_code || 'UNKNOWN'}</div>
+                                  <div><span className="text-teal-600">Pricing: </span>{vqr.pricing_state || 'UNKNOWN'}</div>
+                                  {(vqr.vendor_quote_rate_terms || []).map((term: any) => (
+                                    <div key={term.line_key}>
+                                      <span className="text-teal-600">Rate: </span>
+                                      {formatStoredUsd(term.unit_rate, 4)} per {rateBasisLabel(term.rate_basis)} × {String(term.equipment_quantity)} equipment × {String(term.rental_period_quantity)} periods
+                                      {term.minimum_billable_quantity != null ? `; minimum ${String(term.minimum_billable_quantity)}` : ''}
+                                      {term.calendar_timezone ? `; timezone ${term.calendar_timezone}` : ''}
+                                    </div>
+                                  ))}
+                                  {(vqr.vendor_quote_charge_lines || [])
+                                    .filter((line: any) => line.amount_status !== 'not_applicable')
+                                    .map((line: any) => (
+                                      <div key={line.line_key}>
+                                        <span className="text-teal-600">{line.description}: </span>
+                                        {line.amount_status === 'priced' ? formatStoredUsd(line.amount) : line.amount_status}
+                                      </div>
+                                    ))}
+                                  <div>
+                                    <span className="text-teal-600">Stored total: </span>
+                                    {vqr.total_calculation_method === 'deterministic'
+                                      ? formatStoredUsd(vqr.calculated_total)
+                                      : vqr.total_calculation_method === 'vendor_stated'
+                                        ? formatStoredUsd(vqr.vendor_stated_total)
+                                        : 'INCOMPLETE'}
+                                  </div>
+                                  <div>
+                                    <span className="text-teal-600">Tax: </span>
+                                    {vqr.tax_status || 'UNKNOWN'}; determination {vqr.tax_determination_status || 'UNKNOWN'}
+                                    {vqr.tax_exemption_claimed ? '; exemption claimed (not verified)' : ''}
+                                  </div>
                                   {vqr.available_start_date && (
                                     <div><span className="text-teal-600">Available: </span>{new Date(vqr.available_start_date).toLocaleDateString()}</div>
                                   )}
@@ -679,9 +737,11 @@ const CustomerDashboard = () => {
                                   <Button
                                     size="sm"
                                     onClick={() => handleAcceptQuote(request.id, vqr.id)}
-                                    disabled={acceptingVqrId === vqr.id || rejectingRfqId === request.id || cancellingRfqId === request.id}
+                                    disabled={vqr.pricing_state !== 'acceptance_ready' || acceptingVqrId === vqr.id || rejectingRfqId === request.id || cancellingRfqId === request.id}
                                   >
-                                    {acceptingVqrId === vqr.id ? 'Accepting...' : 'Accept Quote'}
+                                    {vqr.pricing_state !== 'acceptance_ready'
+                                      ? 'Pricing Review Required'
+                                      : acceptingVqrId === vqr.id ? 'Accepting...' : 'Accept Quote'}
                                   </Button>
                                 </div>
                               </div>

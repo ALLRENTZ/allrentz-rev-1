@@ -7,6 +7,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
 import { getVendorLifecycleAction, getVendorLifecycleLabel } from '@/lib/vendorLifecycle';
+import {
+  RATE_BASES,
+  buildUsdPricingPayload,
+  emptyGovernedQuoteDraft,
+  rateBasisLabel,
+  type GovernedQuoteDraft,
+} from '@/lib/monetaryContract';
 import OffRentControlPanel from '@/components/OffRentControlPanel';
 import PickupTaskControlPanel from '@/components/PickupTaskControlPanel';
 import PickupExceptionReviewQueue from '@/components/PickupExceptionReviewQueue';
@@ -46,9 +53,16 @@ const VendorDashboard = () => {
   const [pickupWindowEnd, setPickupWindowEnd] = useState('');
   const [pickupNotes, setPickupNotes] = useState('');
   const [offRentRefreshVersion, setOffRentRefreshVersion] = useState(0);
-  const [realQuoteForm, setRealQuoteForm] = useState({ daily_rate: '', vendor_notes: '', compliance_confirmed: false });
+  const [realQuoteDrafts, setRealQuoteDrafts] = useState<Record<string, GovernedQuoteDraft>>({});
+  const [quoteIntents, setQuoteIntents] = useState<Record<string, { payload: string; key: string }>>({});
   const [pendingRfqsError, setPendingRfqsError] = useState(false);
   const [lifecycleRfqsError, setLifecycleRfqsError] = useState(false);
+  const updateRealQuoteDraft = (rfqId: string, patch: Partial<GovernedQuoteDraft>) => {
+    setRealQuoteDrafts((current) => ({
+      ...current,
+      [rfqId]: { ...(current[rfqId] || emptyGovernedQuoteDraft()), ...patch },
+    }));
+  };
   const pickupExceptionSources = useMemo(() => lifecycleRfqs
     .filter((rfq) => ['demobilizing', 'off_rent'].includes(rfq.operational_status))
     .map((rfq) => ({
@@ -240,31 +254,68 @@ const VendorDashboard = () => {
     if (!requireOperationalProfile({ user, authLoading, profile, toast: showBlockedToast })) {
       return;
     }
-    const dailyRate = Number.parseFloat(realQuoteForm.daily_rate);
-    if (!Number.isFinite(dailyRate) || dailyRate <= 0) {
-      toast.warning('Enter a daily rate to proceed.');
+    const draft = realQuoteDrafts[rfqId] || emptyGovernedQuoteDraft();
+    let pricingPayload: ReturnType<typeof buildUsdPricingPayload>;
+    try {
+      pricingPayload = buildUsdPricingPayload(draft);
+    } catch (error) {
+      toast.warning(error instanceof Error ? error.message : 'Quote pricing is invalid.');
       return;
     }
     if (!vendorOrgId || !user) {
       toast.error('Vendor organization not found. Contact support.');
       return;
     }
+    const serializedPayload = JSON.stringify({
+      pricing: pricingPayload,
+      vendorNotes: draft.vendorNotes,
+      complianceConfirmed: draft.complianceConfirmed,
+    });
+    const existingIntent = quoteIntents[rfqId];
+    const intent = existingIntent?.payload === serializedPayload
+      ? existingIntent
+      : { payload: serializedPayload, key: crypto.randomUUID() };
+    if (intent !== existingIntent) {
+      setQuoteIntents((current) => ({ ...current, [rfqId]: intent }));
+    }
+
     setSubmittingId(rfqId);
-    const { error } = await supabase.rpc('submit_vendor_quote', {
+    const { data, error } = await supabase.rpc('submit_vendor_quote', {
       p_rfq_id: rfqId,
       p_vendor_organization_id: vendorOrgId,
-      p_daily_rate: dailyRate,
-      p_vendor_notes: realQuoteForm.vendor_notes || undefined,
-      p_compliance_confirmed: realQuoteForm.compliance_confirmed,
+      p_idempotency_key: intent.key,
+      p_pricing: pricingPayload,
+      p_vendor_notes: draft.vendorNotes || undefined,
+      p_compliance_confirmed: draft.complianceConfirmed,
     });
     setSubmittingId(null);
     if (error) {
-      toast.error('Failed to submit quote: ' + (error.message || 'Unknown error'));
+      toast.error('Quote submission was not confirmed. Retry without changing pricing to reuse this intent; after a reload, verify quote history before retrying.');
       return;
     }
-    toast.success('Quote submitted successfully.');
+    const outcome = Array.isArray(data) ? data[0] : null;
+    if (!outcome?.quote_id
+      || !outcome?.correlation_id
+      || outcome.currency_code !== 'USD'
+      || !Number.isInteger(outcome.quote_version)
+      || outcome.quote_version < 1
+      || !['acceptance_ready', 'incomplete', 'requires_acknowledgment'].includes(outcome.pricing_state)
+      || typeof outcome.replayed !== 'boolean') {
+      toast.error('Quote outcome could not be verified. Keep pricing unchanged and retry this intent, or verify quote history first.');
+      return;
+    }
+    toast.success(outcome.replayed ? 'Existing quote submission confirmed.' : 'Quote submitted successfully.');
     setQuotingRealId(null);
-    setRealQuoteForm({ daily_rate: '', vendor_notes: '', compliance_confirmed: false });
+    setRealQuoteDrafts((current) => {
+      const next = { ...current };
+      delete next[rfqId];
+      return next;
+    });
+    setQuoteIntents((current) => {
+      const next = { ...current };
+      delete next[rfqId];
+      return next;
+    });
     fetchPendingRfqs();
     fetchLifecycleRfqs();
   };
@@ -840,20 +891,91 @@ const VendorDashboard = () => {
                               <div className="mt-3 pt-3 border-t border-gray-200 space-y-3">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                   <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">Daily Rate ($) *</label>
-                                    <input
-                                      type="number"
-                                      value={realQuoteForm.daily_rate}
-                                      onChange={e => setRealQuoteForm(prev => ({ ...prev, daily_rate: e.target.value }))}
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Rate basis *</label>
+                                    <select
+                                      value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).rateBasis}
+                                      onChange={(event) => updateRealQuoteDraft(rfq.id, { rateBasis: event.target.value as GovernedQuoteDraft['rateBasis'] })}
                                       className="industrial-input w-full"
-                                      placeholder="e.g. 850"
+                                    >
+                                      {RATE_BASES.map((basis) => (
+                                        <option key={basis} value={basis}>Per {rateBasisLabel(basis)}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Unit rate (USD, 4 decimals max) *</label>
+                                    <input
+                                      inputMode="decimal"
+                                      value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).unitRate}
+                                      onChange={(event) => updateRealQuoteDraft(rfq.id, { unitRate: event.target.value })}
+                                      className="industrial-input w-full"
+                                      placeholder="e.g. 850.0000"
                                     />
                                   </div>
                                   <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Equipment quantity *</label>
+                                    <input
+                                      inputMode="decimal"
+                                      value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).equipmentQuantity}
+                                      onChange={(event) => updateRealQuoteDraft(rfq.id, { equipmentQuantity: event.target.value })}
+                                      className="industrial-input w-full"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Rental-period quantity *</label>
+                                    <input
+                                      inputMode="decimal"
+                                      value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).rentalPeriodQuantity}
+                                      onChange={(event) => updateRealQuoteDraft(rfq.id, { rentalPeriodQuantity: event.target.value })}
+                                      className="industrial-input w-full"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Minimum billable quantity (optional)</label>
+                                    <input
+                                      inputMode="decimal"
+                                      value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).minimumBillableQuantity}
+                                      onChange={(event) => updateRealQuoteDraft(rfq.id, { minimumBillableQuantity: event.target.value })}
+                                      className="industrial-input w-full"
+                                      placeholder="e.g. 1"
+                                    />
+                                  </div>
+                                  {(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).rateBasis === 'per_calendar_month' && (
+                                    <div>
+                                      <label className="block text-xs font-medium text-gray-700 mb-1">Calendar timezone *</label>
+                                      <input
+                                        value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).calendarTimezone}
+                                        onChange={(event) => updateRealQuoteDraft(rfq.id, { calendarTimezone: event.target.value })}
+                                        className="industrial-input w-full"
+                                        placeholder="America/Chicago"
+                                      />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Delivery fee (USD, optional)</label>
+                                    <input
+                                      inputMode="decimal"
+                                      value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).deliveryFee}
+                                      onChange={(event) => updateRealQuoteDraft(rfq.id, { deliveryFee: event.target.value })}
+                                      className="industrial-input w-full"
+                                      placeholder="0.00"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">Mobilization fee (USD, optional)</label>
+                                    <input
+                                      inputMode="decimal"
+                                      value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).mobilizationFee}
+                                      onChange={(event) => updateRealQuoteDraft(rfq.id, { mobilizationFee: event.target.value })}
+                                      className="industrial-input w-full"
+                                      placeholder="0.00"
+                                    />
+                                  </div>
+                                  <div className="md:col-span-2">
                                     <label className="block text-xs font-medium text-gray-700 mb-1">Vendor Notes</label>
                                     <textarea
-                                      value={realQuoteForm.vendor_notes}
-                                      onChange={e => setRealQuoteForm(prev => ({ ...prev, vendor_notes: e.target.value }))}
+                                      value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).vendorNotes}
+                                      onChange={(event) => updateRealQuoteDraft(rfq.id, { vendorNotes: event.target.value })}
                                       className="industrial-input w-full"
                                       rows={2}
                                       placeholder="Availability, delivery window, certifications..."
@@ -863,12 +985,15 @@ const VendorDashboard = () => {
                                 <label className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
                                   <input
                                     type="checkbox"
-                                    checked={realQuoteForm.compliance_confirmed}
-                                    onChange={e => setRealQuoteForm(prev => ({ ...prev, compliance_confirmed: e.target.checked }))}
+                                    checked={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).complianceConfirmed}
+                                    onChange={(event) => updateRealQuoteDraft(rfq.id, { complianceConfirmed: event.target.checked })}
                                     className="rounded"
                                   />
                                   <span>Compliance confirmed for this request</span>
                                 </label>
+                                <p className="text-xs text-gray-600">
+                                  Taxes are not calculated. The database calculates authoritative line totals using USD decimal policy allrentz-usd-1.
+                                </p>
                                 <div className="flex space-x-2">
                                   <button
                                     onClick={() => handleSubmitRealQuote(rfq.id)}
@@ -878,7 +1003,7 @@ const VendorDashboard = () => {
                                     {submittingId === rfq.id ? 'Submitting...' : 'Confirm Quote'}
                                   </button>
                                   <button
-                                    onClick={() => { setQuotingRealId(null); setRealQuoteForm({ daily_rate: '', vendor_notes: '', compliance_confirmed: false }); }}
+                                    onClick={() => setQuotingRealId(null)}
                                     className="border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-1 px-4 rounded-md text-sm"
                                   >
                                     Cancel
