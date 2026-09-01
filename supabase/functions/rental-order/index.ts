@@ -33,7 +33,9 @@ function jsonError(status: number, message: string): Response {
 
 function commandErrorStatus(message: string): number {
   if (message.includes('not found')) return 404
-  if (message.includes('lacks customer') || message.includes('simulation scope')) return 403
+  if (message.includes('Active customer profile authority')
+      || message.includes('lacks customer')
+      || message.includes('simulation scope')) return 403
   if (message.includes('already recorded') || message.includes('outside')) return 409
   if (message.includes('required') || message.includes('cannot be future-dated')) return 422
   return 500
@@ -99,40 +101,67 @@ Deno.serve(async (req: Request) => {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
-  const orderQuery = svc
-    .from('rental_orders')
-    .select('id, order_reference, rfq_id, customer_organization_id, customer_organization_state, vendor_organization_id, is_simulated')
-  const { data: rentalOrder, error: rentalOrderError } = validation.input.action === 'status'
-    ? await orderQuery.eq('rfq_id', validation.input.rfqId).maybeSingle()
-    : await orderQuery.eq('id', validation.input.rentalOrderId).maybeSingle()
-
-  if (rentalOrderError) {
-    console.error('rental-order identity projection error:', rentalOrderError.message)
-    return jsonError(500, 'Unable to load Rental Order authority')
-  }
-  if (!rentalOrder) return jsonError(404, 'Rental Order not found')
-
-  const [profileResult, rfqResult, roleResult, membershipResult] = await Promise.all([
-    svc.from('profiles').select('is_demo').eq('id', user.id).maybeSingle(),
-    svc.from('rental_requests')
-      .select('id, customer_id, customer_organization_id, operational_status, is_simulated')
-      .eq('id', rentalOrder.rfq_id)
-      .maybeSingle(),
+  const [profileResult, roleResult, membershipResult] = await Promise.all([
+    svc.from('profiles').select('status, is_demo').eq('id', user.id).maybeSingle(),
     svc.from('user_roles').select('role').eq('user_id', user.id).in('role', ['admin', 'manager']),
     svc.from('organization_memberships')
       .select('organization_id, role, is_simulated')
       .eq('user_id', user.id)
       .is('archived_at', null),
   ])
-
-  if (profileResult.error || rfqResult.error || roleResult.error || membershipResult.error) {
-    console.error('rental-order authority projection error:',
-      profileResult.error?.message ?? rfqResult.error?.message
-        ?? roleResult.error?.message ?? membershipResult.error?.message)
+  if (profileResult.error || roleResult.error || membershipResult.error) {
+    console.error('rental-order actor authority projection error:',
+      profileResult.error?.message ?? roleResult.error?.message ?? membershipResult.error?.message)
     return jsonError(500, 'Unable to verify Rental Order authority')
   }
-  if (!profileResult.data || typeof profileResult.data.is_demo !== 'boolean' || !rfqResult.data) {
-    return jsonError(403, 'Rental Order visibility requires an active authority boundary')
+  if (!profileResult.data
+      || profileResult.data.status !== 'active'
+      || typeof profileResult.data.is_demo !== 'boolean') {
+    return jsonError(403, 'Active profile authority required')
+  }
+
+  const selectOrder = (client: typeof userClient) => client
+    .from('rental_orders')
+    .select('id, order_reference, rfq_id, customer_organization_id, customer_organization_state, vendor_organization_id, is_simulated')
+  const callerOrderQuery = selectOrder(userClient)
+  let { data: rentalOrder, error: rentalOrderError } = validation.input.action === 'status'
+    ? await callerOrderQuery.eq('rfq_id', validation.input.rfqId).maybeSingle()
+    : await callerOrderQuery.eq('id', validation.input.rentalOrderId).maybeSingle()
+
+  if (rentalOrderError) {
+    console.error('rental-order identity projection error:', rentalOrderError.message)
+    return jsonError(500, 'Unable to load Rental Order authority')
+  }
+
+  // Operations access is resolved only after proving a current database role.
+  // Every other actor must first see the root object through its RLS policy.
+  if (!rentalOrder && roleResult.data.length > 0) {
+    const operationsOrderQuery = selectOrder(svc)
+    const operationsResult = validation.input.action === 'status'
+      ? await operationsOrderQuery.eq('rfq_id', validation.input.rfqId).maybeSingle()
+      : await operationsOrderQuery.eq('id', validation.input.rentalOrderId).maybeSingle()
+    rentalOrder = operationsResult.data
+    rentalOrderError = operationsResult.error
+    if (rentalOrderError) {
+      console.error('rental-order operations identity projection error:', rentalOrderError.message)
+      return jsonError(500, 'Unable to load Rental Order authority')
+    }
+  }
+
+  // Do not distinguish an unknown identifier from an existing object hidden by RLS.
+  if (!rentalOrder) return jsonError(404, 'Rental Order not found')
+
+  const rfqResult = await svc.from('rental_requests')
+      .select('id, customer_id, customer_organization_id, operational_status, is_simulated')
+      .eq('id', rentalOrder.rfq_id)
+      .maybeSingle()
+
+  if (rfqResult.error) {
+    console.error('rental-order authority projection error:', rfqResult.error.message)
+    return jsonError(500, 'Unable to verify Rental Order authority')
+  }
+  if (!rfqResult.data) {
+    return jsonError(404, 'Rental Order not found')
   }
 
   const context: PurchaseOrderVisibilityContext = {

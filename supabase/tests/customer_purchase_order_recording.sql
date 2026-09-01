@@ -3,7 +3,7 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = public, extensions;
 
-SELECT plan(29);
+SELECT plan(30);
 
 SELECT has_table(
   'public',
@@ -128,7 +128,7 @@ FROM public.submit_vendor_quote(
   '00000000-0000-4000-8000-000000009301',
   '00000000-0000-4000-8000-000000009202',
   '00000000-0000-4000-8000-000000009401',
-  '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"per_day","equipment_quantity":"1","rental_period_quantity":"7","period_quantity_source":"vendor_stated","unit_rate":"300.0000","amount_status":"priced","calculation_method":"deterministic"}],"charge_lines":[{"line_key":"delivery","charge_type":"delivery","description":"Delivery fee","amount_status":"priced","calculation_method":"fixed","amount":"100.00"},{"line_key":"mobilization","charge_type":"mobilization","description":"Mobilization fee","amount_status":"priced","calculation_method":"fixed","amount":"50.00"}]}'::jsonb,
+  '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"per_day","rate_scope":"per_equipment_item","equipment_quantity":"1","rental_period_quantity":"7","period_quantity_source":"vendor_stated","proration_policy":"unknown","rental_period_definition":"Seven consecutive 24-hour periods","vendor_calculation_terms":"Unit rate times governed quantity and billable periods","unit_rate":"300.0000","amount_status":"priced","calculation_method":"deterministic"}],"charge_lines":[{"line_key":"delivery","charge_type":"delivery","description":"Delivery fee","amount_status":"priced","calculation_method":"fixed","amount":"100.00"},{"line_key":"mobilization","charge_type":"mobilization","description":"Mobilization fee","amount_status":"priced","calculation_method":"fixed","amount":"50.00"}]}'::jsonb,
   current_date + 1,
   false,
   NULL,
@@ -278,6 +278,21 @@ SELECT ok(
       )
   ),
   'slice creates no financial, release, granular, or document authority columns'
+);
+
+UPDATE public.profiles
+SET status = 'suspended'
+WHERE id = '00000000-0000-4000-8000-000000009101';
+SELECT throws_ok(
+  $$SELECT public.record_rental_customer_purchase_order(
+    (SELECT id FROM public.rental_orders
+     WHERE rfq_id = '00000000-0000-4000-8000-000000009301'),
+    '00000000-0000-4000-8000-000000009101',
+    'PO-SUSPENDED', current_date, 'po-suspended-attempt'
+  )$$,
+  '42501',
+  'Active customer profile authority is required',
+  'a suspended profile cannot record or replay a customer purchase order'
 );
 
 SELECT * FROM finish();

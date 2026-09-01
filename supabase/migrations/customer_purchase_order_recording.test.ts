@@ -26,6 +26,8 @@ describe('customer-owned purchase-order recording migration', () => {
   })
 
   it('fails closed across customer organization, lifecycle, and simulation boundaries', () => {
+    expect(migration).toContain("profile.status = 'active'")
+    expect(migration).toContain('Active customer profile authority is required')
     expect(migration).toContain('has no established customer organization authority')
     expect(migration).toContain('actor simulation scope does not match Rental Order')
     expect(migration).toContain('lacks customer purchase-order authority')

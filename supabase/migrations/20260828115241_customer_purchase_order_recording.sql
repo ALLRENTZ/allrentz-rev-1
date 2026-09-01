@@ -91,6 +91,7 @@ DECLARE
   v_record_id         uuid := gen_random_uuid();
   v_correlation_id    uuid := gen_random_uuid();
   v_audit_event_id    uuid;
+  v_actor_is_demo     boolean;
   v_external_reference text := NULLIF(btrim(p_external_reference), '');
   v_idempotency_key   text := NULLIF(btrim(p_idempotency_key), '');
 BEGIN
@@ -106,6 +107,16 @@ BEGIN
   END IF;
   IF v_idempotency_key IS NULL OR length(v_idempotency_key) NOT BETWEEN 8 AND 200 THEN
     RAISE EXCEPTION 'Purchase-order idempotency key must contain 8 to 200 characters';
+  END IF;
+
+  SELECT profile.is_demo
+  INTO v_actor_is_demo
+  FROM public.profiles AS profile
+  WHERE profile.id = p_actor_id
+    AND profile.status = 'active';
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Active customer profile authority is required'
+      USING ERRCODE = '42501';
   END IF;
 
   SELECT
@@ -128,7 +139,7 @@ BEGIN
     RAISE EXCEPTION 'Rental Order % has no established customer organization authority',
       p_rental_order_id;
   END IF;
-  IF public.is_demo_actor(p_actor_id) IS DISTINCT FROM v_order.is_simulated THEN
+  IF v_actor_is_demo IS DISTINCT FROM v_order.is_simulated THEN
     RAISE EXCEPTION 'Purchase-order actor simulation scope does not match Rental Order %',
       p_rental_order_id;
   END IF;
