@@ -1123,14 +1123,22 @@ export type Database = {
           created_at: string
           equipment_quantity: number
           id: string
+          included_usage_quantity: number | null
+          included_usage_unit: string | null
           line_amount: number | null
           line_key: string
           minimum_billable_quantity: number | null
+          overtime_multiplier: number | null
+          overtime_rate: number | null
           period_quantity_source: string
+          proration_policy: string
           quote_id: string
           rate_basis: string
+          rate_scope: string
+          rental_period_definition: string
           rental_period_quantity: number
           unit_rate: number | null
+          vendor_calculation_terms: string
         }
         Insert: {
           amount_status: string
@@ -1139,14 +1147,22 @@ export type Database = {
           created_at?: string
           equipment_quantity: number
           id?: string
+          included_usage_quantity?: number | null
+          included_usage_unit?: string | null
           line_amount?: number | null
           line_key: string
           minimum_billable_quantity?: number | null
+          overtime_multiplier?: number | null
+          overtime_rate?: number | null
           period_quantity_source: string
+          proration_policy: string
           quote_id: string
           rate_basis: string
+          rate_scope: string
+          rental_period_definition: string
           rental_period_quantity: number
           unit_rate?: number | null
+          vendor_calculation_terms: string
         }
         Update: {
           amount_status?: string
@@ -1155,14 +1171,22 @@ export type Database = {
           created_at?: string
           equipment_quantity?: number
           id?: string
+          included_usage_quantity?: number | null
+          included_usage_unit?: string | null
           line_amount?: number | null
           line_key?: string
           minimum_billable_quantity?: number | null
+          overtime_multiplier?: number | null
+          overtime_rate?: number | null
           period_quantity_source?: string
+          proration_policy?: string
           quote_id?: string
           rate_basis?: string
+          rate_scope?: string
+          rental_period_definition?: string
           rental_period_quantity?: number
           unit_rate?: number | null
+          vendor_calculation_terms?: string
         }
         Relationships: [{
           foreignKeyName: "vendor_quote_rate_terms_quote_id_fkey"

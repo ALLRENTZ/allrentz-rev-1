@@ -135,11 +135,19 @@ const CustomerDashboard = () => {
             vendor_quote_rate_terms (
               line_key,
               rate_basis,
+              rate_scope,
               equipment_quantity,
               rental_period_quantity,
               period_quantity_source,
               minimum_billable_quantity,
               calendar_timezone,
+              included_usage_quantity,
+              included_usage_unit,
+              overtime_rate,
+              overtime_multiplier,
+              proration_policy,
+              rental_period_definition,
+              vendor_calculation_terms,
               unit_rate,
               amount_status,
               calculation_method,
@@ -683,9 +691,15 @@ const CustomerDashboard = () => {
                                   {(vqr.vendor_quote_rate_terms || []).map((term: any) => (
                                     <div key={term.line_key}>
                                       <span className="text-teal-600">Rate: </span>
-                                      {formatStoredUsd(term.unit_rate, 4)} per {rateBasisLabel(term.rate_basis)} × {String(term.equipment_quantity)} equipment × {String(term.rental_period_quantity)} periods
+                                      {formatStoredUsd(term.unit_rate, 4)} per {rateBasisLabel(term.rate_basis)} × {term.rate_scope === 'entire_line' ? 'entire line' : `${String(term.equipment_quantity)} equipment`} × {String(term.rental_period_quantity)} periods
                                       {term.minimum_billable_quantity != null ? `; minimum ${String(term.minimum_billable_quantity)}` : ''}
                                       {term.calendar_timezone ? `; timezone ${term.calendar_timezone}` : ''}
+                                      {term.included_usage_quantity != null ? `; includes ${String(term.included_usage_quantity)} ${term.included_usage_unit}` : ''}
+                                      {term.overtime_rate != null ? `; overtime ${formatStoredUsd(term.overtime_rate, 4)}` : ''}
+                                      {term.overtime_multiplier != null ? `; overtime × ${String(term.overtime_multiplier)}` : ''}
+                                      {`; proration ${term.proration_policy || 'UNKNOWN'}`}
+                                      <span className="block">Period: {term.rental_period_definition || 'UNKNOWN'}</span>
+                                      <span className="block">Calculation: {term.vendor_calculation_terms || 'UNKNOWN'}</span>
                                     </div>
                                   ))}
                                   {(vqr.vendor_quote_charge_lines || [])

@@ -3,7 +3,7 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 SET LOCAL search_path = public, extensions;
 
-SELECT plan(64);
+SELECT plan(67);
 
 SELECT has_table('public', 'rental_orders', 'Rental Order identity table exists');
 SELECT has_table('public', 'rental_order_versions', 'Rental Order version table exists');
@@ -196,19 +196,22 @@ INSERT INTO public.vendor_quote_responses (
   current_date + 1, false, true, now(), false,
   'usd-v1', 'USD', 'acceptance_ready', 'deterministic', 'allrentz-usd-1',
   'not_calculated', false, 'not_determined', 4277.00,
-  '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"per_day","equipment_quantity":"2","rental_period_quantity":"7","period_quantity_source":"vendor_stated","unit_rate":"288.7143","amount_status":"priced","calculation_method":"deterministic"}],"charge_lines":[{"line_key":"delivery","charge_type":"delivery","description":"Delivery fee","amount_status":"priced","calculation_method":"fixed","amount":"150.00"},{"line_key":"mobilization","charge_type":"mobilization","description":"Mobilization fee","amount_status":"priced","calculation_method":"fixed","amount":"85.00"}]}'::jsonb,
+  '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"per_day","rate_scope":"per_equipment_item","equipment_quantity":"2","rental_period_quantity":"7","period_quantity_source":"vendor_stated","proration_policy":"unknown","rental_period_definition":"Vendor-stated rental period","vendor_calculation_terms":"Unit rate times governed quantity and billable period","unit_rate":"288.7143","amount_status":"priced","calculation_method":"deterministic"}],"charge_lines":[{"line_key":"delivery","charge_type":"delivery","description":"Delivery fee","amount_status":"priced","calculation_method":"fixed","amount":"150.00"},{"line_key":"mobilization","charge_type":"mobilization","description":"Mobilization fee","amount_status":"priced","calculation_method":"fixed","amount":"85.00"}]}'::jsonb,
   '00000000-0000-4000-8000-000000008503',
   '00000000-0000-4000-8000-000000008502',
   '00000000-0000-4000-8000-000000008501'
 );
 
 INSERT INTO public.vendor_quote_rate_terms (
-  quote_id, line_key, rate_basis, equipment_quantity, rental_period_quantity,
+  quote_id, line_key, rate_basis, rate_scope, equipment_quantity, rental_period_quantity,
   period_quantity_source,
+  proration_policy, rental_period_definition, vendor_calculation_terms,
   unit_rate, amount_status, calculation_method, line_amount
 ) VALUES (
   '00000000-0000-4000-8000-000000008401', 'equipment_rental', 'per_day',
-  2, 7, 'vendor_stated', 288.7143, 'priced', 'deterministic', 4042.00
+  'per_equipment_item', 2, 7, 'vendor_stated',
+  'unknown', 'Vendor-stated rental period', 'Unit rate times governed quantity and billable period',
+  288.7143, 'priced', 'deterministic', 4042.00
 );
 
 INSERT INTO public.vendor_quote_charge_lines (
@@ -256,7 +259,7 @@ FROM public.submit_vendor_quote(
   '00000000-0000-4000-8000-000000008302',
   '00000000-0000-4000-8000-000000008202',
   '00000000-0000-4000-8000-000000008504',
-  '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"per_hour","equipment_quantity":"1","rental_period_quantity":"1","period_quantity_source":"vendor_stated","minimum_billable_quantity":"2","unit_rate":"1.0050","amount_status":"priced","calculation_method":"deterministic"}],"charge_lines":[]}'::jsonb
+  '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"per_hour","rate_scope":"per_equipment_item","equipment_quantity":"1","rental_period_quantity":"1","period_quantity_source":"vendor_stated","minimum_billable_quantity":"2","proration_policy":"unknown","rental_period_definition":"Vendor-stated rental period","vendor_calculation_terms":"Unit rate times governed quantity and minimum billable period","unit_rate":"1.0050","amount_status":"priced","calculation_method":"deterministic"},{"line_key":"weekly_line","rate_basis":"per_week","rate_scope":"entire_line","equipment_quantity":"4","rental_period_quantity":"1","period_quantity_source":"vendor_stated","proration_policy":"not_allowed","rental_period_definition":"Seven consecutive 24-hour periods","vendor_calculation_terms":"One amount for the complete equipment line","unit_rate":"10.0000","amount_status":"priced","calculation_method":"deterministic"}],"charge_lines":[]}'::jsonb
 ) AS outcome;
 INSERT INTO quote_command_results
 SELECT 2, outcome.*
@@ -264,7 +267,7 @@ FROM public.submit_vendor_quote(
   '00000000-0000-4000-8000-000000008302',
   '00000000-0000-4000-8000-000000008202',
   '00000000-0000-4000-8000-000000008504',
-  '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"per_hour","equipment_quantity":"1","rental_period_quantity":"1","period_quantity_source":"vendor_stated","minimum_billable_quantity":"2","unit_rate":"1.0050","amount_status":"priced","calculation_method":"deterministic"}],"charge_lines":[]}'::jsonb
+  '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"per_hour","rate_scope":"per_equipment_item","equipment_quantity":"1","rental_period_quantity":"1","period_quantity_source":"vendor_stated","minimum_billable_quantity":"2","proration_policy":"unknown","rental_period_definition":"Vendor-stated rental period","vendor_calculation_terms":"Unit rate times governed quantity and minimum billable period","unit_rate":"1.0050","amount_status":"priced","calculation_method":"deterministic"},{"line_key":"weekly_line","rate_basis":"per_week","rate_scope":"entire_line","equipment_quantity":"4","rental_period_quantity":"1","period_quantity_source":"vendor_stated","proration_policy":"not_allowed","rental_period_definition":"Seven consecutive 24-hour periods","vendor_calculation_terms":"One amount for the complete equipment line","unit_rate":"10.0000","amount_status":"priced","calculation_method":"deterministic"}],"charge_lines":[]}'::jsonb
 ) AS outcome;
 RESET ROLE;
 
@@ -277,9 +280,33 @@ SELECT is(
 SELECT is(
   (SELECT line_amount FROM public.vendor_quote_rate_terms AS term
    JOIN public.vendor_quote_responses AS quote ON quote.id = term.quote_id
-   WHERE quote.rfq_id = '00000000-0000-4000-8000-000000008302'),
+   WHERE quote.rfq_id = '00000000-0000-4000-8000-000000008302'
+     AND term.line_key = 'equipment_rental'),
   2.01::numeric,
   'minimum usage is applied before midpoint-away-from-zero line rounding'
+);
+SELECT is(
+  (SELECT count(*)::integer FROM public.vendor_quote_rate_terms AS term
+   JOIN public.vendor_quote_responses AS quote ON quote.id = term.quote_id
+   WHERE quote.rfq_id = '00000000-0000-4000-8000-000000008302'),
+  2,
+  'one quote revision preserves multiple rate schedule lines'
+);
+SELECT is(
+  (SELECT line_amount FROM public.vendor_quote_rate_terms AS term
+   JOIN public.vendor_quote_responses AS quote ON quote.id = term.quote_id
+   WHERE quote.rfq_id = '00000000-0000-4000-8000-000000008302'
+     AND term.line_key = 'weekly_line'),
+  10.00::numeric,
+  'entire-line rate scope does not multiply by equipment quantity'
+);
+SELECT is(
+  (SELECT rental_period_definition FROM public.vendor_quote_rate_terms AS term
+   JOIN public.vendor_quote_responses AS quote ON quote.id = term.quote_id
+   WHERE quote.rfq_id = '00000000-0000-4000-8000-000000008302'
+     AND term.line_key = 'weekly_line'),
+  'Seven consecutive 24-hour periods',
+  'vendor-stated rental-period provenance is stored with the immutable rate line'
 );
 SELECT is(
   (SELECT replayed FROM quote_command_results WHERE attempt = 1),
@@ -301,7 +328,7 @@ SELECT throws_ok(
     '00000000-0000-4000-8000-000000008302',
     '00000000-0000-4000-8000-000000008202',
     '00000000-0000-4000-8000-000000008504',
-    '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"per_hour","equipment_quantity":"1","rental_period_quantity":"1","period_quantity_source":"vendor_stated","unit_rate":"2.0000","amount_status":"priced","calculation_method":"deterministic"}],"charge_lines":[]}'::jsonb
+    '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"per_hour","rate_scope":"per_equipment_item","equipment_quantity":"1","rental_period_quantity":"1","period_quantity_source":"vendor_stated","proration_policy":"unknown","rental_period_definition":"Vendor-stated rental period","vendor_calculation_terms":"Unit rate times governed quantity and billable period","unit_rate":"2.0000","amount_status":"priced","calculation_method":"deterministic"}],"charge_lines":[]}'::jsonb
   )$$,
   '23505',
   'idempotency_key was already used for a different pricing payload',
@@ -312,7 +339,7 @@ SELECT throws_ok(
     '00000000-0000-4000-8000-000000008302',
     '00000000-0000-4000-8000-000000008202',
     '00000000-0000-4000-8000-000000008508',
-    '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"per_day","equipment_quantity":"1","rental_period_quantity":"1","period_quantity_source":"contract_schedule","unit_rate":"2.0000","amount_status":"priced","calculation_method":"deterministic"}],"charge_lines":[]}'::jsonb
+    '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"per_day","rate_scope":"per_equipment_item","equipment_quantity":"1","rental_period_quantity":"1","period_quantity_source":"contract_schedule","proration_policy":"unknown","rental_period_definition":"Contract-schedule rental period","vendor_calculation_terms":"Unit rate times governed contract quantity","unit_rate":"2.0000","amount_status":"priced","calculation_method":"deterministic"}],"charge_lines":[]}'::jsonb
   )$$,
   '22023',
   'invalid rate term contract',
@@ -323,7 +350,7 @@ SELECT throws_ok(
     '00000000-0000-4000-8000-000000008302',
     '00000000-0000-4000-8000-000000008202',
     '00000000-0000-4000-8000-000000008509',
-    '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"flat_rental_term","equipment_quantity":"1","rental_period_quantity":"2","period_quantity_source":"vendor_stated","unit_rate":"2.0000","amount_status":"priced","calculation_method":"deterministic"}],"charge_lines":[]}'::jsonb
+    '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"flat_rental_term","rate_scope":"per_equipment_item","equipment_quantity":"1","rental_period_quantity":"2","period_quantity_source":"vendor_stated","proration_policy":"unknown","rental_period_definition":"Vendor-stated rental period","vendor_calculation_terms":"Unit rate times governed quantity and billable period","unit_rate":"2.0000","amount_status":"priced","calculation_method":"deterministic"}],"charge_lines":[]}'::jsonb
   )$$,
   '22023',
   'flat-rental-term rates require rental_period_quantity=1',
@@ -340,7 +367,7 @@ FROM public.submit_vendor_quote(
   '00000000-0000-4000-8000-000000008302',
   '00000000-0000-4000-8000-000000008202',
   '00000000-0000-4000-8000-000000008504',
-  '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"per_hour","equipment_quantity":"1","rental_period_quantity":"1","period_quantity_source":"vendor_stated","minimum_billable_quantity":"2","unit_rate":"1.0050","amount_status":"priced","calculation_method":"deterministic"}],"charge_lines":[]}'::jsonb
+  '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"per_hour","rate_scope":"per_equipment_item","equipment_quantity":"1","rental_period_quantity":"1","period_quantity_source":"vendor_stated","minimum_billable_quantity":"2","proration_policy":"unknown","rental_period_definition":"Vendor-stated rental period","vendor_calculation_terms":"Unit rate times governed quantity and minimum billable period","unit_rate":"1.0050","amount_status":"priced","calculation_method":"deterministic"},{"line_key":"weekly_line","rate_basis":"per_week","rate_scope":"entire_line","equipment_quantity":"4","rental_period_quantity":"1","period_quantity_source":"vendor_stated","proration_policy":"not_allowed","rental_period_definition":"Seven consecutive 24-hour periods","vendor_calculation_terms":"One amount for the complete equipment line","unit_rate":"10.0000","amount_status":"priced","calculation_method":"deterministic"}],"charge_lines":[]}'::jsonb
 ) AS outcome;
 RESET ROLE;
 SELECT is(
@@ -387,18 +414,20 @@ INSERT INTO public.vendor_quote_responses (
   1, 'submitted', false, true, now(), false,
   'usd-v1', 'USD', 'incomplete', 'incomplete', 'allrentz-usd-1',
   'not_calculated', false, 'not_determined',
-  '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"per_day","equipment_quantity":"1","rental_period_quantity":"1","period_quantity_source":"vendor_stated","amount_status":"tbd","calculation_method":"incomplete"}],"charge_lines":[]}'::jsonb,
+  '{"schema_version":1,"currency_code":"USD","calculation_policy_version":"allrentz-usd-1","tax_status":"not_calculated","tax_exemption_claimed":false,"rate_terms":[{"line_key":"equipment_rental","rate_basis":"per_day","rate_scope":"per_equipment_item","equipment_quantity":"1","rental_period_quantity":"1","period_quantity_source":"vendor_stated","proration_policy":"unknown","rental_period_definition":"Vendor-stated rental period","vendor_calculation_terms":"Pricing incomplete","amount_status":"tbd","calculation_method":"incomplete"}],"charge_lines":[]}'::jsonb,
   '00000000-0000-4000-8000-000000008507',
   '00000000-0000-4000-8000-000000008506',
   '00000000-0000-4000-8000-000000008505'
 );
 INSERT INTO public.vendor_quote_rate_terms (
-  quote_id, line_key, rate_basis, equipment_quantity, rental_period_quantity,
+  quote_id, line_key, rate_basis, rate_scope, equipment_quantity, rental_period_quantity,
   period_quantity_source,
+  proration_policy, rental_period_definition, vendor_calculation_terms,
   amount_status, calculation_method
 ) VALUES (
   '00000000-0000-4000-8000-000000008403', 'equipment_rental', 'per_day',
-  1, 1, 'vendor_stated', 'tbd', 'incomplete'
+  'per_equipment_item', 1, 1, 'vendor_stated',
+  'unknown', 'Vendor-stated rental period', 'Pricing incomplete', 'tbd', 'incomplete'
 );
 SELECT throws_ok(
   $$UPDATE public.vendor_quote_responses

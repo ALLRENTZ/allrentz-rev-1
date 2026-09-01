@@ -92,6 +92,7 @@ CREATE TABLE public.vendor_quote_rate_terms (
                             'per_hour', 'per_shift', 'per_day', 'per_week',
                             'per_28_days', 'per_calendar_month', 'flat_rental_term'
                           )),
+  rate_scope              text NOT NULL CHECK (rate_scope IN ('per_equipment_item', 'entire_line')),
   equipment_quantity      numeric(18, 4) NOT NULL CHECK (equipment_quantity > 0),
   rental_period_quantity  numeric(18, 4) NOT NULL CHECK (rental_period_quantity > 0),
   period_quantity_source  text NOT NULL CHECK (period_quantity_source IN (
@@ -99,6 +100,13 @@ CREATE TABLE public.vendor_quote_rate_terms (
                           )),
   minimum_billable_quantity numeric(18, 4) CHECK (minimum_billable_quantity > 0),
   calendar_timezone       text,
+  included_usage_quantity numeric(18, 4) CHECK (included_usage_quantity > 0),
+  included_usage_unit     text CHECK (included_usage_unit IS NULL OR length(btrim(included_usage_unit)) BETWEEN 1 AND 100),
+  overtime_rate           numeric(20, 4) CHECK (overtime_rate > 0),
+  overtime_multiplier     numeric(9, 6) CHECK (overtime_multiplier > 0),
+  proration_policy        text NOT NULL CHECK (proration_policy IN ('allowed', 'not_allowed', 'unknown')),
+  rental_period_definition text NOT NULL CHECK (length(btrim(rental_period_definition)) BETWEEN 1 AND 500),
+  vendor_calculation_terms text NOT NULL CHECK (length(btrim(vendor_calculation_terms)) BETWEEN 1 AND 1000),
   unit_rate               numeric(20, 4),
   amount_status           text NOT NULL CHECK (amount_status IN (
                             'priced', 'excluded', 'tbd', 'not_applicable'
@@ -120,13 +128,15 @@ CREATE TABLE public.vendor_quote_rate_terms (
   CHECK (
     calculation_method <> 'deterministic'
     OR line_amount = round(
-      unit_rate * equipment_quantity
+      unit_rate * CASE WHEN rate_scope = 'per_equipment_item' THEN equipment_quantity ELSE 1 END
       * greatest(rental_period_quantity, COALESCE(minimum_billable_quantity, rental_period_quantity)),
       2
     )
   ),
   CHECK (rate_basis <> 'flat_rental_term' OR rental_period_quantity = 1),
-  CHECK (rate_basis <> 'per_calendar_month' OR calendar_timezone IS NOT NULL)
+  CHECK (rate_basis <> 'per_calendar_month' OR calendar_timezone IS NOT NULL),
+  CHECK ((included_usage_quantity IS NULL) = (included_usage_unit IS NULL)),
+  CHECK (overtime_rate IS NULL OR overtime_multiplier IS NULL)
 );
 
 CREATE TABLE public.vendor_quote_charge_lines (
@@ -134,8 +144,11 @@ CREATE TABLE public.vendor_quote_charge_lines (
   quote_id                  uuid NOT NULL REFERENCES public.vendor_quote_responses ON DELETE RESTRICT,
   line_key                  text NOT NULL CHECK (line_key ~ '^[a-z0-9][a-z0-9_-]{0,63}$'),
   charge_type               text NOT NULL CHECK (charge_type IN (
-                              'delivery', 'mobilization', 'demobilization',
-                              'fuel', 'environmental', 'tax', 'discount', 'other'
+                              'delivery', 'pickup', 'freight', 'mobilization',
+                              'demobilization', 'transportation_surcharge',
+                              'environmental', 'fuel', 'rental_protection',
+                              'setup_teardown', 'labor_technician', 'cleaning',
+                              'consumables', 'tax', 'discount', 'other'
                             )),
   description               text NOT NULL CHECK (length(btrim(description)) BETWEEN 1 AND 500),
   amount_status             text NOT NULL CHECK (amount_status IN (
@@ -158,7 +171,7 @@ CREATE TABLE public.vendor_quote_charge_lines (
   ),
   CHECK (
     (amount_status = 'priced' AND calculation_method IN ('fixed', 'percentage', 'vendor_stated'))
-    OR (amount_status = 'contingent' AND calculation_method = 'percentage')
+    OR (amount_status = 'contingent' AND calculation_method = 'incomplete')
     OR (amount_status NOT IN ('priced', 'contingent') AND calculation_method = 'incomplete')
   ),
   CHECK (
@@ -327,6 +340,7 @@ DECLARE
   v_charge jsonb;
   v_line_key text;
   v_rate_basis text;
+  v_rate_scope text;
   v_amount_status text;
   v_calculation_method text;
   v_equipment_quantity numeric(18, 4);
@@ -334,6 +348,13 @@ DECLARE
   v_period_quantity_source text;
   v_minimum_billable_quantity numeric(18, 4);
   v_calendar_timezone text;
+  v_included_usage_quantity numeric(18, 4);
+  v_included_usage_unit text;
+  v_overtime_rate numeric(20, 4);
+  v_overtime_multiplier numeric(9, 6);
+  v_proration_policy text;
+  v_rental_period_definition text;
+  v_vendor_calculation_terms text;
   v_unit_rate numeric(20, 4);
   v_line_amount numeric(20, 2);
   v_charge_type text;
@@ -390,6 +411,15 @@ BEGIN
        )
      ) THEN
     RAISE EXCEPTION 'pricing payload exceeds its versioned size or field contract'
+      USING ERRCODE = '22023';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(p_pricing -> 'rate_terms') AS rate(rate_value)
+    JOIN jsonb_array_elements(COALESCE(p_pricing -> 'charge_lines', '[]'::jsonb)) AS charge(charge_value)
+      ON rate_value ->> 'line_key' = charge_value ->> 'line_key'
+  ) THEN
+    RAISE EXCEPTION 'rate and charge line keys must be unique across the quote'
       USING ERRCODE = '22023';
   END IF;
   v_tax_status := p_pricing ->> 'tax_status';
@@ -531,9 +561,12 @@ BEGIN
     IF EXISTS (
       SELECT 1 FROM jsonb_object_keys(v_rate) AS keys(field_name)
       WHERE field_name NOT IN (
-        'line_key', 'rate_basis', 'equipment_quantity',
+        'line_key', 'rate_basis', 'rate_scope', 'equipment_quantity',
         'rental_period_quantity', 'period_quantity_source',
         'minimum_billable_quantity', 'calendar_timezone', 'unit_rate',
+        'included_usage_quantity', 'included_usage_unit',
+        'overtime_rate', 'overtime_multiplier', 'proration_policy',
+        'rental_period_definition', 'vendor_calculation_terms',
         'amount_status', 'calculation_method', 'line_amount'
       )
     ) THEN
@@ -542,15 +575,24 @@ BEGIN
     END IF;
     v_line_key := v_rate ->> 'line_key';
     v_rate_basis := v_rate ->> 'rate_basis';
+    v_rate_scope := v_rate ->> 'rate_scope';
     v_amount_status := v_rate ->> 'amount_status';
     v_calculation_method := v_rate ->> 'calculation_method';
     v_period_quantity_source := v_rate ->> 'period_quantity_source';
     v_calendar_timezone := NULLIF(v_rate ->> 'calendar_timezone', '');
+    v_included_usage_unit := NULLIF(btrim(v_rate ->> 'included_usage_unit'), '');
+    v_proration_policy := v_rate ->> 'proration_policy';
+    v_rental_period_definition := NULLIF(btrim(v_rate ->> 'rental_period_definition'), '');
+    v_vendor_calculation_terms := NULLIF(btrim(v_rate ->> 'vendor_calculation_terms'), '');
     IF v_line_key IS NULL OR v_line_key !~ '^[a-z0-9][a-z0-9_-]{0,63}$'
        OR v_rate_basis IS NULL OR v_rate_basis NOT IN (
          'per_hour', 'per_shift', 'per_day', 'per_week', 'per_28_days',
          'per_calendar_month', 'flat_rental_term'
        )
+       OR v_rate_scope IS NULL OR v_rate_scope NOT IN ('per_equipment_item', 'entire_line')
+       OR v_proration_policy IS NULL OR v_proration_policy NOT IN ('allowed', 'not_allowed', 'unknown')
+       OR v_rental_period_definition IS NULL OR length(v_rental_period_definition) > 500
+       OR v_vendor_calculation_terms IS NULL OR length(v_vendor_calculation_terms) > 1000
        OR v_amount_status IS NULL OR v_amount_status NOT IN (
          'priced', 'excluded', 'tbd', 'not_applicable'
        )
@@ -580,11 +622,35 @@ BEGIN
     v_unit_rate := NULL;
     v_line_amount := NULL;
     v_minimum_billable_quantity := NULL;
+    v_included_usage_quantity := NULL;
+    v_overtime_rate := NULL;
+    v_overtime_multiplier := NULL;
     IF v_rate ? 'minimum_billable_quantity' THEN
       v_minimum_billable_quantity := private.contract_decimal(
         v_rate ->> 'minimum_billable_quantity', 4,
         v_line_key || '.minimum_billable_quantity', false
       )::numeric(18, 4);
+    END IF;
+    IF v_rate ? 'included_usage_quantity' THEN
+      v_included_usage_quantity := private.contract_decimal(
+        v_rate ->> 'included_usage_quantity', 4, v_line_key || '.included_usage_quantity', false
+      )::numeric(18, 4);
+    END IF;
+    IF (v_included_usage_quantity IS NULL) <> (v_included_usage_unit IS NULL) THEN
+      RAISE EXCEPTION 'included usage requires both quantity and unit' USING ERRCODE = '22023';
+    END IF;
+    IF v_rate ? 'overtime_rate' THEN
+      v_overtime_rate := private.contract_decimal(
+        v_rate ->> 'overtime_rate', 4, v_line_key || '.overtime_rate', false
+      )::numeric(20, 4);
+    END IF;
+    IF v_rate ? 'overtime_multiplier' THEN
+      v_overtime_multiplier := private.contract_decimal(
+        v_rate ->> 'overtime_multiplier', 6, v_line_key || '.overtime_multiplier', false
+      )::numeric(9, 6);
+    END IF;
+    IF v_overtime_rate IS NOT NULL AND v_overtime_multiplier IS NOT NULL THEN
+      RAISE EXCEPTION 'overtime must use either a rate or multiplier, not both' USING ERRCODE = '22023';
     END IF;
     IF v_amount_status = 'priced' THEN
       v_unit_rate := private.contract_decimal(
@@ -593,7 +659,7 @@ BEGIN
       IF v_calculation_method = 'deterministic' THEN
         -- PostgreSQL numeric round(value, 2) uses midpoint-away-from-zero.
         v_line_amount := round(
-          v_unit_rate * v_equipment_quantity
+          v_unit_rate * CASE WHEN v_rate_scope = 'per_equipment_item' THEN v_equipment_quantity ELSE 1 END
           * greatest(v_period_quantity, COALESCE(v_minimum_billable_quantity, v_period_quantity)),
           2
         );
@@ -646,8 +712,10 @@ BEGIN
     v_contingent_trigger := NULLIF(btrim(v_charge ->> 'contingent_trigger'), '');
     IF v_line_key IS NULL OR v_line_key !~ '^[a-z0-9][a-z0-9_-]{0,63}$'
        OR v_charge_type IS NULL OR v_charge_type NOT IN (
-         'delivery', 'mobilization', 'demobilization', 'fuel',
-         'environmental', 'tax', 'discount', 'other'
+         'delivery', 'pickup', 'freight', 'mobilization', 'demobilization',
+         'transportation_surcharge', 'environmental', 'fuel',
+         'rental_protection', 'setup_teardown', 'labor_technician',
+         'cleaning', 'consumables', 'tax', 'discount', 'other'
        )
        OR v_description IS NULL OR length(v_description) > 500
        OR v_amount_status IS NULL OR v_amount_status NOT IN (
@@ -675,8 +743,8 @@ BEGIN
     v_line_amount := NULL;
     v_percentage_rate := NULL;
     v_percentage_base_ids := NULL;
-    IF v_amount_status = 'contingent' AND v_calculation_method <> 'percentage' THEN
-      RAISE EXCEPTION 'contingent charge lines require a percentage calculation basis'
+    IF v_amount_status = 'contingent' AND v_calculation_method <> 'incomplete' THEN
+      RAISE EXCEPTION 'contingent charge lines require vendor-stated calculation terms'
         USING ERRCODE = '22023';
     END IF;
     IF v_amount_status = 'priced'
@@ -725,7 +793,10 @@ BEGIN
           CASE
             WHEN term_value ->> 'calculation_method' = 'deterministic' THEN round(
               private.contract_decimal(term_value ->> 'unit_rate', 4, 'percentage base unit_rate', true)
-              * private.contract_decimal(term_value ->> 'equipment_quantity', 4, 'percentage base equipment_quantity', false)
+              * CASE WHEN term_value ->> 'rate_scope' = 'per_equipment_item'
+                  THEN private.contract_decimal(term_value ->> 'equipment_quantity', 4, 'percentage base equipment_quantity', false)
+                  ELSE 1
+                END
               * greatest(
                   private.contract_decimal(term_value ->> 'rental_period_quantity', 4, 'percentage base rental_period_quantity', false),
                   CASE WHEN term_value ? 'minimum_billable_quantity'
@@ -889,26 +960,43 @@ BEGIN
   LOOP
     v_line_key := v_rate ->> 'line_key';
     v_rate_basis := v_rate ->> 'rate_basis';
+    v_rate_scope := v_rate ->> 'rate_scope';
     v_amount_status := v_rate ->> 'amount_status';
     v_calculation_method := v_rate ->> 'calculation_method';
     v_period_quantity_source := v_rate ->> 'period_quantity_source';
     v_calendar_timezone := NULLIF(v_rate ->> 'calendar_timezone', '');
+    v_included_usage_unit := NULLIF(btrim(v_rate ->> 'included_usage_unit'), '');
+    v_proration_policy := v_rate ->> 'proration_policy';
+    v_rental_period_definition := btrim(v_rate ->> 'rental_period_definition');
+    v_vendor_calculation_terms := btrim(v_rate ->> 'vendor_calculation_terms');
     v_equipment_quantity := private.contract_decimal(v_rate ->> 'equipment_quantity', 4, v_line_key || '.equipment_quantity', false);
     v_period_quantity := private.contract_decimal(v_rate ->> 'rental_period_quantity', 4, v_line_key || '.rental_period_quantity', false);
     v_unit_rate := NULL;
     v_line_amount := NULL;
     v_minimum_billable_quantity := NULL;
+    v_included_usage_quantity := NULL;
+    v_overtime_rate := NULL;
+    v_overtime_multiplier := NULL;
     IF v_rate ? 'minimum_billable_quantity' THEN
       v_minimum_billable_quantity := private.contract_decimal(
         v_rate ->> 'minimum_billable_quantity', 4,
         v_line_key || '.minimum_billable_quantity', false
       );
     END IF;
+    IF v_rate ? 'included_usage_quantity' THEN
+      v_included_usage_quantity := private.contract_decimal(v_rate ->> 'included_usage_quantity', 4, v_line_key || '.included_usage_quantity', false);
+    END IF;
+    IF v_rate ? 'overtime_rate' THEN
+      v_overtime_rate := private.contract_decimal(v_rate ->> 'overtime_rate', 4, v_line_key || '.overtime_rate', false);
+    END IF;
+    IF v_rate ? 'overtime_multiplier' THEN
+      v_overtime_multiplier := private.contract_decimal(v_rate ->> 'overtime_multiplier', 6, v_line_key || '.overtime_multiplier', false);
+    END IF;
     IF v_amount_status = 'priced' THEN
       v_unit_rate := private.contract_decimal(v_rate ->> 'unit_rate', 4, v_line_key || '.unit_rate', true);
       v_line_amount := CASE
         WHEN v_calculation_method = 'deterministic' THEN round(
-          v_unit_rate * v_equipment_quantity
+          v_unit_rate * CASE WHEN v_rate_scope = 'per_equipment_item' THEN v_equipment_quantity ELSE 1 END
           * greatest(v_period_quantity, COALESCE(v_minimum_billable_quantity, v_period_quantity)),
           2
         )
@@ -916,12 +1004,16 @@ BEGIN
       END;
     END IF;
     INSERT INTO public.vendor_quote_rate_terms (
-      quote_id, line_key, rate_basis, equipment_quantity, rental_period_quantity,
+      quote_id, line_key, rate_basis, rate_scope, equipment_quantity, rental_period_quantity,
       period_quantity_source, minimum_billable_quantity, calendar_timezone,
+      included_usage_quantity, included_usage_unit, overtime_rate, overtime_multiplier,
+      proration_policy, rental_period_definition, vendor_calculation_terms,
       unit_rate, amount_status, calculation_method, line_amount
     ) VALUES (
-      v_quote_id, v_line_key, v_rate_basis, v_equipment_quantity, v_period_quantity,
+      v_quote_id, v_line_key, v_rate_basis, v_rate_scope, v_equipment_quantity, v_period_quantity,
       v_period_quantity_source, v_minimum_billable_quantity, v_calendar_timezone,
+      v_included_usage_quantity, v_included_usage_unit, v_overtime_rate, v_overtime_multiplier,
+      v_proration_policy, v_rental_period_definition, v_vendor_calculation_terms,
       v_unit_rate, v_amount_status, v_calculation_method, v_line_amount
     );
   END LOOP;
@@ -1329,7 +1421,7 @@ BEGIN
   WHERE term.quote_id = v_quote.id
     AND term.calculation_method = 'deterministic'
     AND term.line_amount IS DISTINCT FROM round(
-      term.unit_rate * term.equipment_quantity
+      term.unit_rate * CASE WHEN term.rate_scope = 'per_equipment_item' THEN term.equipment_quantity ELSE 1 END
       * greatest(
           term.rental_period_quantity,
           COALESCE(term.minimum_billable_quantity, term.rental_period_quantity)
@@ -1513,11 +1605,19 @@ BEGIN
         SELECT jsonb_agg(jsonb_build_object(
           'line_key', term.line_key,
           'rate_basis', term.rate_basis,
+          'rate_scope', term.rate_scope,
           'equipment_quantity', term.equipment_quantity,
           'rental_period_quantity', term.rental_period_quantity,
           'period_quantity_source', term.period_quantity_source,
           'minimum_billable_quantity', term.minimum_billable_quantity,
           'calendar_timezone', term.calendar_timezone,
+          'included_usage_quantity', term.included_usage_quantity,
+          'included_usage_unit', term.included_usage_unit,
+          'overtime_rate', term.overtime_rate,
+          'overtime_multiplier', term.overtime_multiplier,
+          'proration_policy', term.proration_policy,
+          'rental_period_definition', term.rental_period_definition,
+          'vendor_calculation_terms', term.vendor_calculation_terms,
           'unit_rate', term.unit_rate,
           'amount_status', term.amount_status,
           'calculation_method', term.calculation_method,

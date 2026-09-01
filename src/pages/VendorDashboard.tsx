@@ -8,11 +8,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
 import { getVendorLifecycleAction, getVendorLifecycleLabel } from '@/lib/vendorLifecycle';
 import {
+  CHARGE_STATUSES,
+  CHARGE_TYPES,
   RATE_BASES,
   buildUsdPricingPayload,
+  chargeTypeLabel,
+  createGovernedChargeLine,
+  createGovernedRateTerm,
   emptyGovernedQuoteDraft,
   rateBasisLabel,
+  type GovernedChargeLineDraft,
   type GovernedQuoteDraft,
+  type GovernedRateTermDraft,
 } from '@/lib/monetaryContract';
 import OffRentControlPanel from '@/components/OffRentControlPanel';
 import PickupTaskControlPanel from '@/components/PickupTaskControlPanel';
@@ -62,6 +69,32 @@ const VendorDashboard = () => {
       ...current,
       [rfqId]: { ...(current[rfqId] || emptyGovernedQuoteDraft()), ...patch },
     }));
+  };
+  const updateRateTerm = (rfqId: string, lineKey: string, patch: Partial<GovernedRateTermDraft>) => {
+    const draft = realQuoteDrafts[rfqId] || emptyGovernedQuoteDraft();
+    updateRealQuoteDraft(rfqId, {
+      rateTerms: draft.rateTerms.map((term) => term.lineKey === lineKey ? { ...term, ...patch } : term),
+    });
+  };
+  const updateChargeLine = (rfqId: string, lineKey: string, patch: Partial<GovernedChargeLineDraft>) => {
+    const draft = realQuoteDrafts[rfqId] || emptyGovernedQuoteDraft();
+    updateRealQuoteDraft(rfqId, {
+      chargeLines: draft.chargeLines.map((line) => line.lineKey === lineKey ? { ...line, ...patch } : line),
+    });
+  };
+  const addRateTerm = (rfqId: string) => {
+    const draft = realQuoteDrafts[rfqId] || emptyGovernedQuoteDraft();
+    let sequence = draft.rateTerms.length + 1;
+    while (draft.rateTerms.some((term) => term.lineKey === `rate_${sequence}`)) sequence += 1;
+    updateRealQuoteDraft(rfqId, { rateTerms: [...draft.rateTerms, createGovernedRateTerm(`rate_${sequence}`)] });
+  };
+  const addChargeLine = (rfqId: string) => {
+    const draft = realQuoteDrafts[rfqId] || emptyGovernedQuoteDraft();
+    let sequence = draft.chargeLines.length + 1;
+    while (draft.chargeLines.some((line) => line.lineKey === `other_${sequence}`)) sequence += 1;
+    updateRealQuoteDraft(rfqId, {
+      chargeLines: [...draft.chargeLines, createGovernedChargeLine(`other_${sequence}`, 'other', 'Other charge')],
+    });
   };
   const pickupExceptionSources = useMemo(() => lifecycleRfqs
     .filter((rfq) => ['demobilizing', 'off_rent'].includes(rfq.operational_status))
@@ -889,97 +922,117 @@ const VendorDashboard = () => {
                             </div>
                             {quotingRealId === rfq.id && (
                               <div className="mt-3 pt-3 border-t border-gray-200 space-y-3">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">Rate basis *</label>
-                                    <select
-                                      value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).rateBasis}
-                                      onChange={(event) => updateRealQuoteDraft(rfq.id, { rateBasis: event.target.value as GovernedQuoteDraft['rateBasis'] })}
-                                      className="industrial-input w-full"
-                                    >
-                                      {RATE_BASES.map((basis) => (
-                                        <option key={basis} value={basis}>Per {rateBasisLabel(basis)}</option>
-                                      ))}
-                                    </select>
+                                <div className="space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="text-sm font-semibold text-gray-900">Rate schedule</h4>
+                                    <button type="button" onClick={() => addRateTerm(rfq.id)} className="text-sm text-blue-700 hover:underline">
+                                      Add rate
+                                    </button>
                                   </div>
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">Unit rate (USD, 4 decimals max) *</label>
-                                    <input
-                                      inputMode="decimal"
-                                      value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).unitRate}
-                                      onChange={(event) => updateRealQuoteDraft(rfq.id, { unitRate: event.target.value })}
-                                      className="industrial-input w-full"
-                                      placeholder="e.g. 850.0000"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">Equipment quantity *</label>
-                                    <input
-                                      inputMode="decimal"
-                                      value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).equipmentQuantity}
-                                      onChange={(event) => updateRealQuoteDraft(rfq.id, { equipmentQuantity: event.target.value })}
-                                      className="industrial-input w-full"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">Rental-period quantity *</label>
-                                    <input
-                                      inputMode="decimal"
-                                      value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).rentalPeriodQuantity}
-                                      onChange={(event) => updateRealQuoteDraft(rfq.id, { rentalPeriodQuantity: event.target.value })}
-                                      className="industrial-input w-full"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">Minimum billable quantity (optional)</label>
-                                    <input
-                                      inputMode="decimal"
-                                      value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).minimumBillableQuantity}
-                                      onChange={(event) => updateRealQuoteDraft(rfq.id, { minimumBillableQuantity: event.target.value })}
-                                      className="industrial-input w-full"
-                                      placeholder="e.g. 1"
-                                    />
-                                  </div>
-                                  {(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).rateBasis === 'per_calendar_month' && (
-                                    <div>
-                                      <label className="block text-xs font-medium text-gray-700 mb-1">Calendar timezone *</label>
-                                      <input
-                                        value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).calendarTimezone}
-                                        onChange={(event) => updateRealQuoteDraft(rfq.id, { calendarTimezone: event.target.value })}
-                                        className="industrial-input w-full"
-                                        placeholder="America/Chicago"
-                                      />
+                                  {(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).rateTerms.map((term, termIndex) => (
+                                    <div key={term.lineKey} className="rounded-md border border-gray-200 p-3 space-y-3">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-xs font-semibold text-gray-700">Rate {termIndex + 1}: {term.lineKey}</span>
+                                        {(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).rateTerms.length > 1 && (
+                                          <button type="button" onClick={() => updateRealQuoteDraft(rfq.id, {
+                                            rateTerms: (realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).rateTerms.filter((item) => item.lineKey !== term.lineKey),
+                                          })} className="text-xs text-red-700 hover:underline">Remove</button>
+                                        )}
+                                      </div>
+                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <label className="text-xs font-medium text-gray-700">Rate basis *
+                                          <select value={term.rateBasis} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { rateBasis: event.target.value as GovernedRateTermDraft['rateBasis'] })} className="industrial-input w-full mt-1">
+                                            {RATE_BASES.map((basis) => <option key={basis} value={basis}>Per {rateBasisLabel(basis)}</option>)}
+                                          </select>
+                                        </label>
+                                        <label className="text-xs font-medium text-gray-700">Rate scope *
+                                          <select value={term.rateScope} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { rateScope: event.target.value as GovernedRateTermDraft['rateScope'] })} className="industrial-input w-full mt-1">
+                                            <option value="per_equipment_item">Per equipment item</option>
+                                            <option value="entire_line">Entire equipment line</option>
+                                          </select>
+                                        </label>
+                                        <label className="text-xs font-medium text-gray-700">Unit rate (USD) *
+                                          <input inputMode="decimal" value={term.unitRate} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { unitRate: event.target.value })} className="industrial-input w-full mt-1" placeholder="850.0000" />
+                                        </label>
+                                        <label className="text-xs font-medium text-gray-700">Equipment quantity *
+                                          <input inputMode="decimal" value={term.equipmentQuantity} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { equipmentQuantity: event.target.value })} className="industrial-input w-full mt-1" />
+                                        </label>
+                                        <label className="text-xs font-medium text-gray-700">Rental-period quantity *
+                                          <input inputMode="decimal" value={term.rentalPeriodQuantity} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { rentalPeriodQuantity: event.target.value })} className="industrial-input w-full mt-1" />
+                                        </label>
+                                        <label className="text-xs font-medium text-gray-700">Minimum billable quantity
+                                          <input inputMode="decimal" value={term.minimumBillableQuantity} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { minimumBillableQuantity: event.target.value })} className="industrial-input w-full mt-1" />
+                                        </label>
+                                        {term.rateBasis === 'per_calendar_month' && (
+                                          <label className="text-xs font-medium text-gray-700">Calendar timezone *
+                                            <input value={term.calendarTimezone} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { calendarTimezone: event.target.value })} className="industrial-input w-full mt-1" placeholder="America/Chicago" />
+                                          </label>
+                                        )}
+                                        <label className="text-xs font-medium text-gray-700">Included usage quantity
+                                          <input inputMode="decimal" value={term.includedUsageQuantity} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { includedUsageQuantity: event.target.value })} className="industrial-input w-full mt-1" />
+                                        </label>
+                                        <label className="text-xs font-medium text-gray-700">Included usage unit
+                                          <input value={term.includedUsageUnit} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { includedUsageUnit: event.target.value })} className="industrial-input w-full mt-1" placeholder="engine hours" />
+                                        </label>
+                                        <label className="text-xs font-medium text-gray-700">Overtime rate (USD)
+                                          <input inputMode="decimal" value={term.overtimeRate} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { overtimeRate: event.target.value })} className="industrial-input w-full mt-1" />
+                                        </label>
+                                        <label className="text-xs font-medium text-gray-700">Overtime multiplier
+                                          <input inputMode="decimal" value={term.overtimeMultiplier} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { overtimeMultiplier: event.target.value })} className="industrial-input w-full mt-1" placeholder="1.500000" />
+                                        </label>
+                                        <label className="text-xs font-medium text-gray-700">Proration *
+                                          <select value={term.prorationPolicy} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { prorationPolicy: event.target.value as GovernedRateTermDraft['prorationPolicy'] })} className="industrial-input w-full mt-1">
+                                            <option value="unknown">Unknown</option><option value="allowed">Allowed</option><option value="not_allowed">Not allowed</option>
+                                          </select>
+                                        </label>
+                                        <label className="text-xs font-medium text-gray-700 md:col-span-3">Rental-period definition *
+                                          <input value={term.rentalPeriodDefinition} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { rentalPeriodDefinition: event.target.value })} className="industrial-input w-full mt-1" placeholder="Define when this period begins, ends, and rolls over" />
+                                        </label>
+                                        <label className="text-xs font-medium text-gray-700 md:col-span-3">Vendor calculation terms *
+                                          <textarea value={term.vendorCalculationTerms} onChange={(event) => updateRateTerm(rfq.id, term.lineKey, { vendorCalculationTerms: event.target.value })} className="industrial-input w-full mt-1" rows={2} placeholder="State how quantity, minimums, usage, overtime, and proration determine this line" />
+                                        </label>
+                                      </div>
                                     </div>
-                                  )}
-                                  <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">Delivery fee (USD, optional)</label>
-                                    <input
-                                      inputMode="decimal"
-                                      value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).deliveryFee}
-                                      onChange={(event) => updateRealQuoteDraft(rfq.id, { deliveryFee: event.target.value })}
-                                      className="industrial-input w-full"
-                                      placeholder="0.00"
-                                    />
+                                  ))}
+
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="text-sm font-semibold text-gray-900">Charges and fee status</h4>
+                                    <button type="button" onClick={() => addChargeLine(rfq.id)} className="text-sm text-blue-700 hover:underline">Add charge</button>
                                   </div>
+                                  {(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).chargeLines.map((line) => (
+                                    <div key={line.lineKey} className="grid grid-cols-1 md:grid-cols-5 gap-3 rounded-md border border-gray-200 p-3">
+                                      <label className="text-xs font-medium text-gray-700">Type
+                                        <select value={line.chargeType} onChange={(event) => updateChargeLine(rfq.id, line.lineKey, { chargeType: event.target.value as GovernedChargeLineDraft['chargeType'] })} className="industrial-input w-full mt-1">
+                                          {CHARGE_TYPES.map((type) => <option key={type} value={type}>{chargeTypeLabel(type)}</option>)}
+                                        </select>
+                                      </label>
+                                      <label className="text-xs font-medium text-gray-700">Description *
+                                        <input value={line.description} onChange={(event) => updateChargeLine(rfq.id, line.lineKey, { description: event.target.value })} className="industrial-input w-full mt-1" />
+                                      </label>
+                                      <label className="text-xs font-medium text-gray-700">Status *
+                                        <select value={line.amountStatus} onChange={(event) => updateChargeLine(rfq.id, line.lineKey, { amountStatus: event.target.value as GovernedChargeLineDraft['amountStatus'], amount: '' })} className="industrial-input w-full mt-1">
+                                          {CHARGE_STATUSES.map((status) => <option key={status} value={status}>{status.replace('_', ' ')}</option>)}
+                                        </select>
+                                      </label>
+                                      {line.amountStatus === 'priced' && <label className="text-xs font-medium text-gray-700">Amount (USD) *
+                                        <input inputMode="decimal" value={line.amount} onChange={(event) => updateChargeLine(rfq.id, line.lineKey, { amount: event.target.value })} className="industrial-input w-full mt-1" />
+                                      </label>}
+                                      {line.amountStatus === 'included' && <label className="text-xs font-medium text-gray-700">Included in rate *
+                                        <select value={line.includedInLineKey} onChange={(event) => updateChargeLine(rfq.id, line.lineKey, { includedInLineKey: event.target.value })} className="industrial-input w-full mt-1">
+                                          <option value="">Select rate</option>{(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).rateTerms.map((term) => <option key={term.lineKey} value={term.lineKey}>{term.lineKey}</option>)}
+                                        </select>
+                                      </label>}
+                                      {line.amountStatus === 'contingent' && <label className="text-xs font-medium text-gray-700 md:col-span-2">Contingent calculation terms *
+                                        <input value={line.contingentTrigger} onChange={(event) => updateChargeLine(rfq.id, line.lineKey, { contingentTrigger: event.target.value })} className="industrial-input w-full mt-1" />
+                                      </label>}
+                                      <button type="button" onClick={() => updateRealQuoteDraft(rfq.id, {
+                                        chargeLines: (realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).chargeLines.filter((item) => item.lineKey !== line.lineKey),
+                                      })} className="self-end text-xs text-red-700 hover:underline">Remove</button>
+                                    </div>
+                                  ))}
                                   <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">Mobilization fee (USD, optional)</label>
-                                    <input
-                                      inputMode="decimal"
-                                      value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).mobilizationFee}
-                                      onChange={(event) => updateRealQuoteDraft(rfq.id, { mobilizationFee: event.target.value })}
-                                      className="industrial-input w-full"
-                                      placeholder="0.00"
-                                    />
-                                  </div>
-                                  <div className="md:col-span-2">
                                     <label className="block text-xs font-medium text-gray-700 mb-1">Vendor Notes</label>
-                                    <textarea
-                                      value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).vendorNotes}
-                                      onChange={(event) => updateRealQuoteDraft(rfq.id, { vendorNotes: event.target.value })}
-                                      className="industrial-input w-full"
-                                      rows={2}
-                                      placeholder="Availability, delivery window, certifications..."
-                                    />
+                                    <textarea value={(realQuoteDrafts[rfq.id] || emptyGovernedQuoteDraft()).vendorNotes} onChange={(event) => updateRealQuoteDraft(rfq.id, { vendorNotes: event.target.value })} className="industrial-input w-full" rows={2} placeholder="Availability, delivery window, certifications..." />
                                   </div>
                                 </div>
                                 <label className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">

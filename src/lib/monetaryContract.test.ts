@@ -1,20 +1,54 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildUsdPricingPayload,
+  createGovernedRateTerm,
   emptyGovernedQuoteDraft,
   formatStoredUsd,
+  type GovernedQuoteDraft,
 } from './monetaryContract';
 
-describe('USD monetary contract payload', () => {
-  it('keeps decimal inputs as strings and declares every authority field', () => {
-    const payload = buildUsdPricingPayload({
-      ...emptyGovernedQuoteDraft(),
-      rateBasis: 'per_28_days',
+const validDraft = (): GovernedQuoteDraft => {
+  const draft = emptyGovernedQuoteDraft();
+  return {
+    ...draft,
+    rateTerms: [{
+      ...draft.rateTerms[0],
       unitRate: '1250.1250',
-      equipmentQuantity: '2',
-      rentalPeriodQuantity: '1.5000',
-      minimumBillableQuantity: '1',
-      deliveryFee: '250.00',
+      rentalPeriodDefinition: 'Each 28-day period begins at governed dispatch.',
+      vendorCalculationTerms: 'Rate times equipment count and billable 28-day periods.',
+    }],
+    chargeLines: draft.chargeLines.map((line) => ({ ...line, amountStatus: 'not_applicable' })),
+  };
+};
+
+describe('USD monetary contract payload', () => {
+  it('preserves a multi-rate schedule and vendor-stated calculation terms as exact strings', () => {
+    const draft = validDraft();
+    const payload = buildUsdPricingPayload({
+      ...draft,
+      rateTerms: [{
+        ...draft.rateTerms[0],
+        rateBasis: 'per_28_days',
+        rateScope: 'per_equipment_item',
+        equipmentQuantity: '2',
+        rentalPeriodQuantity: '1.5000',
+        minimumBillableQuantity: '1',
+        includedUsageQuantity: '160',
+        includedUsageUnit: 'engine hours',
+        overtimeMultiplier: '1.500000',
+        prorationPolicy: 'not_allowed',
+      }, {
+        ...createGovernedRateTerm('rate_2'),
+        rateBasis: 'per_week',
+        rateScope: 'entire_line',
+        unitRate: '4500.0000',
+        equipmentQuantity: '2',
+        rentalPeriodDefinition: 'Seven consecutive 24-hour periods.',
+        vendorCalculationTerms: 'One weekly amount for the complete equipment line.',
+      }],
+      chargeLines: draft.chargeLines.map((line) => line.lineKey === 'delivery'
+        ? { ...line, amountStatus: 'priced', amount: '250.00' }
+        : line),
     });
 
     expect(payload).toMatchObject({
@@ -24,45 +58,45 @@ describe('USD monetary contract payload', () => {
       tax_status: 'not_calculated',
       tax_exemption_claimed: false,
     });
+    expect(payload.rate_terms).toHaveLength(2);
     expect(payload.rate_terms[0]).toMatchObject({
-      rate_basis: 'per_28_days',
-      unit_rate: '1250.1250',
-      equipment_quantity: '2',
-      rental_period_quantity: '1.5000',
-      period_quantity_source: 'vendor_stated',
-      minimum_billable_quantity: '1',
+      rate_basis: 'per_28_days', rate_scope: 'per_equipment_item',
+      unit_rate: '1250.1250', equipment_quantity: '2',
+      rental_period_quantity: '1.5000', minimum_billable_quantity: '1',
+      included_usage_quantity: '160', included_usage_unit: 'engine hours',
+      overtime_multiplier: '1.500000', proration_policy: 'not_allowed',
       calculation_method: 'deterministic',
     });
+    expect(payload.rate_terms[1]).toMatchObject({ rate_scope: 'entire_line', unit_rate: '4500.0000' });
+    expect(payload.charge_lines[0]).toMatchObject({ amount_status: 'priced', amount: '250.00' });
   });
 
-  it('rejects browser-float syntax and excess precision', () => {
-    expect(() => buildUsdPricingPayload({
-      ...emptyGovernedQuoteDraft(),
-      unitRate: '1e3',
-    })).toThrow(/Unit rate/);
-    expect(() => buildUsdPricingPayload({
-      ...emptyGovernedQuoteDraft(),
-      unitRate: '10.00001',
-    })).toThrow(/Unit rate/);
-    expect(() => buildUsdPricingPayload({
-      ...emptyGovernedQuoteDraft(),
-      unitRate: '10.0000',
-      deliveryFee: '10.001',
-    })).toThrow(/Delivery fee/);
-    expect(() => buildUsdPricingPayload({
-      ...emptyGovernedQuoteDraft(),
-      unitRate: '10.0000',
-      rateBasis: 'per_calendar_month',
-    })).toThrow(/timezone/);
+  it('requires explicit charge disposition instead of converting blank fees to not-applicable', () => {
+    expect(() => buildUsdPricingPayload(validDraft())).not.toThrow();
+    const draft = validDraft();
+    draft.chargeLines[0] = { ...draft.chargeLines[0], amountStatus: 'tbd' };
+    expect(() => buildUsdPricingPayload(draft)).toThrow(/explicitly priced/);
   });
 
-  it('rejects an ambiguous multiplier for a flat rental term', () => {
-    expect(() => buildUsdPricingPayload({
-      ...emptyGovernedQuoteDraft(),
-      rateBasis: 'flat_rental_term',
-      unitRate: '1000',
-      rentalPeriodQuantity: '2',
-    })).toThrow('Flat rental term requires a rental-period quantity of exactly 1.');
+  it('rejects browser-float syntax, excess precision, and incomplete usage terms', () => {
+    const scientific = validDraft();
+    scientific.rateTerms[0].unitRate = '1e3';
+    expect(() => buildUsdPricingPayload(scientific)).toThrow(/unit rate/);
+    const precision = validDraft();
+    precision.rateTerms[0].unitRate = '10.00001';
+    expect(() => buildUsdPricingPayload(precision)).toThrow(/unit rate/);
+    const usage = validDraft();
+    usage.rateTerms[0].includedUsageQuantity = '10';
+    expect(() => buildUsdPricingPayload(usage)).toThrow(/both a quantity and unit/);
+  });
+
+  it('rejects ambiguous flat-term multipliers and calendar months without timezone', () => {
+    const flat = validDraft();
+    flat.rateTerms[0] = { ...flat.rateTerms[0], rateBasis: 'flat_rental_term', rentalPeriodQuantity: '2' };
+    expect(() => buildUsdPricingPayload(flat)).toThrow(/exactly 1/);
+    const monthly = validDraft();
+    monthly.rateTerms[0] = { ...monthly.rateTerms[0], rateBasis: 'per_calendar_month' };
+    expect(() => buildUsdPricingPayload(monthly)).toThrow(/timezone/);
   });
 
   it('formats stored decimals without floating-point arithmetic', () => {
