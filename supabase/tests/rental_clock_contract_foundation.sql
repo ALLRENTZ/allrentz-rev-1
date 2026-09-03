@@ -296,8 +296,8 @@ SELECT is(
    )
    FROM public.rental_requests
    WHERE id = '00000000-0000-4000-8000-000000000305'),
-  jsonb_build_object('status', 'demobilizing', 'audit_count', 4),
-  'the vendor acknowledgment atomically advances demobilization with four request/transition audit events'
+  jsonb_build_object('status', 'demobilizing', 'audit_count', 5),
+  'the Rental Order event and vendor acknowledgment preserve five atomic order/request/transition audit events'
 );
 
 SELECT throws_ok(
