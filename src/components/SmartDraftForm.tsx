@@ -8,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, MapPin, Wrench, FileText } from 'lucide-react';
+import type { SmartDraftRequest } from '@/services/smartDraftService';
 
 interface SmartDraftFormProps {
-  onSubmit: (data: any) => void;
+  onSubmit: (data: SmartDraftRequest) => void;
 }
 
 const SmartDraftForm = ({ onSubmit }: SmartDraftFormProps) => {
@@ -230,7 +231,7 @@ const SmartDraftForm = ({ onSubmit }: SmartDraftFormProps) => {
         className="w-full"
         disabled={!isFormValid}
       >
-        Generate Smart Draft
+        Preview Request Draft
       </Button>
     </form>
   );
