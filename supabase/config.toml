@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.rental-stop]
 verify_jwt = true
+
+[functions.rfq-pickup-task]
+verify_jwt = true
+
+[functions.operations-lifecycle]
+verify_jwt = true

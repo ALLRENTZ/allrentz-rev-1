@@ -20,10 +20,9 @@ import EnterpriseOnboarding from "./pages/EnterpriseOnboarding";
 import SmartMatchDemo from "./pages/SmartMatchDemo";
 import SmartDraft from "./pages/SmartDraft";
 import OperationsCenter from "./pages/OperationsCenter";
-import SecurityCenter from "./pages/SecurityCenter";
 import { SecurityProvider } from "@/components/SecurityProvider";
 import DeliveryTracking from "./pages/management/DeliveryTracking";
-import DocumentsManagement from "./pages/management/DocumentsManagement";
+import ComplianceDocumentRegister from "./pages/management/ComplianceDocumentRegister";
 import TurnaroundManagement from "./pages/management/TurnaroundManagement";
 import NotFound from "./pages/NotFound";
 import Navigation from "./components/Navigation";
@@ -68,9 +67,8 @@ function App() {
                         </ProtectedRoute>
                       }
                     />
-                    <Route path="/security-center" element={<SecurityProvider><SecurityCenter /></SecurityProvider>} />
                     <Route path="/delivery-tracking" element={<ProtectedRoute requiredRole="customer"><DeliveryTracking /></ProtectedRoute>} />
-                    <Route path="/documents-management" element={<ProtectedRoute requiredRole="customer"><DocumentsManagement /></ProtectedRoute>} />
+                    <Route path="/documents-management" element={<ProtectedRoute requiredRole="customer"><ComplianceDocumentRegister /></ProtectedRoute>} />
                     <Route path="/turnaround-management" element={<ProtectedRoute requiredRole="customer"><TurnaroundManagement /></ProtectedRoute>} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Plus, MapPin, Calendar, FileText, Bell, Settings, DollarSign, CheckCircle, AlertTriangle, TrendingUp, Package } from 'lucide-react';
@@ -8,6 +8,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
 import { getVendorLifecycleAction, getVendorLifecycleLabel } from '@/lib/vendorLifecycle';
 import OffRentControlPanel from '@/components/OffRentControlPanel';
+import PickupTaskControlPanel from '@/components/PickupTaskControlPanel';
+import PickupExceptionReviewQueue from '@/components/PickupExceptionReviewQueue';
+import DeliveryAcceptanceStatusPanel from '@/components/DeliveryAcceptanceStatusPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -46,6 +49,13 @@ const VendorDashboard = () => {
   const [realQuoteForm, setRealQuoteForm] = useState({ daily_rate: '', vendor_notes: '', compliance_confirmed: false });
   const [pendingRfqsError, setPendingRfqsError] = useState(false);
   const [lifecycleRfqsError, setLifecycleRfqsError] = useState(false);
+  const pickupExceptionSources = useMemo(() => lifecycleRfqs
+    .filter((rfq) => ['demobilizing', 'off_rent'].includes(rfq.operational_status))
+    .map((rfq) => ({
+      rfqId: String(rfq.id),
+      title: rfq.equipment?.title || 'Equipment request',
+      location: rfq.delivery_address || null,
+    })), [lifecycleRfqs]);
 
   const toLocalDateTimeInput = (value: string | null | undefined) => {
     if (!value) return '';
@@ -173,8 +183,10 @@ const VendorDashboard = () => {
         'mobilizing',
         'in_transit',
         'on_rent',
+        'rental_extended',
         'off_rent_requested',
         'demobilizing',
+        'off_rent',
       ])
       .order('created_at', { ascending: false });
     if (error) {
@@ -699,6 +711,9 @@ const VendorDashboard = () => {
               <div className="industrial-card p-6">
                 <h2 className="text-xl font-bold text-allrentz-gray mb-6">Quote Requests</h2>
                 {authority.canUseOperationalData && (
+                  <PickupExceptionReviewQueue sources={pickupExceptionSources} />
+                )}
+                {authority.canUseOperationalData && (
                   <div className="mb-6">
                     <h3 className="font-semibold text-allrentz-gray mb-3">Active Fulfillment</h3>
                     {lifecycleRfqsError ? (
@@ -769,6 +784,19 @@ const VendorDashboard = () => {
                               rfqId={rfq.id}
                               refreshKey={offRentRefreshVersion}
                             />
+                          )}
+                          {['demobilizing', 'off_rent'].includes(rfq.operational_status) && (
+                            <PickupTaskControlPanel rfqId={rfq.id} actorMode="vendor" />
+                          )}
+                          {[
+                            'in_transit',
+                            'on_rent',
+                            'rental_extended',
+                            'off_rent_requested',
+                            'demobilizing',
+                            'off_rent',
+                          ].includes(rfq.operational_status) && (
+                            <DeliveryAcceptanceStatusPanel rfqId={rfq.id} />
                           )}
                         </div>
                         );

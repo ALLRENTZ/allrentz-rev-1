@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,9 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import DemoTour from '@/components/DemoTour';
 import OffRentControlPanel from '@/components/OffRentControlPanel';
+import PickupTaskControlPanel from '@/components/PickupTaskControlPanel';
+import PickupExceptionReviewQueue from '@/components/PickupExceptionReviewQueue';
+import DeliveryAcceptanceStatusPanel from '@/components/DeliveryAcceptanceStatusPanel';
 import { demoCustomerRentalRequests, demoCustomerNotifications } from '@/data/demoDashboardData';
 import { getOperationalAuthority, requireOperationalProfile } from '@/lib/operationalAuthority';
 
@@ -40,6 +43,7 @@ const CustomerDashboard = () => {
   const [offRentNotes, setOffRentNotes] = useState('');
   const [offRentRefreshVersion, setOffRentRefreshVersion] = useState(0);
   const [recordingAcceptanceRfqId, setRecordingAcceptanceRfqId] = useState<string | null>(null);
+  const [fieldAcceptanceRefreshVersion, setFieldAcceptanceRefreshVersion] = useState(0);
   const [pendingAcceptanceRfqId, setPendingAcceptanceRfqId] = useState<string | null>(null);
   const [conditionNotes, setConditionNotes] = useState('');
   const [evidenceReferences, setEvidenceReferences] = useState('');
@@ -57,6 +61,13 @@ const CustomerDashboard = () => {
 
   const authority = getOperationalAuthority({ user, authLoading, profile });
   const isDemoUser = profile?.is_demo === true;
+  const pickupExceptionSources = useMemo(() => rentalRequests
+    .filter((request) => ['demobilizing', 'off_rent'].includes(request.operational_status))
+    .map((request) => ({
+      rfqId: String(request.id),
+      title: request.equipment?.title || 'Equipment request',
+      location: request.delivery_address || null,
+    })), [rentalRequests]);
 
   useEffect(() => {
     if (!user || authLoading || !profile) return;
@@ -330,6 +341,7 @@ const CustomerDashboard = () => {
         title: 'Field acceptance recorded',
         description: 'The evidence is recorded and the rental is now on rent.',
       });
+      setFieldAcceptanceRefreshVersion((version) => version + 1);
       resetFieldAcceptance();
       await fetchRentalRequests();
     } catch (err: any) {
@@ -482,6 +494,10 @@ const CustomerDashboard = () => {
           </Link>
         </div>
 
+        {authority.canUseOperationalData && (
+          <PickupExceptionReviewQueue sources={pickupExceptionSources} />
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Active Rentals */}
           <div className="lg:col-span-2">
@@ -574,6 +590,23 @@ const CustomerDashboard = () => {
                               refreshKey={offRentRefreshVersion}
                             />
                           )}
+                        {['demobilizing', 'off_rent'].includes(request.operational_status)
+                          && authority.canUseOperationalData && (
+                            <PickupTaskControlPanel rfqId={request.id} actorMode="customer" />
+                          )}
+                        {[
+                          'in_transit',
+                          'on_rent',
+                          'rental_extended',
+                          'off_rent_requested',
+                          'demobilizing',
+                          'off_rent',
+                        ].includes(request.operational_status) && authority.canUseOperationalData && (
+                          <DeliveryAcceptanceStatusPanel
+                            rfqId={request.id}
+                            refreshKey={fieldAcceptanceRefreshVersion}
+                          />
+                        )}
                         {request.operational_status === 'in_transit' && authority.canUseOperationalData && (
                           <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
                             <p className="text-sm font-medium text-blue-900">Delivery awaiting field acceptance</p>
