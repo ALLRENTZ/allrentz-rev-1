@@ -66,6 +66,7 @@ docs/
 | File | Lifecycle / governance and scope | Source |
 |---|---|---|
 | `rental-lifecycle-framework.md` | Active / Candidate — approved doctrine and target architecture; no rule publication, runtime activation, or object-scope authorization | integrated governing-product review; implementation boundary linked to the engineering contract |
+| `search-to-rfq-operating-model.md` | Active / Candidate — product behavior and implementation planning for Search-to-RFQ only; no schema, RLS, command, contractual, billing, deployment, or production authority | Patrick McGriff approved product direction, 2026-09-03; subordinate to the Constitution and Architectural Foundation |
 | `pickup-custody-and-invoice-control-requirements.md` | Active / Candidate — target product requirements for pickup, custody evidence, granular object boundaries, reconciliation, and append-only correction; no implementation, rule, billing, deployment, or production authority | separate benchmark and product-requirements wave approved 2026-08-13; verified implementation boundary linked to the engineering contract |
 | `product-test.md` | Stub — needs input | unknown — Pat to confirm intended source |
 
