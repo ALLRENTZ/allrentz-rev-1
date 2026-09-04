@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Clock, Wrench, CheckCircle } from 'lucide-react';
+import { MapPin, Clock, Wrench } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import EquipmentQuoteRequest from './EquipmentQuoteRequest';
@@ -55,9 +55,9 @@ const EquipmentCard: React.FC<EquipmentCardProps> = ({ equipment, onQuoteRequest
                 {equipment.category}
               </Badge>
             </div>
-            <Badge className="bg-green-100 text-green-800">
-              <CheckCircle className="h-3 w-3 mr-1" />
-              Available
+            <Badge variant="outline" className="bg-gray-50 text-gray-700">
+              <Clock className="h-3 w-3 mr-1" />
+              Availability unconfirmed
             </Badge>
           </div>
         </CardHeader>

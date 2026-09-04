@@ -37,7 +37,7 @@ const HowItWorks = () => {
               <Search className="h-12 w-12 text-allrentz-red mx-auto mb-4" />
               <h3 className="text-lg font-bold text-allrentz-gray mb-3">Browse Equipment</h3>
               <p className="text-gray-600 text-sm mb-4">
-                Search through approved vendors and verified equipment. Filter by location, specs, and availability.
+                Search through approved vendors and verified equipment. Browse by category or description, then request availability confirmation from a vendor.
               </p>
               <div className="space-y-2 text-xs text-gray-500">
                 <div className="flex items-center space-x-2">
@@ -50,7 +50,7 @@ const HowItWorks = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="h-3 w-3 text-green-500" />
-                  <span>Real-time availability</span>
+                  <span>Availability requires vendor confirmation</span>
                 </div>
               </div>
             </div>

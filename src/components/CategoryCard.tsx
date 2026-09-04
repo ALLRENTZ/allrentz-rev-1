@@ -200,7 +200,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
 
         {/* Equipment count */}
         <div className="mb-4">
-          <p className="text-sm text-gray-500">{equipmentCount} units available</p>
+          <p className="text-sm text-gray-500">Browse equipment listings</p>
         </div>
 
         {/* CTA */}

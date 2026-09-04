@@ -27,8 +27,6 @@ export interface MatchedVendor {
   response_time_hours: number;
   compliance_score: number;
   performance_rating: number;
-  availability_status: 'available' | 'reserved' | 'maintenance';
-  estimated_delivery: string;
   compliance_tags: string[];
   match_score: number;
   contact_phone?: string;
@@ -60,8 +58,6 @@ class SmartMatchEngine {
         response_time_hours: 2,
         compliance_score: 95,
         performance_rating: 4.8,
-        availability_status: 'available',
-        estimated_delivery: request.urgency === 'immediate' ? '2-3 hours' : 'Same day',
         compliance_tags: ['TWIC', 'HAZMAT', 'API-653'],
         match_score: 96,
         contact_phone: '(713) 555-0123',
@@ -78,8 +74,6 @@ class SmartMatchEngine {
         response_time_hours: 1,
         compliance_score: 88,
         performance_rating: 4.6,
-        availability_status: 'available',
-        estimated_delivery: request.urgency === 'immediate' ? '1-2 hours' : 'Same day',
         compliance_tags: ['TWIC', 'ISNET', 'OSHA-30'],
         match_score: 92,
         contact_phone: '(281) 555-0156',
@@ -96,8 +90,6 @@ class SmartMatchEngine {
         response_time_hours: 3,
         compliance_score: 91,
         performance_rating: 4.7,
-        availability_status: 'available',
-        estimated_delivery: request.urgency === 'immediate' ? '3-4 hours' : 'Same day',
         compliance_tags: ['TWIC', 'HAZMAT', 'PEC-SafeLand'],
         match_score: 89,
         contact_phone: '(409) 555-0189',
@@ -114,8 +106,6 @@ class SmartMatchEngine {
         response_time_hours: 4,
         compliance_score: 93,
         performance_rating: 4.9,
-        availability_status: 'available',
-        estimated_delivery: request.urgency === 'immediate' ? '4-5 hours' : 'Next day',
         compliance_tags: ['TWIC', 'HAZMAT', 'API-570', 'ASME'],
         match_score: 87,
         contact_phone: '(832) 555-0167',

@@ -30,7 +30,6 @@ const mapFullRowToItem = (row: FullEquipmentRow): FeaturedEquipmentItem => ({
   reviews: 0,
   dailyRate: Number(row.daily_rate ?? 0),
   image: row.image_url ?? PLACEHOLDER_IMAGE,
-  available: row.available ?? true,
   vendor: row.category ?? '',
 });
 
@@ -152,7 +151,7 @@ const FeaturedEquipment: React.FC = () => {
                       See exact pricing & instant quotes
                     </h4>
                     <p className="text-sm text-gray-600 mb-4">
-                      Unlock vendor names, specs, compliance tags, and live availability.
+                      Unlock vendor names, specs, and compliance tags, then request vendor availability confirmation.
                     </p>
                     <Button
                       onClick={goToSignIn}

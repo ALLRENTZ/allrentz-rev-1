@@ -170,7 +170,7 @@ const BrowseResults: React.FC = () => {
             <p className="text-sm text-gray-500 mb-4">
               {activeQuery
                 ? <>No matches for <span className="font-semibold">"{activeQuery}"</span> in {headerTitle}.</>
-                : <>No listings available in {headerTitle} yet.</>}
+                : <>No listings found in {headerTitle} yet.</>}
             </p>
             <Link to="/browse">
               <Button variant="outline">Back to all categories</Button>
@@ -178,7 +178,7 @@ const BrowseResults: React.FC = () => {
           </div>
         ) : isAuthed ? (
           <>
-            <p className="text-sm text-gray-600 mb-4">{data.length} listing{data.length === 1 ? '' : 's'} available</p>
+            <p className="text-sm text-gray-600 mb-4">{data.length} listing{data.length === 1 ? '' : 's'} found</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {(data as FullEquipmentRow[]).map((row) => (
                 <EquipmentCard key={row.id} equipment={mapToEquipment(row)} />
@@ -197,7 +197,7 @@ const BrowseResults: React.FC = () => {
                   {idx === 2 && (
                     <div className="industrial-card p-6 flex flex-col items-center justify-center text-center bg-gradient-to-br from-allrentz-red/5 to-allrentz-red/10 border-2 border-dashed border-allrentz-red/30">
                       <h4 className="text-lg font-bold text-gray-900 mb-2">See exact pricing & instant quotes</h4>
-                      <p className="text-sm text-gray-600 mb-4">Unlock vendor names, specs, compliance tags, and live availability.</p>
+                      <p className="text-sm text-gray-600 mb-4">Unlock vendor names, specs, and compliance tags, then request vendor availability confirmation.</p>
                       <Button onClick={goToSignIn} className="bg-allrentz-red hover:bg-allrentz-red-dark text-white">Create a free account</Button>
                     </div>
                   )}
