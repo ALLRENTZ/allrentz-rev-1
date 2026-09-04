@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin } from 'lucide-react';
+import { Clock, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { PublicEquipmentRow } from '@/hooks/useEquipmentSearch';
@@ -28,11 +28,12 @@ const EquipmentTeaserCard: React.FC<Props> = ({ item, onSignInClick }) => {
           alt={item.title ?? 'Equipment'}
           className="w-full h-48 object-cover"
         />
-        {item.available === false && (
-          <div className="absolute top-3 left-3">
-            <Badge variant="secondary" className="bg-gray-800 text-white">Unavailable</Badge>
-          </div>
-        )}
+        <div className="absolute top-3 left-3">
+          <Badge variant="secondary" className="bg-gray-800 text-white">
+            <Clock className="h-3 w-3 mr-1" />
+            Availability unconfirmed
+          </Badge>
+        </div>
         {item.category && (
           <div className="absolute top-3 right-3">
             <Badge className="bg-allrentz-red text-white border-0">{item.category}</Badge>

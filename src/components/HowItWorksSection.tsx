@@ -18,7 +18,7 @@ const HowItWorksSection: React.FC = () => {
             <span className="text-blue-600 font-bold">2</span>
           </div>
           <h3 className="font-semibold mb-2">Instant Matching</h3>
-          <p className="text-sm text-gray-600">Get ranked matches based on distance, compliance, and availability</p>
+          <p className="text-sm text-gray-600">Suggested results do not represent vendor-confirmed availability</p>
         </div>
         <div className="text-center">
           <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">

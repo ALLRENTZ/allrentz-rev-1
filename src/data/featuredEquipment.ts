@@ -7,6 +7,5 @@ export interface FeaturedEquipmentItem {
   reviews: number;
   dailyRate: number;
   image: string;
-  available: boolean;
   vendor: string;
 }

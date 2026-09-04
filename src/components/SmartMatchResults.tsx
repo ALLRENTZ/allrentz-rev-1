@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Clock, DollarSign, Star, CheckCircle2, Truck } from 'lucide-react';
+import { MapPin, DollarSign, Star, CheckCircle2, Truck } from 'lucide-react';
 import { MatchedVendor } from '@/services/smartMatchEngine';
 
 interface SmartMatchResultsProps {
@@ -49,14 +49,10 @@ const SmartMatchResults: React.FC<SmartMatchResultsProps> = ({
                   </Badge>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                   <div className="flex items-center space-x-2">
                     <MapPin className="h-4 w-4 text-gray-500" />
                     <span className="text-sm">{vendor.distance_miles} miles</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm">{vendor.estimated_delivery}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <DollarSign className="h-4 w-4 text-gray-500" />
